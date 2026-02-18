@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Track Timer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #08080d; color: #fff; overflow: hidden; }
+
+  /* ── Setup Screen ── */
+  #setup {
+    min-height: 100vh; min-height: 100dvh;
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+    background: linear-gradient(160deg, #08080d, #101018, #0a0a12);
+  }
+  .card {
+    background: linear-gradient(180deg, #16161e, #111117);
+    border: 1px solid #28283a; border-radius: 20px;
+    padding: 28px 22px; max-width: 420px; width: 100%; text-align: center;
+  }
+  .card h1 { font-size: 26px; font-weight: 800; letter-spacing: 3px; margin-bottom: 2px; }
+  .card .sub { color: #666; font-size: 13px; margin-bottom: 24px; }
+  .label { display: block; text-align: left; color: #00e87b; font-size: 11px; font-weight: 700; letter-spacing: 2px; margin-bottom: 6px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+  .opt-btn {
+    background: #1a1a24; border: 1px solid #28283a; border-radius: 10px; padding: 12px 8px;
+    cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .opt-btn strong { color: #fff; font-size: 15px; }
+  .opt-btn span { color: #777; font-size: 11px; }
+  .opt-btn.active { border-color: #00e87b; background: rgba(0,232,123,0.07); box-shadow: 0 0 16px rgba(0,232,123,0.08); }
+  .cam-row { display: flex; gap: 8px; margin-bottom: 20px; }
+  .cam-btn {
+    flex: 1; background: #1a1a24; border: 1px solid #28283a; border-radius: 10px;
+    padding: 10px; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .cam-btn.active { border-color: #00e87b; background: rgba(0,232,123,0.07); }
+  .primary-btn {
+    display: block; width: 100%; padding: 15px;
+    background: linear-gradient(135deg, #00c264, #00e87b);
+    border: none; border-radius: 12px; color: #000; font-size: 15px; font-weight: 800;
+    letter-spacing: 2px; cursor: pointer; box-shadow: 0 4px 20px rgba(0,232,123,0.25);
+  }
+  .error-msg { color: #ff6b6b; font-size: 13px; margin-top: 10px; }
+  .help { margin-top: 22px; border-top: 1px solid #222; padding-top: 14px; text-align: left; }
+  .help p { color: #777; font-size: 13px; margin: 5px 0; line-height: 1.5; }
+  .help b { color: #00e87b; }
+
+  /* ── Camera / Recording Screen ── */
+  #camera-screen {
+    display: none; position: fixed; inset: 0; background: #000;
+  }
+  #live-video { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+  #overlay-canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .ctrl-bar {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 2;
+    padding: 20px 20px 36px; display: flex; justify-content: center; align-items: center; gap: 22px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.65)); min-height: 130px;
+  }
+  .go-btn {
+    width: 110px; height: 110px; border-radius: 50%;
+    background: linear-gradient(135deg, #00c264, #00e87b);
+    border: 4px solid rgba(255,255,255,0.2); cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    box-shadow: 0 0 36px rgba(0,232,123,0.4); font-family: inherit;
+  }
+  .go-btn .icon { font-size: 34px; color: #000; margin-left: 4px; line-height: 1; }
+  .go-btn .txt { font-size: 11px; font-weight: 800; color: #000; letter-spacing: 1px; }
+  .lap-btn {
+    width: 96px; height: 96px; border-radius: 50%;
+    background: linear-gradient(135deg, #0077ee, #0099ff);
+    border: 3px solid rgba(255,255,255,0.15); cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    box-shadow: 0 0 24px rgba(0,120,255,0.35); font-family: inherit;
+  }
+  .lap-btn .txt { font-size: 17px; font-weight: 800; color: #fff; letter-spacing: 1px; }
+  .lap-btn .num { font-size: 11px; color: rgba(255,255,255,0.6); }
+  .stop-btn {
+    width: 68px; height: 68px; border-radius: 50%;
+    background: linear-gradient(135deg, #cc0000, #ff3333);
+    border: 3px solid rgba(255,255,255,0.15); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 18px rgba(255,0,0,0.3); font-family: inherit;
+    font-size: 12px; font-weight: 800; color: #fff; letter-spacing: 1px;
+  }
+  .back-btn {
+    position: absolute; top: 14px; left: 14px; z-index: 3;
+    background: rgba(0,0,0,0.55); border: 1px solid #444; border-radius: 8px;
+    color: #fff; padding: 8px 14px; font-size: 13px; cursor: pointer; font-family: inherit;
+  }
+  .saving-msg { color: #FFAA00; font-weight: 700; font-size: 15px; text-shadow: 0 1px 6px rgba(0,0,0,0.8); }
+
+  /* ── Review Screen ── */
+  #review {
+    display: none; min-height: 100vh; min-height: 100dvh;
+    align-items: center; justify-content: center; padding: 14px;
+    background: linear-gradient(160deg, #08080d, #101018, #0a0a12);
+  }
+  .review-card {
+    background: linear-gradient(180deg, #16161e, #111117);
+    border: 1px solid #28283a; border-radius: 20px;
+    padding: 28px 20px; max-width: 500px; width: 100%; text-align: center;
+  }
+  .review-card .done-label { color: #00e87b; font-size: 12px; font-weight: 800; letter-spacing: 3px; margin-bottom: 4px; }
+  .review-card .final-time { font-size: 42px; font-weight: 800; color: #fff; font-family: monospace; margin-bottom: 4px; }
+  .event-badge {
+    display: inline-block; background: rgba(0,232,123,0.1); border: 1px solid rgba(0,232,123,0.3);
+    border-radius: 6px; padding: 2px 12px; color: #00e87b; font-size: 13px; font-weight: 700; margin-bottom: 12px;
+  }
+  #review-video { width: 100%; border-radius: 12px; margin: 14px 0; background: #000; max-height: 260px; }
+  .splits-table { text-align: left; margin-bottom: 16px; }
+  .splits-table .hdr { display: flex; padding: 8px 10px; border-bottom: 1px solid #2a2a35; }
+  .splits-table .hdr span { flex: 1; color: #555; font-size: 11px; font-weight: 700; letter-spacing: 1px; }
+  .split-row { display: flex; padding: 10px 10px; border-bottom: 1px solid #1a1a22; }
+  .split-row span { flex: 1; color: #ccc; font-size: 14px; font-weight: 600; }
+  .split-row.fast { background: rgba(0,232,123,0.06); }
+  .split-row.slow { background: rgba(255,80,80,0.06); }
+  .stats-row { display: flex; gap: 6px; margin-bottom: 16px; }
+  .stat-box { flex: 1; background: #1a1a24; border-radius: 10px; padding: 8px 4px; text-align: center; }
+  .stat-box .sl { color: #555; font-size: 10px; font-weight: 700; letter-spacing: 1px; }
+  .stat-box .sv { font-size: 15px; font-weight: 700; font-family: monospace; margin-top: 2px; }
+  .btn-row { display: flex; gap: 10px; }
+  .dl-btn {
+    flex: 1; display: flex; align-items: center; justify-content: center; padding: 15px;
+    background: linear-gradient(135deg, #00c264, #00e87b);
+    border: none; border-radius: 12px; color: #000; font-size: 14px; font-weight: 800;
+    letter-spacing: 1px; text-decoration: none; cursor: pointer;
+    box-shadow: 0 4px 20px rgba(0,232,123,0.25);
+  }
+  .ghost-btn {
+    flex: 1; padding: 15px; background: #1a1a24; border: 1px solid #28283a; border-radius: 12px;
+    color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════ SETUP SCREEN ════════ -->
+<div id="setup">
+  <div class="card">
+    <div style="font-size:44px;margin-bottom:4px">⏱️</div>
+    <h1>TRACK TIMER</h1>
+    <p class="sub">Record races with live splits burned into video</p>
+
+    <span class="label">EVENT</span>
+    <div class="grid2" id="event-grid"></div>
+
+    <span class="label">CAMERA</span>
+    <div class="cam-row">
+      <button class="cam-btn active" data-facing="environment" onclick="selectCam(this)">Rear</button>
+      <button class="cam-btn" data-facing="user" onclick="selectCam(this)">Front</button>
+    </div>
+
+    <button class="primary-btn" onclick="prepareCamera()">PREPARE TO RECORD</button>
+    <p class="error-msg" id="setup-error"></p>
+
+    <div class="help">
+      <p><b>1.</b> Tap PREPARE to open camera</p>
+      <p><b>2.</b> Tap START when the gun fires</p>
+      <p><b>3.</b> Tap LAP each time a lap completes</p>
+      <p><b>4.</b> Auto-stops at final lap, or tap STOP</p>
+      <p><b>5.</b> Review &amp; download video with splits baked in</p>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ CAMERA SCREEN ════════ -->
+<div id="camera-screen">
+  <video id="live-video" playsinline muted></video>
+  <canvas id="overlay-canvas"></canvas>
+
+  <button class="back-btn" id="back-btn" onclick="goBack()">← Back</button>
+
+  <div class="ctrl-bar" id="ctrl-bar"></div>
+</div>
+
+<!-- ════════ REVIEW SCREEN ════════ -->
+<div id="review">
+  <div class="review-card">
+    <div class="done-label">RACE COMPLETE</div>
+    <div class="final-time" id="final-time"></div>
+    <div><span class="event-badge" id="review-event"></span></div>
+    <video id="review-video" controls playsinline></video>
+    <div class="splits-table" id="splits-table"></div>
+    <div class="stats-row" id="stats-row"></div>
+    <div class="btn-row" id="btn-row"></div>
+  </div>
+</div>
+
+<script>
+/* ── State ── */
+const EVENTS = { "1600m": 4, "3200m": 8, "800m": 2, "Custom": null };
+let selectedEvent = "1600m";
+let camFacing = "environment";
+let stream = null;
+let recorder = null;
+let chunks = [];
+let startTime = null;
+let elapsed = 0;
+let splits = [];
+let phase = "setup"; // setup | ready | running | stopped
+let drawRAF = null;
+let tickRAF = null;
+
+/* ── Helpers ── */
+function fmt(ms) {
+  const m = Math.floor(ms / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  const c = Math.floor((ms % 1000) / 10);
+  return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${String(c).padStart(2,"0")}`;
+}
+
+/* ── Setup: Event selection ── */
+const eventGrid = document.getElementById("event-grid");
+Object.keys(EVENTS).forEach(e => {
+  const btn = document.createElement("button");
+  btn.className = "opt-btn" + (e === selectedEvent ? " active" : "");
+  btn.innerHTML = `<strong>${e}</strong>${EVENTS[e] ? `<span>${EVENTS[e]} laps</span>` : ""}`;
+  btn.onclick = () => {
+    selectedEvent = e;
+    eventGrid.querySelectorAll(".opt-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  };
+  eventGrid.appendChild(btn);
+});
+
+function selectCam(btn) {
+  camFacing = btn.dataset.facing;
+  document.querySelectorAll(".cam-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+}
+
+/* ── Show / hide screens ── */
+function showScreen(id) {
+  ["setup", "camera-screen", "review"].forEach(s => {
+    document.getElementById(s).style.display = "none";
+  });
+  const el = document.getElementById(id);
+  el.style.display = id === "camera-screen" ? "block" : "flex";
+}
+
+/* ── Prepare Camera ── */
+async function prepareCamera() {
+  const errEl = document.getElementById("setup-error");
+  errEl.textContent = "";
+  try {
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: camFacing, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: true
+    });
+    const vid = document.getElementById("live-video");
+    vid.srcObject = stream;
+    try { await vid.play(); } catch(_) {}
+
+    phase = "ready";
+    elapsed = 0;
+    splits = [];
+    chunks = [];
+    startTime = null;
+
+    showScreen("camera-screen");
+    setupCanvas();
+    renderControls();
+    startDrawLoop();
+  } catch(e) {
+    errEl.textContent = "Camera access denied. Please allow camera & microphone in your browser settings.";
+  }
+}
+
+/* ── Canvas Setup ── */
+function setupCanvas() {
+  const canvas = document.getElementById("overlay-canvas");
+  canvas.width = 1280;
+  canvas.height = 720;
+}
+
+/* ── Draw Loop ── */
+function startDrawLoop() {
+  const canvas = document.getElementById("overlay-canvas");
+  const ctx = canvas.getContext("2d");
+  const vid = document.getElementById("live-video");
+  const w = canvas.width, h = canvas.height;
+
+  function draw() {
+    // Video frame
+    ctx.drawImage(vid, 0, 0, w, h);
+
+    // Top bar
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(0, 0, w, 82);
+
+    // Event & lap labels
+    ctx.font = "bold 16px -apple-system, sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#aaa";
+    ctx.textAlign = "left";
+    ctx.fillText(selectedEvent, 14, 22);
+
+    const totalLaps = EVENTS[selectedEvent];
+    const curLap = splits.length + (phase === "running" ? 1 : 0);
+    const lapTxt = totalLaps ? `Lap ${Math.min(curLap || 1, totalLaps)}/${totalLaps}` : `Lap ${curLap || 1}`;
+    ctx.textAlign = "right";
+    ctx.fillText(lapTxt, w - 14, 22);
+
+    // Timer
+    ctx.font = "bold 54px monospace";
+    ctx.textAlign = "center";
+    ctx.fillStyle = phase === "running" ? "#00FF88" : phase === "stopped" ? "#FF4444" : "#FFFFFF";
+    ctx.fillText(fmt(elapsed), w / 2, 52);
+
+    // Status line
+    if (phase === "ready") {
+      ctx.font = "bold 15px -apple-system, sans-serif";
+      ctx.fillStyle = "#FFAA00";
+      ctx.fillText("TAP START WHEN GUN FIRES", w / 2, 76);
+    } else if (phase === "stopped") {
+      ctx.font = "bold 16px -apple-system, sans-serif";
+      ctx.fillStyle = "#FF4444";
+      ctx.fillText("FINAL", w / 2, 76);
+    }
+
+    // Splits panel
+    if (splits.length > 0) {
+      const shown = splits.slice(-8);
+      const panelH = shown.length * 30 + 32;
+      const panelW = 260;
+      const px = w - panelW - 10, py = 92;
+
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.beginPath();
+      ctx.roundRect(px, py, panelW, panelH, 10);
+      ctx.fill();
+
+      ctx.font = "bold 11px -apple-system, sans-serif";
+      ctx.fillStyle = "#888";
+      ctx.textAlign = "left";
+      ctx.fillText("SPLITS", px + 10, py + 16);
+
+      shown.forEach((s, i) => {
+        const y = py + 34 + i * 30;
+        // Lap number
+        ctx.font = "bold 14px -apple-system, sans-serif";
+        ctx.fillStyle = "#aaa";
+        ctx.textAlign = "left";
+        ctx.fillText(`L${s.lap}`, px + 10, y);
+        // Cumulative split
+        ctx.font = "bold 16px monospace";
+        ctx.fillStyle = "#00FF88";
+        ctx.textAlign = "left";
+        ctx.fillText(fmt(s.split), px + 44, y);
+        // Lap time
+        ctx.font = "13px monospace";
+        ctx.fillStyle = "#888";
+        ctx.textAlign = "right";
+        ctx.fillText(fmt(s.lapTime), px + panelW - 10, y);
+      });
+    }
+
+    drawRAF = requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+function stopDrawLoop() {
+  if (drawRAF) { cancelAnimationFrame(drawRAF); drawRAF = null; }
+}
+
+/* ── Timer tick ── */
+function startTick() {
+  function t() {
+    if (startTime) elapsed = performance.now() - startTime;
+    tickRAF = requestAnimationFrame(t);
+  }
+  t();
+}
+function stopTick() {
+  if (tickRAF) { cancelAnimationFrame(tickRAF); tickRAF = null; }
+}
+
+/* ── Controls ── */
+function renderControls() {
+  const bar = document.getElementById("ctrl-bar");
+  const backBtn = document.getElementById("back-btn");
+  bar.innerHTML = "";
+
+  const totalLaps = EVENTS[selectedEvent];
+
+  if (phase === "ready") {
+    backBtn.style.display = "block";
+    const btn = document.createElement("button");
+    btn.className = "go-btn";
+    btn.innerHTML = `<span class="icon">▶</span><span class="txt">START</span>`;
+    btn.onclick = startRace;
+    bar.appendChild(btn);
+  } else if (phase === "running") {
+    backBtn.style.display = "none";
+    const lap = document.createElement("button");
+    lap.className = "lap-btn";
+    lap.innerHTML = `<span class="txt">LAP</span><span class="num">${splits.length + 1}${totalLaps ? "/" + totalLaps : ""}</span>`;
+    lap.onclick = recordLap;
+    bar.appendChild(lap);
+
+    const stop = document.createElement("button");
+    stop.className = "stop-btn";
+    stop.textContent = "STOP";
+    stop.onclick = stopRace;
+    bar.appendChild(stop);
+  } else if (phase === "stopped") {
+    backBtn.style.display = "none";
+    const msg = document.createElement("div");
+    msg.className = "saving-msg";
+    msg.textContent = "Saving video with overlay…";
+    bar.appendChild(msg);
+  }
+}
+
+/* ── Race Actions ── */
+function startRace() {
+  if (phase !== "ready") return;
+
+  // Record from canvas (has the overlay baked in)
+  const canvas = document.getElementById("overlay-canvas");
+  const canvasStream = canvas.captureStream(30);
+  if (stream) {
+    stream.getAudioTracks().forEach(t => canvasStream.addTrack(t));
+  }
+  let options = {};
+  const types = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"];
+  for (const t of types) {
+    if (MediaRecorder.isTypeSupported(t)) { options.mimeType = t; break; }
+  }
+  recorder = new MediaRecorder(canvasStream, options);
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+  recorder.start(200);
+
+  startTime = performance.now();
+  elapsed = 0;
+  phase = "running";
+  startTick();
+  renderControls();
+}
+
+function recordLap() {
+  if (phase !== "running") return;
+  const prev = splits.length > 0 ? splits[splits.length - 1].split : 0;
+  splits.push({ lap: splits.length + 1, split: elapsed, lapTime: elapsed - prev });
+  renderControls();
+
+  const totalLaps = EVENTS[selectedEvent];
+  if (totalLaps && splits.length >= totalLaps) {
+    stopRace();
+  }
+}
+
+function stopRace() {
+  stopTick();
+  // Auto-add final split if needed
+  const prev = splits.length > 0 ? splits[splits.length - 1].split : 0;
+  if (splits.length === 0 || elapsed - prev > 500) {
+    splits.push({ lap: splits.length + 1, split: elapsed, lapTime: elapsed - prev });
+  }
+  phase = "stopped";
+  renderControls();
+
+  // Hold final frame for 3s then stop recording
+  setTimeout(() => {
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+      recorder.onstop = () => {
+        stopDrawLoop();
+        if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+        showReview();
+      };
+    } else {
+      stopDrawLoop();
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      showReview();
+    }
+  }, 3000);
+}
+
+function goBack() {
+  stopDrawLoop();
+  stopTick();
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  phase = "setup";
+  showScreen("setup");
+}
+
+/* ── Review ── */
+function showReview() {
+  phase = "review";
+  showScreen("review");
+
+  document.getElementById("final-time").textContent = fmt(elapsed);
+  document.getElementById("review-event").textContent = selectedEvent;
+
+  // Video
+  const vid = document.getElementById("review-video");
+  if (chunks.length > 0) {
+    const mimeType = recorder ? recorder.mimeType : "video/webm";
+    const blob = new Blob(chunks, { type: mimeType });
+    vid.src = URL.createObjectURL(blob);
+    vid.style.display = "block";
+  } else {
+    vid.style.display = "none";
+  }
+
+  // Splits table
+  const table = document.getElementById("splits-table");
+  let fastest = null, slowest = null;
+  if (splits.length > 1) {
+    fastest = splits.reduce((a, b) => a.lapTime < b.lapTime ? a : b);
+    slowest = splits.reduce((a, b) => a.lapTime > b.lapTime ? a : b);
+  }
+  table.innerHTML = `<div class="hdr"><span>LAP</span><span>SPLIT</span><span>LAP TIME</span></div>`;
+  splits.forEach(s => {
+    const isFast = fastest && s.lap === fastest.lap;
+    const isSlow = slowest && s.lap === slowest.lap;
+    const cls = "split-row" + (isFast ? " fast" : "") + (isSlow ? " slow" : "");
+    table.innerHTML += `<div class="${cls}">
+      <span>${s.lap}${isFast ? " 🟢" : ""}${isSlow ? " 🔴" : ""}</span>
+      <span style="font-family:monospace">${fmt(s.split)}</span>
+      <span style="font-family:monospace">${fmt(s.lapTime)}</span>
+    </div>`;
+  });
+
+  // Stats
+  const statsRow = document.getElementById("stats-row");
+  statsRow.innerHTML = "";
+  if (splits.length > 1) {
+    const avg = elapsed / splits.length;
+    statsRow.innerHTML = `
+      <div class="stat-box"><div class="sl">AVG LAP</div><div class="sv" style="color:#fff">${fmt(avg)}</div></div>
+      <div class="stat-box"><div class="sl">FASTEST</div><div class="sv" style="color:#00e87b">${fastest ? fmt(fastest.lapTime) : "—"}</div></div>
+      <div class="stat-box"><div class="sl">SLOWEST</div><div class="sv" style="color:#ff6b6b">${slowest ? fmt(slowest.lapTime) : "—"}</div></div>
+    `;
+  }
+
+  // Buttons
+  const btnRow = document.getElementById("btn-row");
+  btnRow.innerHTML = "";
+  if (chunks.length > 0) {
+    const mimeType = recorder ? recorder.mimeType : "video/webm";
+    const blob = new Blob(chunks, { type: mimeType });
+    const ext = mimeType.includes("mp4") ? "mp4" : "webm";
+    const a = document.createElement("a");
+    a.className = "dl-btn";
+    a.href = URL.createObjectURL(blob);
+    a.download = `${selectedEvent}_race_${Date.now()}.${ext}`;
+    a.textContent = "DOWNLOAD VIDEO";
+    btnRow.appendChild(a);
+  }
+  const newBtn = document.createElement("button");
+  newBtn.className = "ghost-btn";
+  newBtn.textContent = "NEW RACE";
+  newBtn.onclick = () => {
+    phase = "setup";
+    elapsed = 0;
+    splits = [];
+    chunks = [];
+    showScreen("setup");
+  };
+  btnRow.appendChild(newBtn);
+}
+</script>
+</body>
+</html>
