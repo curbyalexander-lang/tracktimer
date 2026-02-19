@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Interview Recorder</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: #0a0a0a;
+    color: #eee;
+    display: flex;
+    justify-content: center;
+    padding: 40px 16px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .container { width: 100%; max-width: 560px; }
+
+  /* Header */
+  .header { text-align: center; margin-bottom: 40px; }
+  .header .label { font-size: 11px; letter-spacing: 4px; color: #555; margin-bottom: 8px; }
+  .header h1 { font-family: 'Instrument Serif', serif; font-size: 42px; font-weight: 400; line-height: 1.1; }
+  .header p { font-size: 14px; color: #666; margin-top: 8px; }
+
+  /* Card */
+  .card {
+    background: #111;
+    border-radius: 16px;
+    border: 1px solid #222;
+    padding: 28px;
+    box-shadow: 0 0 80px rgba(0,0,0,0.5);
+  }
+
+  /* Status bar */
+  .status-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .status-indicator { display: flex; align-items: center; gap: 8px; }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #333;
+  }
+  .status-dot.recording { background: #ef4444; animation: pulse 1.5s infinite; }
+  .status-dot.paused { background: #f59e0b; }
+  .status-dot.processing { background: #3b82f6; animation: pulse 1s infinite; }
+  .status-dot.done { background: #22c55e; }
+  .status-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 2px; }
+  .timer { font-size: 28px; font-weight: 500; letter-spacing: 2px; color: #888; }
+  .timer.active { color: #ef4444; }
+
+  /* Waveform */
+  .waveform-canvas {
+    width: 100%; height: 120px; border-radius: 8px; background: #111; display: block;
+  }
+
+  /* Controls */
+  .controls { display: flex; justify-content: center; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+  .btn {
+    border: none; border-radius: 10px; padding: 12px 24px; font-size: 14px;
+    cursor: pointer; font-family: 'DM Mono', monospace; font-weight: 500;
+    transition: all 0.2s;
+  }
+  .btn-record {
+    background: #ef4444; color: white; border-radius: 12px; padding: 14px 36px;
+    font-size: 15px; font-weight: 600; box-shadow: 0 0 30px rgba(239,68,68,0.3);
+  }
+  .btn-record:hover { box-shadow: 0 0 40px rgba(239,68,68,0.5); }
+  .btn-secondary { background: #222; border: 1px solid #333; }
+  .btn-pause { color: #f59e0b; }
+  .btn-stop { color: #ef4444; }
+  .btn-resume { color: #22c55e; }
+  .btn-reset { color: #888; }
+
+  /* Error */
+  .error-msg {
+    margin-top: 16px; padding: 10px 14px; background: #1c0a0a;
+    border: 1px solid #4a1515; border-radius: 8px; color: #f87171; font-size: 13px;
+  }
+
+  /* Processing */
+  .processing-msg { text-align: center; margin-top: 24px; color: #3b82f6; font-size: 13px; }
+  .processing-msg .spinner { animation: spin 1s linear infinite; display: inline-block; margin-bottom: 8px; font-size: 20px; }
+  .processing-msg .sub { color: #555; font-size: 11px; margin-top: 4px; }
+
+  /* Playback */
+  .playback { margin-top: 20px; }
+  .section-label { font-size: 11px; color: #888; margin-bottom: 8px; letter-spacing: 1px; }
+  .playback audio { width: 100%; border-radius: 8px; height: 40px; }
+
+  /* Timeline */
+  .timeline { margin-top: 16px; }
+  .timeline-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .timeline-header span { font-size: 11px; color: #888; }
+  .timeline-bar { display: flex; height: 32px; border-radius: 6px; overflow: hidden; background: #1a1a1a; gap: 1px; }
+  .timeline-seg { opacity: 0.85; cursor: pointer; min-width: 2px; transition: opacity 0.15s; }
+  .timeline-seg:hover { opacity: 1; }
+  .timeline-legend { display: flex; gap: 16px; margin-top: 10px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+  .legend-label { font-size: 12px; color: #bbb; }
+
+  /* Tracks */
+  .tracks { margin-top: 20px; }
+  .track-item {
+    display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+    background: #151515; border-radius: 8px; margin-bottom: 6px;
+  }
+  .track-info { flex: 1; }
+  .track-name { font-size: 14px; color: #eee; font-weight: 600; }
+  .track-meta { font-size: 11px; color: #777; margin-top: 2px; }
+  .btn-export {
+    padding: 6px 14px; border-radius: 6px; cursor: pointer;
+    font-size: 12px; font-weight: 600; font-family: 'DM Mono', monospace; border: none;
+  }
+
+  /* How it works */
+  .info-card {
+    margin-top: 32px; background: #111; border-radius: 16px;
+    border: 1px solid #222; padding: 28px;
+  }
+  .info-card .label { font-size: 11px; letter-spacing: 3px; color: #555; margin-bottom: 12px; }
+  .step {
+    padding: 10px 14px; background: #0a0a0a; border-radius: 8px;
+    font-size: 13px; color: #999; border-left: 2px solid #333; margin-bottom: 4px;
+  }
+
+  .footer { text-align: center; margin-top: 24px; font-size: 11px; color: #333; }
+
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <div class="label">INTERVIEW RECORDER</div>
+    <h1>Capture Every Voice</h1>
+    <p>Record → Diarize → Export per-speaker tracks</p>
+  </div>
+
+  <!-- Main Card -->
+  <div class="card">
+    <!-- Status -->
+    <div class="status-bar">
+      <div class="status-indicator">
+        <div class="status-dot" id="statusDot"></div>
+        <span class="status-label" id="statusLabel">Ready</span>
+      </div>
+      <span class="timer" id="timer">00:00</span>
+    </div>
+
+    <!-- Waveform -->
+    <canvas class="waveform-canvas" id="waveform"></canvas>
+
+    <!-- Controls -->
+    <div class="controls" id="controls">
+      <button class="btn btn-record" onclick="startRecording()">● Start Recording</button>
+    </div>
+
+    <!-- Error -->
+    <div class="error-msg" id="error" style="display:none"></div>
+
+    <!-- Processing -->
+    <div class="processing-msg" id="processing" style="display:none">
+      <div class="spinner">⟳</div>
+      <div>Analyzing speakers...</div>
+      <div class="sub">Diarization in progress</div>
+    </div>
+
+    <!-- Playback -->
+    <div class="playback" id="playback" style="display:none">
+      <div class="section-label">FULL RECORDING</div>
+      <audio id="audioPlayer" controls></audio>
+    </div>
+
+    <!-- Timeline -->
+    <div class="timeline" id="timeline" style="display:none">
+      <div class="timeline-header">
+        <span class="section-label">SPEAKER TIMELINE</span>
+        <span id="timelineDuration"></span>
+      </div>
+      <div class="timeline-bar" id="timelineBar"></div>
+      <div class="timeline-legend" id="timelineLegend"></div>
+    </div>
+
+    <!-- Tracks -->
+    <div class="tracks" id="tracks" style="display:none">
+      <div class="section-label">SEPARATED TRACKS</div>
+      <div id="trackList"></div>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <div class="info-card">
+    <div class="label">HOW IT WORKS</div>
+    <div class="step">① Record audio in browser</div>
+    <div class="step">② Upload to backend API</div>
+    <div class="step">③ pyannote.audio diarizes speakers</div>
+    <div class="step">④ Audio split into per-speaker tracks</div>
+    <div class="step">⑤ Download individual tracks</div>
+  </div>
+
+  <div class="footer">Speaker diarization demo · Connect to backend for real separation</div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+const COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#ec4899'];
+let state = 'idle';
+let elapsed = 0;
+let timerInterval = null;
+let mediaRecorder = null;
+let audioChunks = [];
+let audioStream = null;
+let audioContext = null;
+let analyser = null;
+let animFrame = null;
+
+// ─── DOM Refs ────────────────────────────────────────────────────────────────
+const $dot = document.getElementById('statusDot');
+const $label = document.getElementById('statusLabel');
+const $timer = document.getElementById('timer');
+const $controls = document.getElementById('controls');
+const $error = document.getElementById('error');
+const $processing = document.getElementById('processing');
+const $playback = document.getElementById('playback');
+const $audioPlayer = document.getElementById('audioPlayer');
+const $timeline = document.getElementById('timeline');
+const $timelineBar = document.getElementById('timelineBar');
+const $timelineLegend = document.getElementById('timelineLegend');
+const $timelineDuration = document.getElementById('timelineDuration');
+const $tracks = document.getElementById('tracks');
+const $trackList = document.getElementById('trackList');
+const canvas = document.getElementById('waveform');
+const ctx = canvas.getContext('2d');
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function formatTime(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  return h > 0
+    ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+    : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function updateUI() {
+  // Dot
+  $dot.className = 'status-dot ' + (state === 'recording' ? 'recording' : state === 'paused' ? 'paused' : state === 'processing' ? 'processing' : state === 'done' ? 'done' : '');
+  // Label
+  const labels = { idle: 'Ready', recording: 'Recording', paused: 'Paused', processing: 'Processing...', done: 'Complete' };
+  $label.textContent = labels[state] || 'Ready';
+  // Timer color
+  $timer.className = 'timer' + (state === 'recording' ? ' active' : '');
+  $timer.textContent = formatTime(elapsed);
+  // Error
+  $error.style.display = 'none';
+  // Processing
+  $processing.style.display = state === 'processing' ? 'block' : 'none';
+
+  // Controls
+  let html = '';
+  if (state === 'idle') {
+    html = '<button class="btn btn-record" onclick="startRecording()">● Start Recording</button>';
+  } else if (state === 'recording') {
+    html = '<button class="btn btn-secondary btn-pause" onclick="pauseRecording()">❚❚ Pause</button>'
+         + '<button class="btn btn-secondary btn-stop" onclick="stopRecording()">■ Stop & Process</button>';
+  } else if (state === 'paused') {
+    html = '<button class="btn btn-secondary btn-resume" onclick="resumeRecording()">▶ Resume</button>'
+         + '<button class="btn btn-secondary btn-stop" onclick="stopRecording()">■ Stop & Process</button>';
+  } else if (state === 'done') {
+    html = '<button class="btn btn-secondary btn-reset" onclick="resetRecording()">↻ New Recording</button>';
+  }
+  $controls.innerHTML = html;
+}
+
+// ─── Waveform ────────────────────────────────────────────────────────────────
+function initCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvas.offsetWidth * dpr;
+  canvas.height = canvas.offsetHeight * dpr;
+  ctx.scale(dpr, dpr);
+}
+
+function drawWaveform() {
+  animFrame = requestAnimationFrame(drawWaveform);
+  const W = canvas.offsetWidth;
+  const H = canvas.offsetHeight;
+  ctx.clearRect(0, 0, W, H);
+
+  if (!analyser || state === 'idle' || state === 'done') {
+    ctx.beginPath();
+    ctx.strokeStyle = '#3a3a3a';
+    ctx.lineWidth = 1.5;
+    ctx.moveTo(0, H / 2);
+    ctx.lineTo(W, H / 2);
+    ctx.stroke();
+    return;
+  }
+
+  const bufLen = analyser.frequencyBinCount;
+  const data = new Uint8Array(bufLen);
+  analyser.getByteTimeDomainData(data);
+
+  ctx.shadowColor = state === 'paused' ? '#f59e0b' : '#ef4444';
+  ctx.shadowBlur = 12;
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = state === 'paused' ? '#f59e0b' : '#ef4444';
+  ctx.beginPath();
+
+  const sliceW = W / bufLen;
+  let x = 0;
+  for (let i = 0; i < bufLen; i++) {
+    const v = data[i] / 128.0;
+    const y = (v * H) / 2;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    x += sliceW;
+  }
+  ctx.lineTo(W, H / 2);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+// ─── Recording ───────────────────────────────────────────────────────────────
+async function startRecording() {
+  try {
+    $error.style.display = 'none';
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 48000 }
+    });
+    audioStream = stream;
+
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioContext.createMediaStreamSource(stream);
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+    source.connect(analyser);
+
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus' : 'audio/webm';
+    mediaRecorder = new MediaRecorder(stream, { mimeType });
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      const url = URL.createObjectURL(blob);
+      $audioPlayer.src = url;
+    };
+
+    mediaRecorder.start(1000);
+    elapsed = 0;
+    state = 'recording';
+
+    // Hide previous results
+    $playback.style.display = 'none';
+    $timeline.style.display = 'none';
+    $tracks.style.display = 'none';
+
+    updateUI();
+    initCanvas();
+    drawWaveform();
+    timerInterval = setInterval(() => { elapsed++; $timer.textContent = formatTime(elapsed); $timer.className = 'timer active'; }, 1000);
+  } catch (err) {
+    $error.textContent = 'Microphone access denied. Please allow microphone access and try again.';
+    $error.style.display = 'block';
+  }
+}
+
+function pauseRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.pause();
+    state = 'paused';
+    clearInterval(timerInterval);
+    updateUI();
+  }
+}
+
+function resumeRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'paused') {
+    mediaRecorder.resume();
+    state = 'recording';
+    updateUI();
+    timerInterval = setInterval(() => { elapsed++; $timer.textContent = formatTime(elapsed); $timer.className = 'timer active'; }, 1000);
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+    audioStream?.getTracks().forEach(t => t.stop());
+    audioContext?.close();
+    clearInterval(timerInterval);
+    state = 'processing';
+    updateUI();
+
+    // Simulate diarization (replace with real backend call)
+    setTimeout(() => simulateDiarization(), 2000);
+  }
+}
+
+function resetRecording() {
+  state = 'idle';
+  elapsed = 0;
+  $playback.style.display = 'none';
+  $timeline.style.display = 'none';
+  $tracks.style.display = 'none';
+  analyser = null;
+  cancelAnimationFrame(animFrame);
+  initCanvas();
+  drawWaveform();
+  updateUI();
+}
+
+// ─── Simulated Diarization ──────────────────────────────────────────────────
+function simulateDiarization() {
+  const dur = elapsed;
+  const segments = [];
+  let t = 0, spk = 0;
+  while (t < dur) {
+    const len = 3 + Math.random() * 12;
+    segments.push({ speaker: spk, start: t, end: Math.min(t + len, dur) });
+    t += len;
+    spk = spk === 0 ? 1 : Math.random() > 0.3 ? 0 : Math.min(spk + 1, 2);
+  }
+
+  // Show playback
+  $playback.style.display = 'block';
+
+  // Build timeline
+  $timelineBar.innerHTML = '';
+  $timelineLegend.innerHTML = '';
+  $timelineDuration.textContent = formatTime(Math.round(dur));
+  const speakers = new Set();
+
+  segments.forEach((seg, i) => {
+    const div = document.createElement('div');
+    div.className = 'timeline-seg';
+    div.style.width = `${((seg.end - seg.start) / dur) * 100}%`;
+    div.style.background = COLORS[seg.speaker % COLORS.length];
+    div.title = `Speaker ${seg.speaker + 1} — ${formatTime(Math.round(seg.start))} → ${formatTime(Math.round(seg.end))}`;
+    $timelineBar.appendChild(div);
+    speakers.add(seg.speaker);
+  });
+
+  [...speakers].forEach(spk => {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.innerHTML = `<div class="legend-dot" style="background:${COLORS[spk % COLORS.length]}"></div><span class="legend-label">Speaker ${spk + 1}</span>`;
+    $timelineLegend.appendChild(item);
+  });
+  $timeline.style.display = 'block';
+
+  // Build tracks
+  $trackList.innerHTML = '';
+  [...speakers].forEach(spk => {
+    const spkSegs = segments.filter(s => s.speaker === spk);
+    const totalDur = spkSegs.reduce((sum, s) => sum + (s.end - s.start), 0);
+    const color = COLORS[spk % COLORS.length];
+
+    const div = document.createElement('div');
+    div.className = 'track-item';
+    div.style.borderLeft = `3px solid ${color}`;
+    div.innerHTML = `
+      <div class="track-info">
+        <div class="track-name">Speaker ${spk + 1}</div>
+        <div class="track-meta">${spkSegs.length} segments · ${formatTime(Math.round(totalDur))} total</div>
+      </div>
+      <button class="btn-export" style="background:${color}22; color:${color}; border: 1px solid ${color}55;">↓ Export</button>
+    `;
+    $trackList.appendChild(div);
+  });
+  $tracks.style.display = 'block';
+
+  state = 'done';
+  updateUI();
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => { initCanvas(); });
+initCanvas();
+drawWaveform();
+</script>
+</body>
+</html>
