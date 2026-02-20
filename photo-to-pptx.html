@@ -10,82 +10,22 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: #2D3436; background: #fff; padding: 32px 20px;
   }
-  .container { max-width: 760px; margin: 0 auto; }
+  .container { max-width: 720px; margin: 0 auto; }
   h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 4px; }
-  .page-subtitle { color: #636E72; font-size: 14px; margin-bottom: 28px; }
+  .subtitle { color: #636E72; font-size: 14px; margin-bottom: 28px; }
   .error-banner {
     background: #FFEAA7; color: #2D3436; padding: 12px 16px; border-radius: 8px;
     font-size: 13px; margin-bottom: 20px; display: none;
   }
-  .success-banner {
-    background: #D5F5E3; color: #1E8449; padding: 12px 16px; border-radius: 8px;
-    font-size: 13px; margin-bottom: 20px; display: none;
-  }
-
-  /* Setup panel */
-  .setup-panel {
-    background: #F8F9FA; border: 1px solid #DFE6E9; border-radius: 12px;
-    padding: 20px; margin-bottom: 24px;
-  }
-  .setup-panel summary {
-    cursor: pointer; font-weight: 600; font-size: 14px; color: #2D3436;
-    user-select: none; list-style: none; display: flex; align-items: center; gap: 8px;
-  }
-  .setup-panel summary::-webkit-details-marker { display: none; }
-  .setup-panel summary::before { content: "\25B6"; font-size: 10px; transition: transform 0.2s; }
-  .setup-panel[open] summary::before { transform: rotate(90deg); }
-  .setup-panel .fields { margin-top: 16px; }
-  .setup-panel label { display: block; font-size: 12px; font-weight: 600; color: #636E72; margin-bottom: 4px; margin-top: 12px; }
-  .setup-panel label:first-child { margin-top: 0; }
-  .setup-panel input {
-    width: 100%; padding: 8px 12px; border: 1px solid #DFE6E9; border-radius: 6px;
-    font-size: 13px; font-family: "SF Mono", Consolas, monospace; color: #2D3436;
-  }
-  .setup-panel input:focus { outline: none; border-color: #0984E3; }
-  .setup-panel .note {
-    margin-top: 14px; font-size: 12px; color: #636E72; line-height: 1.6;
-  }
-  .setup-panel .note a { color: #0984E3; }
-  .setup-panel .save-btn {
-    margin-top: 14px; padding: 8px 20px; background: #0984E3; color: #fff;
-    border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
-  }
-  .setup-panel .save-btn:hover { background: #0773C5; }
-  .status-dot {
-    display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 8px;
-  }
-  .status-dot.green { background: #00B894; }
-  .status-dot.gray { background: #B2BEC3; }
-
-  /* Import source buttons */
-  .import-row {
-    display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap;
-  }
-  .import-btn {
-    flex: 1; min-width: 180px; padding: 14px 16px; border: 1px solid #DFE6E9;
-    border-radius: 10px; background: #fff; cursor: pointer;
-    display: flex; align-items: center; gap: 10px;
-    transition: all 0.15s; font-size: 14px; font-weight: 500; color: #2D3436;
-  }
-  .import-btn:hover { border-color: #0984E3; background: #F0F8FF; }
-  .import-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .import-btn:disabled:hover { border-color: #DFE6E9; background: #fff; }
-  .import-btn .btn-icon { font-size: 22px; }
-  .import-btn .btn-label { display: flex; flex-direction: column; }
-  .import-btn .btn-label small { font-size: 11px; color: #B2BEC3; font-weight: 400; }
-
-  /* Dropzone */
   .dropzone {
-    border: 2px dashed #DFE6E9; border-radius: 12px; padding: 40px 24px;
+    border: 2px dashed #DFE6E9; border-radius: 12px; padding: 48px 24px;
     text-align: center; cursor: pointer; background: #F8F9FA;
     transition: all 0.15s ease; margin-bottom: 24px;
   }
   .dropzone.over { border-color: #0984E3; background: #EBF5FF; }
-  .dropzone .icon { font-size: 32px; margin-bottom: 6px; }
-  .dropzone .label { font-weight: 600; font-size: 14px; margin-bottom: 3px; }
-  .dropzone .hint { color: #636E72; font-size: 12px; }
-
-  /* Toolbar and grid */
+  .dropzone .icon { font-size: 36px; margin-bottom: 8px; }
+  .dropzone .label { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+  .dropzone .hint { color: #636E72; font-size: 13px; }
   .toolbar {
     display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
   }
@@ -95,8 +35,8 @@
     font-size: 13px; cursor: pointer; font-weight: 500;
   }
   .grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 10px; margin-bottom: 28px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px; margin-bottom: 28px;
   }
   .card {
     position: relative; border-radius: 8px; overflow: hidden;
@@ -117,14 +57,9 @@
     cursor: pointer; display: flex; align-items: center; justify-content: center;
   }
   .card .filename {
-    padding: 4px 6px; font-size: 10px; color: #636E72;
+    padding: 5px 7px; font-size: 11px; color: #636E72;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .card .source-badge {
-    position: absolute; bottom: 24px; right: 4px; font-size: 9px;
-    background: rgba(0,0,0,0.5); color: #fff; padding: 1px 5px; border-radius: 3px;
-  }
-
   .download-btn {
     width: 100%; padding: 14px 24px; background: #0984E3; color: #fff;
     border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
@@ -132,90 +67,22 @@
   }
   .download-btn:hover { background: #0773C5; }
   .download-btn:disabled { background: #636E72; cursor: not-allowed; }
-
-  /* Loading overlay */
-  .loading-overlay {
-    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(255,255,255,0.85); z-index: 999;
-    justify-content: center; align-items: center; flex-direction: column; gap: 12px;
-  }
-  .loading-overlay.show { display: flex; }
-  .spinner {
-    width: 36px; height: 36px; border: 3px solid #DFE6E9;
-    border-top-color: #0984E3; border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-overlay .msg { font-size: 14px; color: #636E72; }
-
   .hidden { display: none; }
 </style>
 </head>
 <body>
 <div class="container">
   <h1>Photos &rarr; PowerPoint</h1>
-  <p class="page-subtitle">Import from Google Drive, Google Photos, or your computer &mdash; then download a slide deck.</p>
-
+  <p class="subtitle">Upload images, reorder by dragging, then download your deck.</p>
   <div class="error-banner" id="errorBanner"></div>
-  <div class="success-banner" id="successBanner"></div>
 
-  <!-- Google API Setup -->
-  <details class="setup-panel" id="setupPanel">
-    <summary>
-      Google API Setup
-      <span class="status-dot" id="statusDot"></span>
-      <span id="statusText" style="font-weight:400; font-size:12px; color:#636E72;"></span>
-    </summary>
-    <div class="fields">
-      <label>API Key</label>
-      <input type="text" id="apiKeyInput" placeholder="AIzaSy...">
-      <label>OAuth Client ID</label>
-      <input type="text" id="clientIdInput" placeholder="123456789-abc.apps.googleusercontent.com">
-      <button class="save-btn" id="saveCredsBtn">Save &amp; Connect</button>
-      <div class="note">
-        <strong>Setup steps:</strong><br>
-        1. Go to <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a> and create a project<br>
-        2. Enable the <strong>Google Drive API</strong> and <strong>Google Picker API</strong><br>
-        3. Create an <strong>API Key</strong> (APIs &amp; Services &rarr; Credentials &rarr; Create Credentials)<br>
-        4. Create an <strong>OAuth 2.0 Client ID</strong> (type: Web application)<br>
-        &nbsp;&nbsp;&nbsp;&#8226; Add <code>http://localhost:8000</code> (or your serving origin) to Authorized JavaScript Origins<br>
-        5. Paste both values above and click Save<br>
-        6. Serve this file via a local server: <code>python3 -m http.server 8000</code><br>
-        <br>
-        <em>Local file upload works without any setup.</em>
-      </div>
-    </div>
-  </details>
-
-  <!-- Import sources -->
-  <div class="import-row">
-    <button class="import-btn" id="btnGoogleDrive" disabled>
-      <span class="btn-icon">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M8.25 2.75L1.5 14.5h5.75L14 2.75H8.25z" fill="#4285F4"/><path d="M14 2.75l6.75 11.75H15L8.25 2.75H14z" fill="#FBBC05"/><path d="M1.5 14.5l3.25 5.75h14.5L22.5 14.5H1.5z" fill="#34A853"/></svg>
-      </span>
-      <span class="btn-label">Google Drive<small>Browse files</small></span>
-    </button>
-    <button class="import-btn" id="btnGooglePhotos" disabled>
-      <span class="btn-icon">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#4285F4" opacity="0.15"/><path d="M12 6a4 4 0 014 4h-4V6z" fill="#EA4335"/><path d="M16 10a4 4 0 01-4 4v-4h4z" fill="#FBBC05"/><path d="M12 14a4 4 0 01-4-4h4v4z" fill="#34A853"/><path d="M8 10a4 4 0 014-4v4H8z" fill="#4285F4"/></svg>
-      </span>
-      <span class="btn-label">Google Photos<small>Browse albums</small></span>
-    </button>
-    <button class="import-btn" id="btnLocal">
-      <span class="btn-icon">&#128193;</span>
-      <span class="btn-label">Local Files<small>From your computer</small></span>
-    </button>
-  </div>
-
-  <!-- Local drop zone -->
-  <div class="dropzone hidden" id="dropzone">
+  <div class="dropzone" id="dropzone">
     <div class="icon">&#128247;</div>
     <div class="label">Drop photos here or click to browse</div>
     <div class="hint">PNG, JPG, GIF, WebP supported</div>
   </div>
   <input type="file" id="fileInput" accept="image/*" multiple class="hidden">
 
-  <!-- Image list -->
   <div id="controls" class="hidden">
     <div class="toolbar">
       <span class="count" id="count"></span>
@@ -226,28 +93,110 @@
   </div>
 </div>
 
-<!-- Loading overlay -->
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="spinner"></div>
-  <div class="msg" id="loadingMsg">Loading...</div>
-</div>
-
 <script>
 // ============================================================
-// State
+// Minimal ZIP writer (STORE, no compression)
+// ============================================================
+var CRC32_TABLE = (function() {
+  var t = new Uint32Array(256);
+  for (var i = 0; i < 256; i++) { var c = i; for (var j = 0; j < 8; j++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[i] = c; }
+  return t;
+})();
+function crc32(d) { var c = 0xFFFFFFFF; for (var i = 0; i < d.length; i++) c = CRC32_TABLE[(c ^ d[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function str2u8(s) { return new TextEncoder().encode(s); }
+
+function createZip(files) {
+  var lh = [], ch = [], off = 0;
+  files.forEach(function(f) {
+    var nb = str2u8(f.name), cr = crc32(f.data), sz = f.data.length;
+    var l = new ArrayBuffer(30 + nb.length), lv = new DataView(l);
+    lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(8, 0, true);
+    lv.setUint32(14, cr, true); lv.setUint32(18, sz, true); lv.setUint32(22, sz, true);
+    lv.setUint16(26, nb.length, true); new Uint8Array(l).set(nb, 30);
+    var c = new ArrayBuffer(46 + nb.length), cv = new DataView(c);
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+    cv.setUint16(10, 0, true); cv.setUint32(16, cr, true); cv.setUint32(20, sz, true);
+    cv.setUint32(24, sz, true); cv.setUint16(28, nb.length, true); cv.setUint32(42, off, true);
+    new Uint8Array(c).set(nb, 46);
+    lh.push({ header: new Uint8Array(l), data: f.data }); ch.push(new Uint8Array(c));
+    off += 30 + nb.length + sz;
+  });
+  var cdo = off, cds = 0; ch.forEach(function(c) { cds += c.length; });
+  var e = new ArrayBuffer(22), ev = new DataView(e);
+  ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true); ev.setUint32(12, cds, true); ev.setUint32(16, cdo, true);
+  var ts = 0;
+  lh.forEach(function(l) { ts += l.header.length + l.data.length; });
+  ch.forEach(function(c) { ts += c.length; }); ts += 22;
+  var r = new Uint8Array(ts), p = 0;
+  lh.forEach(function(l) { r.set(l.header, p); p += l.header.length; r.set(l.data, p); p += l.data.length; });
+  ch.forEach(function(c) { r.set(c, p); p += c.length; });
+  r.set(new Uint8Array(e), p);
+  return r;
+}
+
+// ============================================================
+// Minimal PPTX generator
+// ============================================================
+var EMU = 914400, SW = 9144000, SH = 5143500;
+function in2e(i) { return Math.round(i * EMU); }
+function getExt(d) { if (d.indexOf("image/png") !== -1) return "png"; if (d.indexOf("image/gif") !== -1) return "gif"; if (d.indexOf("image/webp") !== -1) return "webp"; return "jpeg"; }
+function getCT(e) { return e === "png" ? "image/png" : e === "gif" ? "image/gif" : e === "webp" ? "image/webp" : "image/jpeg"; }
+function d2u8(d) { var b = atob(d.split(",")[1]), a = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; }
+
+function buildPptx(il) {
+  var fs = [];
+  function add(n, c) { fs.push({ name: n, data: str2u8(c) }); }
+
+  var ctS = "", ctI = {};
+  il.forEach(function(img, i) {
+    ctS += '<Override PartName="/ppt/slides/slide' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>';
+    var e = getExt(img.dataUrl); ctI[e] = getCT(e);
+  });
+  var ctD = '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>';
+  Object.keys(ctI).forEach(function(e) { ctD += '<Default Extension="' + e + '" ContentType="' + ctI[e] + '"/>'; });
+
+  add("[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' + ctD + '<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/><Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/><Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>' + ctS + '</Types>');
+
+  add("_rels/.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/></Relationships>');
+
+  var sl = ""; il.forEach(function(_, i) { sl += '<p:sldId id="' + (256 + i) + '" r:id="rId' + (i + 2) + '"/>'; });
+  add("ppt/presentation.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst>' + sl + '</p:sldIdLst><p:sldSz cx="' + SW + '" cy="' + SH + '"/><p:notesSz cx="' + SH + '" cy="' + SW + '"/></p:presentation>');
+
+  var pr = '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>';
+  il.forEach(function(_, i) { pr += '<Relationship Id="rId' + (i + 2) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide' + (i + 1) + '.xml"/>'; });
+  pr += '<Relationship Id="rId' + (il.length + 2) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>';
+  add("ppt/_rels/presentation.xml.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + pr + '</Relationships>');
+
+  add("ppt/theme/theme1.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="T"><a:themeElements><a:clrScheme name="C"><a:dk1><a:srgbClr val="000000"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="1E1E1E"/></a:dk2><a:lt2><a:srgbClr val="E7E6E6"/></a:lt2><a:accent1><a:srgbClr val="0984E3"/></a:accent1><a:accent2><a:srgbClr val="00B894"/></a:accent2><a:accent3><a:srgbClr val="FDCB6E"/></a:accent3><a:accent4><a:srgbClr val="E17055"/></a:accent4><a:accent5><a:srgbClr val="6C5CE7"/></a:accent5><a:accent6><a:srgbClr val="00CEC9"/></a:accent6><a:hlink><a:srgbClr val="0984E3"/></a:hlink><a:folHlink><a:srgbClr val="6C5CE7"/></a:folHlink></a:clrScheme><a:fontScheme name="C"><a:majorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme><a:fmtScheme name="C"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst><a:lnStyleLst><a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>');
+
+  add("ppt/slideMasters/slideMaster1.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="1E1E1E"/></a:solidFill><a:effectLst/></p:bgPr></p:bg><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld><p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/><p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst></p:sldMaster>');
+  add("ppt/slideMasters/_rels/slideMaster1.xml.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/></Relationships>');
+
+  add("ppt/slideLayouts/slideLayout1.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" type="blank"><p:cSld name="Blank"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld></p:sldLayout>');
+  add("ppt/slideLayouts/_rels/slideLayout1.xml.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/></Relationships>');
+
+  var pad = 0.4, mW = 10 - pad * 2, mH = 5.625 - pad * 2;
+  il.forEach(function(img, i) {
+    var sn = i + 1, ext = getExt(img.dataUrl), mn = "image" + sn + "." + ext;
+    var asp = img.width / img.height, w, h;
+    if (asp > mW / mH) { w = mW; h = mW / asp; } else { h = mH; w = mH * asp; }
+    var cx = in2e(w), cy = in2e(h), ox = in2e((10 - w) / 2), oy = in2e((5.625 - h) / 2);
+
+    add("ppt/slides/slide" + sn + ".xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="1E1E1E"/></a:solidFill><a:effectLst/></p:bgPr></p:bg><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/><p:pic><p:nvPicPr><p:cNvPr id="2" name="Pic ' + sn + '"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="' + ox + '" y="' + oy + '"/><a:ext cx="' + cx + '" cy="' + cy + '"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic></p:spTree></p:cSld></p:sld>');
+    add("ppt/slides/_rels/slide" + sn + ".xml.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/' + mn + '"/></Relationships>');
+    fs.push({ name: "ppt/media/" + mn, data: d2u8(img.dataUrl) });
+  });
+
+  return createZip(fs);
+}
+
+// ============================================================
+// UI
 // ============================================================
 var images = [];
 var dragIdx = null;
-var googleReady = false;
-var pickerInited = false;
-var gisInited = false;
-var tokenClient = null;
-var accessToken = null;
-var API_KEY = "";
-var CLIENT_ID = "";
-var SCOPES = "https://www.googleapis.com/auth/drive.readonly";
 
-// DOM
 var dropzone = document.getElementById("dropzone");
 var fileInput = document.getElementById("fileInput");
 var controls = document.getElementById("controls");
@@ -256,271 +205,9 @@ var countEl = document.getElementById("count");
 var clearBtn = document.getElementById("clearBtn");
 var downloadBtn = document.getElementById("downloadBtn");
 var errorBanner = document.getElementById("errorBanner");
-var successBanner = document.getElementById("successBanner");
-var loadingOverlay = document.getElementById("loadingOverlay");
-var loadingMsg = document.getElementById("loadingMsg");
-var statusDot = document.getElementById("statusDot");
-var statusText = document.getElementById("statusText");
-var btnGoogleDrive = document.getElementById("btnGoogleDrive");
-var btnGooglePhotos = document.getElementById("btnGooglePhotos");
-var btnLocal = document.getElementById("btnLocal");
-var setupPanel = document.getElementById("setupPanel");
 
-function showError(msg) { errorBanner.textContent = msg; errorBanner.style.display = "block"; successBanner.style.display = "none"; }
-function showSuccess(msg) { successBanner.textContent = msg; successBanner.style.display = "block"; errorBanner.style.display = "none"; }
-function hideMessages() { errorBanner.style.display = "none"; successBanner.style.display = "none"; }
-function showLoading(msg) { loadingMsg.textContent = msg || "Loading..."; loadingOverlay.classList.add("show"); }
-function hideLoading() { loadingOverlay.classList.remove("show"); }
-
-// ============================================================
-// Credentials persistence (via localStorage for standalone use)
-// ============================================================
-function loadCreds() {
-  try {
-    var saved = JSON.parse(localStorage.getItem("pptx_google_creds") || "{}");
-    if (saved.apiKey) { API_KEY = saved.apiKey; document.getElementById("apiKeyInput").value = saved.apiKey; }
-    if (saved.clientId) { CLIENT_ID = saved.clientId; document.getElementById("clientIdInput").value = saved.clientId; }
-    if (API_KEY && CLIENT_ID) initGoogleAPIs();
-    else updateStatus(false);
-  } catch(e) { updateStatus(false); }
-}
-
-function saveCreds() {
-  API_KEY = document.getElementById("apiKeyInput").value.trim();
-  CLIENT_ID = document.getElementById("clientIdInput").value.trim();
-  if (!API_KEY || !CLIENT_ID) { showError("Please enter both API Key and Client ID."); return; }
-  try { localStorage.setItem("pptx_google_creds", JSON.stringify({ apiKey: API_KEY, clientId: CLIENT_ID })); } catch(e) {}
-  hideMessages();
-  pickerInited = false;
-  gisInited = false;
-  googleReady = false;
-  initGoogleAPIs();
-}
-
-document.getElementById("saveCredsBtn").addEventListener("click", saveCreds);
-
-function updateStatus(connected) {
-  googleReady = connected;
-  statusDot.className = "status-dot " + (connected ? "green" : "gray");
-  statusText.textContent = connected ? "Connected" : "Not configured";
-  btnGoogleDrive.disabled = !connected;
-  btnGooglePhotos.disabled = !connected;
-}
-
-// ============================================================
-// Google API initialization
-// ============================================================
-function initGoogleAPIs() {
-  if (!API_KEY || !CLIENT_ID) { updateStatus(false); return; }
-
-  // Load GAPI
-  if (!document.getElementById("gapiScript")) {
-    var s1 = document.createElement("script");
-    s1.id = "gapiScript";
-    s1.src = "https://apis.google.com/js/api.js";
-    s1.onload = function() { gapi.load("picker", function() { pickerInited = true; checkReady(); }); };
-    s1.onerror = function() { showError("Failed to load Google API. Make sure you have internet and are serving this page via HTTP (not file://)."); updateStatus(false); };
-    document.head.appendChild(s1);
-  } else if (window.gapi) {
-    gapi.load("picker", function() { pickerInited = true; checkReady(); });
-  }
-
-  // Load GIS
-  if (!document.getElementById("gisScript")) {
-    var s2 = document.createElement("script");
-    s2.id = "gisScript";
-    s2.src = "https://accounts.google.com/gsi/client";
-    s2.onload = function() { initTokenClient(); };
-    s2.onerror = function() { showError("Failed to load Google Identity Services."); updateStatus(false); };
-    document.head.appendChild(s2);
-  } else if (window.google && window.google.accounts) {
-    initTokenClient();
-  }
-}
-
-function initTokenClient() {
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: function() {} // set dynamically
-  });
-  gisInited = true;
-  checkReady();
-}
-
-function checkReady() {
-  if (pickerInited && gisInited) {
-    updateStatus(true);
-    showSuccess("Google APIs connected! You can now import from Drive and Photos.");
-    setupPanel.removeAttribute("open");
-  }
-}
-
-// ============================================================
-// Google Picker
-// ============================================================
-function requestTokenThen(callback) {
-  if (accessToken) { callback(); return; }
-  tokenClient.callback = function(response) {
-    if (response.error) { showError("Auth error: " + response.error); return; }
-    accessToken = response.access_token;
-    callback();
-  };
-  tokenClient.requestAccessToken({ prompt: "" });
-}
-
-function openDrivePicker() {
-  if (!googleReady) return;
-  requestTokenThen(function() {
-    var view = new google.picker.DocsView(google.picker.ViewId.DOCS_IMAGES);
-    view.setIncludeFolders(true);
-    view.setSelectFolderEnabled(false);
-
-    var picker = new google.picker.PickerBuilder()
-      .setAppId(CLIENT_ID.split("-")[0])
-      .setOAuthToken(accessToken)
-      .setDeveloperKey(API_KEY)
-      .addView(view)
-      .addView(new google.picker.DocsView(google.picker.ViewId.DOCS_IMAGES_AND_VIDEOS))
-      .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
-      .setCallback(pickerCallback)
-      .setTitle("Select images from Google Drive")
-      .build();
-    picker.setVisible(true);
-  });
-}
-
-function openPhotosPicker() {
-  if (!googleReady) return;
-  requestTokenThen(function() {
-    var photosView = new google.picker.DocsView(google.picker.ViewId.DOCS_IMAGES);
-    photosView.setIncludeFolders(true);
-    photosView.setOwnedByMe(true);
-
-    // Google Photos view
-    var gphotosView = new google.picker.PhotosView();
-
-    var picker = new google.picker.PickerBuilder()
-      .setAppId(CLIENT_ID.split("-")[0])
-      .setOAuthToken(accessToken)
-      .setDeveloperKey(API_KEY)
-      .addView(gphotosView)
-      .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
-      .setCallback(pickerCallback)
-      .setTitle("Select images from Google Photos")
-      .build();
-    picker.setVisible(true);
-  });
-}
-
-function pickerCallback(data) {
-  if (data.action === google.picker.Action.PICKED) {
-    var docs = data.docs || [];
-    if (docs.length === 0) return;
-    showLoading("Importing " + docs.length + " image" + (docs.length > 1 ? "s" : "") + "...");
-    var pending = docs.length;
-    var imported = 0;
-
-    docs.forEach(function(doc) {
-      fetchGoogleImage(doc, function(success) {
-        if (success) imported++;
-        pending--;
-        loadingMsg.textContent = "Imported " + imported + " of " + docs.length + "...";
-        if (pending === 0) {
-          hideLoading();
-          if (imported > 0) showSuccess("Imported " + imported + " image" + (imported > 1 ? "s" : "") + "!");
-          else showError("Could not import any images. They may not be in a supported format.");
-          render();
-        }
-      });
-    });
-  }
-}
-
-function fetchGoogleImage(doc, cb) {
-  // Try to get a downloadable URL via Drive API
-  var fileId = doc.id;
-  var name = doc.name || doc.title || ("image_" + fileId);
-  var mimeType = doc.mimeType || "";
-
-  // For Google Photos items that have a URL
-  if (doc.url && !fileId) {
-    // Try direct thumbnails approach
-    loadImageFromUrl(doc.thumbnails && doc.thumbnails.length ? doc.thumbnails[doc.thumbnails.length - 1].url : doc.url, name, "Photos", cb);
-    return;
-  }
-
-  // Use Drive API to get file content
-  var xhr = new XMLHttpRequest();
-  xhr.open("GET", "https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media", true);
-  xhr.setRequestHeader("Authorization", "Bearer " + accessToken);
-  xhr.responseType = "blob";
-  xhr.onload = function() {
-    if (xhr.status === 200) {
-      var blob = xhr.response;
-      var reader = new FileReader();
-      reader.onload = function(e) {
-        var img = new Image();
-        img.onload = function() {
-          images.push({
-            id: Math.random().toString(36).slice(2),
-            name: name,
-            dataUrl: e.target.result,
-            width: img.naturalWidth,
-            height: img.naturalHeight,
-            source: "Google"
-          });
-          cb(true);
-        };
-        img.onerror = function() { cb(false); };
-        img.src = e.target.result;
-      };
-      reader.onerror = function() { cb(false); };
-      reader.readAsDataURL(blob);
-    } else {
-      // Fallback: try thumbnail
-      if (doc.thumbnails && doc.thumbnails.length) {
-        loadImageFromUrl(doc.thumbnails[doc.thumbnails.length - 1].url, name, "Google", cb);
-      } else {
-        cb(false);
-      }
-    }
-  };
-  xhr.onerror = function() { cb(false); };
-  xhr.send();
-}
-
-function loadImageFromUrl(url, name, source, cb) {
-  var img = new Image();
-  img.crossOrigin = "anonymous";
-  img.onload = function() {
-    var canvas = document.createElement("canvas");
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    canvas.getContext("2d").drawImage(img, 0, 0);
-    var dataUrl = canvas.toDataURL("image/png");
-    images.push({
-      id: Math.random().toString(36).slice(2),
-      name: name,
-      dataUrl: dataUrl,
-      width: img.naturalWidth,
-      height: img.naturalHeight,
-      source: source
-    });
-    cb(true);
-  };
-  img.onerror = function() { cb(false); };
-  img.src = url;
-}
-
-// ============================================================
-// Local file handling
-// ============================================================
-var dropzoneVisible = false;
-btnLocal.addEventListener("click", function() {
-  dropzoneVisible = !dropzoneVisible;
-  dropzone.classList.toggle("hidden", !dropzoneVisible);
-});
+function showError(msg) { errorBanner.textContent = msg; errorBanner.style.display = "block"; }
+function hideError() { errorBanner.style.display = "none"; }
 
 dropzone.addEventListener("click", function() { fileInput.click(); });
 dropzone.addEventListener("dragover", function(e) { e.preventDefault(); dropzone.classList.add("over"); });
@@ -533,9 +220,6 @@ fileInput.addEventListener("change", function(e) { processFiles(e.target.files);
 clearBtn.addEventListener("click", function() { images.length = 0; render(); });
 downloadBtn.addEventListener("click", generatePptx);
 
-btnGoogleDrive.addEventListener("click", openDrivePicker);
-btnGooglePhotos.addEventListener("click", openPhotosPicker);
-
 function processFiles(files) {
   Array.from(files).filter(function(f) { return f.type.startsWith("image/"); }).forEach(function(file) {
     var reader = new FileReader();
@@ -547,8 +231,7 @@ function processFiles(files) {
           name: file.name,
           dataUrl: e.target.result,
           width: img.naturalWidth,
-          height: img.naturalHeight,
-          source: "Local"
+          height: img.naturalHeight
         });
         render();
       };
@@ -558,9 +241,6 @@ function processFiles(files) {
   });
 }
 
-// ============================================================
-// Render image grid
-// ============================================================
 function render() {
   controls.classList.toggle("hidden", images.length === 0);
   countEl.textContent = images.length + " photo" + (images.length !== 1 ? "s" : "") + " \u00b7 drag to reorder";
@@ -585,13 +265,6 @@ function render() {
     overlay.appendChild(removeBtn);
     card.appendChild(overlay);
 
-    if (img.source && img.source !== "Local") {
-      var badge = document.createElement("div");
-      badge.className = "source-badge";
-      badge.textContent = img.source;
-      card.appendChild(badge);
-    }
-
     var fn = document.createElement("div");
     fn.className = "filename"; fn.textContent = img.name;
     card.appendChild(fn);
@@ -611,106 +284,24 @@ function render() {
   });
 }
 
-// ============================================================
-// ZIP + PPTX generation (fully self-contained)
-// ============================================================
-var CRC32_TABLE = (function() {
-  var t = new Uint32Array(256);
-  for (var i = 0; i < 256; i++) { var c = i; for (var j = 0; j < 8; j++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[i] = c; }
-  return t;
-})();
-function crc32(d) { var c = 0xFFFFFFFF; for (var i = 0; i < d.length; i++) c = CRC32_TABLE[(c ^ d[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
-function str2u8(s) { return new TextEncoder().encode(s); }
-function createZip(files) {
-  var lh = [], ch = [], off = 0;
-  files.forEach(function(f) {
-    var nb = str2u8(f.name), cr = crc32(f.data), sz = f.data.length;
-    var l = new ArrayBuffer(30 + nb.length), lv = new DataView(l);
-    lv.setUint32(0,0x04034b50,true); lv.setUint16(4,20,true); lv.setUint16(8,0,true);
-    lv.setUint32(14,cr,true); lv.setUint32(18,sz,true); lv.setUint32(22,sz,true);
-    lv.setUint16(26,nb.length,true); new Uint8Array(l).set(nb,30);
-    var c = new ArrayBuffer(46 + nb.length), cv = new DataView(c);
-    cv.setUint32(0,0x02014b50,true); cv.setUint16(4,20,true); cv.setUint16(6,20,true);
-    cv.setUint16(10,0,true); cv.setUint32(16,cr,true); cv.setUint32(20,sz,true);
-    cv.setUint32(24,sz,true); cv.setUint16(28,nb.length,true); cv.setUint32(42,off,true);
-    new Uint8Array(c).set(nb,46);
-    lh.push({header:new Uint8Array(l),data:f.data}); ch.push(new Uint8Array(c));
-    off += 30 + nb.length + sz;
-  });
-  var cdo = off, cds = 0; ch.forEach(function(c){cds+=c.length;});
-  var e = new ArrayBuffer(22), ev = new DataView(e);
-  ev.setUint32(0,0x06054b50,true); ev.setUint16(8,files.length,true);
-  ev.setUint16(10,files.length,true); ev.setUint32(12,cds,true); ev.setUint32(16,cdo,true);
-  var ts = 0; lh.forEach(function(l){ts+=l.header.length+l.data.length;}); ch.forEach(function(c){ts+=c.length;}); ts+=22;
-  var r = new Uint8Array(ts), p = 0;
-  lh.forEach(function(l){ r.set(l.header,p); p+=l.header.length; r.set(l.data,p); p+=l.data.length; });
-  ch.forEach(function(c){ r.set(c,p); p+=c.length; }); r.set(new Uint8Array(e),p);
-  return r;
-}
-
-var EMU = 914400, SW = 9144000, SH = 5143500;
-function in2e(i){ return Math.round(i*EMU); }
-function getExt(d){ if(d.indexOf("image/png")!==-1)return"png"; if(d.indexOf("image/gif")!==-1)return"gif"; if(d.indexOf("image/webp")!==-1)return"webp"; return"jpeg"; }
-function getCT(e){ return e==="png"?"image/png":e==="gif"?"image/gif":e==="webp"?"image/webp":"image/jpeg"; }
-function d2u8(d){ var b=atob(d.split(",")[1]),a=new Uint8Array(b.length); for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i); return a; }
-
-function buildPptx(il) {
-  var fs = [], add = function(n,c){ fs.push({name:n,data:str2u8(c)}); };
-  var ctS="",ctI={};
-  il.forEach(function(img,i){
-    ctS+='<Override PartName="/ppt/slides/slide'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>';
-    var e=getExt(img.dataUrl); ctI[e]=getCT(e);
-  });
-  var ctD='<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>';
-  Object.keys(ctI).forEach(function(e){ctD+='<Default Extension="'+e+'" ContentType="'+ctI[e]+'"/>';});
-  add("[Content_Types].xml",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+ctD+'<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/><Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/><Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>'+ctS+'</Types>');
-  add("_rels/.rels",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/></Relationships>');
-  var sl=""; il.forEach(function(_,i){sl+='<p:sldId id="'+(256+i)+'" r:id="rId'+(i+2)+'"/>';});
-  add("ppt/presentation.xml",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst>'+sl+'</p:sldIdLst><p:sldSz cx="'+SW+'" cy="'+SH+'"/><p:notesSz cx="'+SH+'" cy="'+SW+'"/></p:presentation>');
-  var pr='<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>';
-  il.forEach(function(_,i){pr+='<Relationship Id="rId'+(i+2)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide'+(i+1)+'.xml"/>';});
-  pr+='<Relationship Id="rId'+(il.length+2)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>';
-  add("ppt/_rels/presentation.xml.rels",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+pr+'</Relationships>');
-  add("ppt/theme/theme1.xml",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="T"><a:themeElements><a:clrScheme name="C"><a:dk1><a:srgbClr val="000000"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="1E1E1E"/></a:dk2><a:lt2><a:srgbClr val="E7E6E6"/></a:lt2><a:accent1><a:srgbClr val="0984E3"/></a:accent1><a:accent2><a:srgbClr val="00B894"/></a:accent2><a:accent3><a:srgbClr val="FDCB6E"/></a:accent3><a:accent4><a:srgbClr val="E17055"/></a:accent4><a:accent5><a:srgbClr val="6C5CE7"/></a:accent5><a:accent6><a:srgbClr val="00CEC9"/></a:accent6><a:hlink><a:srgbClr val="0984E3"/></a:hlink><a:folHlink><a:srgbClr val="6C5CE7"/></a:folHlink></a:clrScheme><a:fontScheme name="C"><a:majorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme><a:fmtScheme name="C"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst><a:lnStyleLst><a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>');
-  add("ppt/slideMasters/slideMaster1.xml",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="1E1E1E"/></a:solidFill><a:effectLst/></p:bgPr></p:bg><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld><p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/><p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst></p:sldMaster>');
-  add("ppt/slideMasters/_rels/slideMaster1.xml.rels",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/></Relationships>');
-  add("ppt/slideLayouts/slideLayout1.xml",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" type="blank"><p:cSld name="Blank"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld></p:sldLayout>');
-  add("ppt/slideLayouts/_rels/slideLayout1.xml.rels",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/></Relationships>');
-
-  var pad=0.4, mW=10-pad*2, mH=5.625-pad*2;
-  il.forEach(function(img,i){
-    var sn=i+1, ext=getExt(img.dataUrl), mn="image"+sn+"."+ext;
-    var asp=img.width/img.height, w, h;
-    if(asp>mW/mH){w=mW;h=mW/asp;}else{h=mH;w=mH*asp;}
-    var cx=in2e(w),cy=in2e(h),ox=in2e((10-w)/2),oy=in2e((5.625-h)/2);
-    add("ppt/slides/slide"+sn+".xml",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="1E1E1E"/></a:solidFill><a:effectLst/></p:bgPr></p:bg><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/><p:pic><p:nvPicPr><p:cNvPr id="2" name="Pic '+sn+'"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="'+ox+'" y="'+oy+'"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic></p:spTree></p:cSld></p:sld>');
-    add("ppt/slides/_rels/slide"+sn+".xml.rels",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/'+mn+'"/></Relationships>');
-    fs.push({name:"ppt/media/"+mn, data:d2u8(img.dataUrl)});
-  });
-  return createZip(fs);
-}
-
 function generatePptx() {
   if (!images.length) return;
-  hideMessages();
+  hideError();
   downloadBtn.disabled = true;
   downloadBtn.textContent = "Generating\u2026";
   setTimeout(function() {
     try {
       var z = buildPptx(images);
-      var b = new Blob([z], {type:"application/vnd.openxmlformats-officedocument.presentationml.presentation"});
+      var b = new Blob([z], { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
       var u = URL.createObjectURL(b);
       var a = document.createElement("a"); a.href = u; a.download = "Photo_Album.pptx";
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(function(){URL.revokeObjectURL(u);},10000);
-    } catch(err) { showError("Error: " + err.message); }
+      setTimeout(function() { URL.revokeObjectURL(u); }, 10000);
+    } catch (err) { showError("Error: " + err.message); }
     downloadBtn.disabled = false;
     downloadBtn.textContent = "Download PowerPoint";
   }, 50);
 }
-
-// Init
-loadCreds();
 </script>
 </body>
 </html>
