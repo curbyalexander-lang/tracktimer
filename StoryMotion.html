@@ -477,7 +477,7 @@ function renderTextOverlayPanel(sel){
     <button class="btn-small" style="padding:3px 10px;font-size:10px" onclick="addTextOverlay()">+ Add Text</button>
   </div>
   ${sel.textOverlays.length?`<div class="text-list">${sel.textOverlays.map((t,i)=>
-    `<div class="text-item ${i===sti?'active':''}" onclick="selectTextOverlay(${i})">
+    `<div class="text-item ${i===sti?'active':''}" onclick="selectTextOverlay(${i},event)">
       <div class="text-item-header">
         <div class="text-item-preview" style="font-family:${t.font}">${escHtml(t.text.substring(0,30))}${t.text.length>30?'...':''}</div>
         <button class="btn-icon" style="width:20px;height:20px;font-size:11px" onclick="event.stopPropagation();removeTextOverlay(${i})">×</button>
@@ -565,17 +565,46 @@ function removeTextOverlay(i){
   if(state.selectedTextIndex>=slide.textOverlays.length)state.selectedTextIndex=slide.textOverlays.length-1;
   render();
 }
-function selectTextOverlay(i){state.selectedTextIndex=i;render()}
+function selectTextOverlay(i,e){
+  if(e&&(e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'||e.target.tagName==='OPTION'))return;
+  if(state.selectedTextIndex===i)return;
+  state.selectedTextIndex=i;render();
+}
 function updateText(i,key,val){
   const slide=state.slides[state.selectedIndex];
   slide.textOverlays[i][key]=val;
-  render();
+  // Update preview overlay without full re-render
+  const overlays=document.querySelectorAll('.text-overlay');
+  const t=slide.textOverlays[i];
+  if(overlays[i]){
+    const bgRgba=hexToRgba(t.bgColor,t.bgOpacity);
+    const shadow=t.shadow?'2px 2px 6px rgba(0,0,0,0.8)':'none';
+    overlays[i].innerHTML=escHtml(t.text);
+    overlays[i].style.fontFamily=t.font;
+    overlays[i].style.fontSize=(t.size*editorZoom)+'px';
+    overlays[i].style.color=t.color;
+    overlays[i].style.fontWeight=t.bold?'700':'400';
+    overlays[i].style.fontStyle=t.italic?'italic':'normal';
+    overlays[i].style.textShadow=shadow;
+    overlays[i].style.background=bgRgba;
+    overlays[i].style.textAlign=t.align;
+    overlays[i].style.left=t.x+'%';
+    overlays[i].style.top=t.y+'%';
+  }
+  // Update position slider values if visible
+  const posVals=document.querySelectorAll('.text-pos-val');
+  if(key==='x'&&posVals[0])posVals[0].textContent=val+'%';
+  if(key==='y'&&posVals[1])posVals[1].textContent=val+'%';
+  // For style toggles, do a full re-render to update button states
+  if(key==='bold'||key==='italic'||key==='shadow')render();
 }
 function updateTextFont(i,fontName){
   const slide=state.slides[state.selectedIndex];
   const f=FONTS.find(x=>x.name===fontName);
   if(f){slide.textOverlays[i].font=f.value;slide.textOverlays[i].fontName=f.name}
-  render();
+  // Update preview overlay without full re-render
+  const overlays=document.querySelectorAll('.text-overlay');
+  if(overlays[i])overlays[i].style.fontFamily=f.value;
 }
 
 // Drag text overlays in preview
