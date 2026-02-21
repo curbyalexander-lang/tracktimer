@@ -872,8 +872,22 @@ function renderPlayback(){
 // ═══════════════════════════════════════════════════════
 //  VIDEO EXPORT
 // ═══════════════════════════════════════════════════════
-function openExportModal(){state.showExportModal=true;state.exporting=false;state.exportProgress=0;state.exportStatus='';render()}
-function closeExportModal(){state.showExportModal=false;render()}
+function openExportModal(){state.showExportModal=true;state.exporting=false;state.exportProgress=0;state.exportStatus='';state.exportAborted=false;render()}
+function closeExportModal(){
+  state.showExportModal=false;state.exporting=false;state.exportAborted=true;
+  const el=document.getElementById('exportModal');if(el)el.remove();
+  render();
+}
+function cancelExport(){
+  state.exportAborted=true;
+  // Stop active recorder if running
+  if(state._exportRecorder&&state._exportRecorder.state!=='inactive'){
+    try{state._exportRecorder.stop()}catch(e){}
+  }
+  if(state._exportAudioCtx){try{state._exportAudioCtx.close()}catch(e){}}
+  state._exportRecorder=null;state._exportAudioCtx=null;
+  closeExportModal();
+}
 function renderExportModal(){
   let el=document.getElementById('exportModal');if(el)el.remove();
   const div=document.createElement('div');div.id='exportModal';div.className='modal-backdrop';
@@ -888,7 +902,7 @@ function renderExportModal(){
     ${state.exporting?`<div class="export-progress"><div class="export-status" id="expStatus">${state.exportStatus}</div>
       <div class="export-bar-bg"><div class="export-bar" id="expBar" style="width:${state.exportProgress}%"></div></div></div>`:''}
     <div class="modal-actions">
-      <button class="btn-small" onclick="closeExportModal()" ${state.exporting?'disabled':''}>Cancel</button>
+      <button class="btn-small" onclick="cancelExport()">Cancel</button>
       <button class="btn-primary" onclick="startExport()" ${state.exporting?'disabled':''}>${state.exporting?'Exporting...':'⬇ Export'}</button>
     </div></div>`;
   document.body.appendChild(div);
@@ -932,16 +946,19 @@ async function startExport(){
   let mimeType='video/webm;codecs=vp9,opus';
   if(!MediaRecorder.isTypeSupported(mimeType)){mimeType='video/webm;codecs=vp8,opus';if(!MediaRecorder.isTypeSupported(mimeType))mimeType='video/webm'}
   const rec=new MediaRecorder(stream,{mimeType,videoBitsPerSecond:5000000});
+  state._exportRecorder=rec;state._exportAudioCtx=audioCtx;state.exportAborted=false;
   const chunks=[];rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data)};
-  rec.onstop=()=>{audioCtx.close();const blob=new Blob(chunks,{type:'video/webm'});
-    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='StoryMotion-export.webm';a.click();URL.revokeObjectURL(url);
-    state.exporting=false;closeExportModal()};
+  rec.onstop=()=>{audioCtx.close();
+    if(!state.exportAborted&&chunks.length>0){const blob=new Blob(chunks,{type:'video/webm'});
+      const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='StoryMotion-export.webm';a.click();URL.revokeObjectURL(url);}
+    state.exporting=false;state._exportRecorder=null;state._exportAudioCtx=null;closeExportModal()};
   rec.start();
   if(mSrc)mSrc.start();
   narrSources.forEach(ns=>ns.src.start(audioCtx.currentTime+ns.startAt));
   state.exportStatus='Rendering...';qs('#expStatus')&&(qs('#expStatus').textContent='Rendering...');
   const startTime=performance.now();
   function renderFrame(){
+    if(state.exportAborted)return;
     const elapsed=(performance.now()-startTime)/1000;
     if(elapsed>=total){rec.stop();if(mSrc)try{mSrc.stop()}catch(e){}narrSources.forEach(ns=>{try{ns.src.stop()}catch(e){}});return}
     const{index,slideProgress}=getSlideAtTime(elapsed);
@@ -1028,7 +1045,7 @@ function onDrop(e,to){e.preventDefault();if(dragFromIndex===to||dragFromIndex<0)
 
 // Keyboard
 document.addEventListener('keydown',e=>{
-  if(state.showExportModal){if(e.key==='Escape')closeExportModal();return}
+  if(state.showExportModal){if(e.key==='Escape')cancelExport();return}
   if(state.playing&&e.key==='Escape'){stopPlayback();return}
   if(!state.playing&&state.slides.length>0){
     if(e.key==='ArrowRight'&&document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='TEXTAREA')selectSlide(Math.min(state.selectedIndex+1,state.slides.length-1));
