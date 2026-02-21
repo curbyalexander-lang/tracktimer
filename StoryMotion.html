@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StoryMotion — Digital Story Creator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Merriweather:wght@400;700&family=Oswald:wght@400;600&family=Lora:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;background:linear-gradient(145deg,#0f0f1a 0%,#1a1a2e 50%,#16213e 100%);color:#e0e0e0}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px}
+.app{display:flex;flex-direction:column;height:100vh}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid rgba(255,255,255,0.06);background:rgba(0,0,0,0.2);flex-shrink:0}
+.logo{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;background:linear-gradient(135deg,#E8A87C,#D4845A);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.topbar-info{font-size:11px;color:#6a6a7a;border-left:1px solid #333;padding-left:12px;margin-left:12px}
+.topbar-actions{display:flex;gap:10px;align-items:center}
+.btn-small{background:transparent;border:1px solid rgba(232,168,124,0.4);color:#E8A87C;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;transition:all 0.2s;white-space:nowrap}
+.btn-small:hover{background:rgba(232,168,124,0.1)}.btn-small:disabled{opacity:0.4;cursor:not-allowed}
+.btn-primary{background:linear-gradient(135deg,#E8A87C,#D4845A);border:none;color:#1a1a2e;padding:10px 24px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;transition:all 0.2s}
+.btn-primary:hover{filter:brightness(1.1);transform:translateY(-1px)}.btn-primary:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.btn-danger{background:transparent;border:1px solid rgba(192,57,43,0.5);color:#e74c3c;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif}
+.btn-danger:hover{background:rgba(192,57,43,0.15)}
+.btn-icon{background:none;border:1px solid rgba(255,255,255,0.1);color:#999;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
+.btn-icon:hover{border-color:rgba(232,168,124,0.4);color:#E8A87C}
+.btn-icon.active{background:rgba(232,168,124,0.15);border-color:rgba(232,168,124,0.5);color:#E8A87C}
+
+.main{flex:1;display:flex;overflow:hidden}
+.preview-area{flex:1;display:flex;flex-direction:column;padding:20px;gap:16px;min-width:0}
+.preview-canvas{flex:1;border-radius:12px;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center;position:relative;min-height:0}
+.preview-canvas img{position:absolute;width:100%;height:100%;object-fit:contain;pointer-events:none}
+.preview-empty{text-align:center;color:#555;padding:40px}
+.preview-empty-icon{font-size:48px;margin-bottom:16px;opacity:0.4}
+
+/* Title card background */
+.title-card-bg{position:absolute;width:100%;height:100%}
+
+/* Text overlays in preview */
+.text-overlay{position:absolute;cursor:move;user-select:none;z-index:5;white-space:pre-wrap;word-break:break-word;max-width:80%;padding:6px 12px;border-radius:4px}
+.text-overlay.selected-overlay{outline:2px solid #E8A87C;outline-offset:2px}
+
+/* Crop */
+.crop-overlay{position:absolute;top:0;left:0;width:100%;height:100%;cursor:crosshair;z-index:10}
+.crop-box{position:absolute;border:2px solid #E8A87C;box-shadow:0 0 0 9999px rgba(0,0,0,0.55);z-index:11;cursor:move}
+.crop-box::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(to right,rgba(232,168,124,0.3) 1px,transparent 1px) 0 0/33.33% 100%,linear-gradient(to bottom,rgba(232,168,124,0.3) 1px,transparent 1px) 0 0/100% 33.33%}
+.crop-handle{position:absolute;width:12px;height:12px;background:#E8A87C;border-radius:2px;z-index:12}
+.crop-handle.tl{top:-6px;left:-6px;cursor:nw-resize}.crop-handle.tr{top:-6px;right:-6px;cursor:ne-resize}
+.crop-handle.bl{bottom:-6px;left:-6px;cursor:sw-resize}.crop-handle.br{bottom:-6px;right:-6px;cursor:se-resize}
+.crop-toolbar{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:20;background:rgba(0,0,0,0.7);padding:8px 16px;border-radius:10px;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1)}
+
+.zoom-toolbar{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:10px;align-items:center;z-index:5;background:rgba(0,0,0,0.6);padding:6px 16px;border-radius:20px;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.08);font-size:12px}
+.zoom-toolbar button{background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.zoom-toolbar button:hover{background:rgba(255,255,255,0.1)}
+.zoom-toolbar input[type=range]{width:100px;accent-color:#E8A87C}
+.zoom-toolbar span{color:#999;font-size:11px;min-width:36px;text-align:center}
+
+.mode-tabs{display:flex;gap:2px;background:rgba(0,0,0,0.3);border-radius:8px;padding:3px;align-self:flex-start}
+.mode-tab{padding:5px 14px;border-radius:6px;border:none;background:transparent;color:#888;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s}
+.mode-tab.active{background:rgba(232,168,124,0.15);color:#E8A87C}
+
+.slide-strip{display:flex;gap:8px;overflow-x:auto;padding:8px 4px;background:rgba(0,0,0,0.2);border-radius:10px;min-height:96px;align-items:center;flex-shrink:0}
+.slide-thumb{position:relative;width:120px;min-width:120px;height:80px;border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid transparent;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.3);transition:all 0.2s}
+.slide-thumb.selected{border-color:#E8A87C;box-shadow:0 0 16px rgba(232,168,124,0.3)}
+.slide-thumb.dragover{border:2px dashed #E8A87C}
+.slide-thumb img{width:100%;height:100%;object-fit:cover;pointer-events:none}
+.slide-thumb-label{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.8));padding:12px 6px 4px;font-size:10px;color:#ccc;text-align:center}
+.slide-thumb-remove{position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.6);border:none;color:#aaa;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center}
+.slide-thumb-remove:hover{color:#fff;background:rgba(200,50,50,0.7)}
+.slide-add-btn{width:80px;min-width:80px;height:80px;border-radius:8px;border:2px dashed rgba(255,255,255,0.12);background:transparent;color:#555;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.slide-add-btn:hover{border-color:rgba(232,168,124,0.3);color:#E8A87C}
+.title-thumb{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;text-align:center;padding:8px}
+
+.sidebar{width:340px;min-width:340px;border-left:1px solid rgba(255,255,255,0.06);background:rgba(0,0,0,0.15);overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;flex-shrink:0}
+.panel{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px}
+.label{font-size:11px;color:#8a8a9a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px}
+.kb-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+.kb-btn{background:transparent;border:1px solid rgba(255,255,255,0.1);color:#999;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:10px;text-align:center;font-family:'DM Sans',sans-serif;transition:all 0.2s}
+.kb-btn:hover{border-color:rgba(232,168,124,0.3);color:#ccc}
+.kb-btn.active{background:rgba(232,168,124,0.15);border-color:rgba(232,168,124,0.5);color:#E8A87C}
+.tune-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.tune-label{font-size:10px;color:#777;width:56px;flex-shrink:0}
+.tune-val{font-size:10px;color:#999;width:28px;text-align:right}
+input[type=range]{accent-color:#E8A87C;flex:1}
+.audio-row{display:flex;flex-direction:column;gap:8px}
+.audio-file-info{font-size:11px;color:#888;display:flex;align-items:center;gap:6px}
+.audio-file-info span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.audio-remove{background:none;border:none;color:#666;cursor:pointer;font-size:14px}.audio-remove:hover{color:#c0392b}
+.volume-row{display:flex;align-items:center;gap:8px}
+.volume-label{font-size:10px;color:#666}
+.volume-val{font-size:10px;color:#999;width:28px}
+.rec-row{display:flex;gap:8px}
+.btn-record{background:transparent;border:1px solid rgba(232,168,124,0.4);color:#E8A87C;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif}
+.btn-recording{background:#c0392b;border-color:#c0392b;color:#fff}
+.dur-row{display:flex;align-items:center;gap:10px}
+.dur-val{font-size:14px;color:#E8A87C;min-width:32px;text-align:right}
+
+/* Text overlay editor */
+.text-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.text-item{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px;cursor:pointer;transition:all 0.2s}
+.text-item.active{border-color:rgba(232,168,124,0.4);background:rgba(232,168,124,0.05)}
+.text-item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.text-item-preview{font-size:11px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.text-edit-area{margin-top:8px}
+.text-edit-area textarea{width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#e0e0e0;padding:8px;border-radius:6px;font-size:13px;font-family:'DM Sans',sans-serif;resize:vertical;min-height:50px;outline:none}
+.text-edit-area textarea:focus{border-color:rgba(232,168,124,0.4)}
+.text-props{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.text-prop{display:flex;flex-direction:column;gap:3px}
+.text-prop label{font-size:9px;color:#777;text-transform:uppercase}
+.text-prop select,.text-prop input[type=number]{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#e0e0e0;padding:5px 8px;border-radius:5px;font-size:11px;font-family:'DM Sans',sans-serif;outline:none}
+.text-prop input[type=color]{width:100%;height:28px;border:1px solid rgba(255,255,255,0.1);border-radius:5px;background:transparent;cursor:pointer;padding:2px}
+.text-style-row{display:flex;gap:4px;margin-top:6px}
+.text-pos-row{display:flex;gap:6px;align-items:center;margin-top:8px}
+.text-pos-row label{font-size:9px;color:#777;text-transform:uppercase;width:16px}
+.text-pos-row input[type=range]{flex:1}
+.text-pos-val{font-size:10px;color:#999;width:28px;text-align:right}
+
+/* Title card settings */
+.tc-colors{display:flex;gap:8px;margin:8px 0}
+.tc-color-btn{width:32px;height:32px;border-radius:8px;border:2px solid transparent;cursor:pointer;transition:all 0.2s}
+.tc-color-btn.active{border-color:#E8A87C;transform:scale(1.15)}
+.tc-color-btn:hover{transform:scale(1.1)}
+.tc-custom-row{display:flex;gap:6px;align-items:center;margin-top:6px}
+.tc-custom-row label{font-size:9px;color:#777;width:40px}
+.tc-custom-row input[type=color]{width:40px;height:24px;border:1px solid rgba(255,255,255,0.1);border-radius:4px;background:transparent;cursor:pointer}
+
+/* Search & drop */
+.search-panel{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px}
+.search-row{display:flex;gap:6px;margin-bottom:10px}
+.search-input{flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#e0e0e0;padding:8px 12px;border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none}
+.search-input:focus{border-color:rgba(232,168,124,0.4)}.search-input::placeholder{color:#555}
+.search-engines{display:flex;gap:4px;flex-wrap:wrap}
+.search-eng-btn{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#999;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:10px;font-family:'DM Sans',sans-serif;transition:all 0.2s}
+.search-eng-btn:hover{border-color:rgba(232,168,124,0.3);color:#E8A87C}
+.search-hint{font-size:10px;color:#666;margin-top:8px;line-height:1.5}
+.drop-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(232,168,124,0.08);border:3px dashed #E8A87C;border-radius:12px;z-index:50;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.drop-overlay-text{background:rgba(0,0,0,0.7);color:#E8A87C;padding:16px 32px;border-radius:12px;font-size:16px;font-weight:600;backdrop-filter:blur(8px)}
+
+.tips{padding:12px;border-radius:8px;background:rgba(232,168,124,0.05);border:1px solid rgba(232,168,124,0.1);font-size:11px;color:#8a7a6a;line-height:1.5}
+.tips strong{color:#E8A87C}
+
+/* Playback */
+.playback-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;z-index:9999}
+.playback-stop{position:absolute;top:16px;left:16px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:6px 16px;border-radius:20px;cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;backdrop-filter:blur(8px);z-index:10}
+.playback-counter{position:absolute;top:16px;right:16px;background:rgba(0,0,0,0.5);color:#fff;padding:4px 12px;border-radius:20px;font-size:13px;z-index:10}
+.playback-progress{position:absolute;bottom:0;left:0;right:0;height:4px;background:rgba(255,255,255,0.15);z-index:10}
+.playback-progress-bar{height:100%;background:#E8A87C;transition:width 0.1s linear}
+
+/* Modal */
+.modal-backdrop{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.modal{background:#1e1e30;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:32px;max-width:480px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
+.modal h2{font-family:'Playfair Display',serif;font-size:20px;color:#E8A87C;margin-bottom:8px}
+.modal p{font-size:13px;color:#888;margin-bottom:20px;line-height:1.5}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.export-progress{background:rgba(255,255,255,0.05);border-radius:8px;padding:16px;margin-top:12px}
+.export-bar-bg{height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;margin-top:8px}
+.export-bar{height:100%;background:linear-gradient(90deg,#E8A87C,#D4845A);border-radius:3px;transition:width 0.3s}
+.export-status{font-size:12px;color:#aaa}
+select{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:#e0e0e0;padding:8px 12px;border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;width:100%;cursor:pointer}
+select option{background:#1e1e30}
+.form-row{margin-bottom:14px}
+.form-label{font-size:11px;color:#8a8a9a;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
+
+@media(max-width:900px){
+  .main{flex-direction:column}
+  .sidebar{width:100%;min-width:unset;border-left:none;border-top:1px solid rgba(255,255,255,0.06);max-height:50vh}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script>
+// ═══════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════
+const KEN_BURNS_PRESETS = [
+  {name:"Zoom In",startScale:1,endScale:1.4,startX:50,startY:50,endX:50,endY:50},
+  {name:"Zoom Out",startScale:1.4,endScale:1,startX:50,startY:50,endX:50,endY:50},
+  {name:"Pan Right",startScale:1.3,endScale:1.3,startX:30,startY:50,endX:70,endY:50},
+  {name:"Pan Left",startScale:1.3,endScale:1.3,startX:70,startY:50,endX:30,endY:50},
+  {name:"Pan Down",startScale:1.3,endScale:1.3,startX:50,startY:30,endX:50,endY:70},
+  {name:"Pan Up",startScale:1.3,endScale:1.3,startX:50,startY:70,endX:50,endY:30},
+  {name:"Zoom In+Pan R",startScale:1,endScale:1.5,startX:30,startY:40,endX:70,endY:60},
+  {name:"Zoom Out+Pan L",startScale:1.5,endScale:1,startX:70,startY:60,endX:30,endY:40},
+  {name:"Dramatic Zoom",startScale:1,endScale:1.8,startX:50,startY:40,endX:50,endY:40},
+  {name:"Slow Drift",startScale:1.15,endScale:1.25,startX:45,startY:45,endX:55,endY:55},
+];
+
+const FONTS = [
+  {name:"DM Sans",value:"'DM Sans',sans-serif"},
+  {name:"Playfair Display",value:"'Playfair Display',serif"},
+  {name:"Merriweather",value:"'Merriweather',serif"},
+  {name:"Oswald",value:"'Oswald',sans-serif"},
+  {name:"Lora",value:"'Lora',serif"},
+  {name:"Bebas Neue",value:"'Bebas Neue',sans-serif"},
+  {name:"Caveat",value:"'Caveat',cursive"},
+];
+
+const TITLE_BACKGROUNDS = [
+  {name:"Midnight",bg:"linear-gradient(135deg,#0f0f1a,#1a1a2e)"},
+  {name:"Warm Sunset",bg:"linear-gradient(135deg,#2d1b3d,#8b3a3a,#d4845a)"},
+  {name:"Ocean",bg:"linear-gradient(135deg,#0a2342,#1b4965,#2d8b8b)"},
+  {name:"Forest",bg:"linear-gradient(135deg,#1a2e1a,#2d4a2d,#4a7c4a)"},
+  {name:"Elegant Dark",bg:"linear-gradient(135deg,#1a1a1a,#2a2a2a)"},
+  {name:"Soft Blush",bg:"linear-gradient(135deg,#3d2b2b,#5c3d3d,#8b5a5a)"},
+  {name:"Royal",bg:"linear-gradient(135deg,#1a1a3d,#2b2b5c,#4a3d8b)"},
+  {name:"Charcoal",bg:"linear-gradient(135deg,#222,#444)"},
+];
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let state = {
+  slides:[], selectedIndex:-1, playing:false,
+  editorMode:'preview', // 'preview'|'crop'
+  musicUrl:null, musicName:"",
+  musicVolume:0.4,
+  showExportModal:false, exporting:false, exportProgress:0, exportStatus:'',
+  exportResolution:'1280x720',
+  selectedTextIndex:-1, // which text overlay is selected
+};
+
+let editorZoom=1,editorPanX=0,editorPanY=0;
+let isPanning=false,panStartX=0,panStartY=0,panOriginX=0,panOriginY=0;
+let cropBox=null,cropDragging=null,cropStartMouse={x:0,y:0},cropStartBox=null;
+let previewAnimId=null,playbackState=null;
+let mediaRecorder=null,recordingChunks=[],recordingTimer=null,recordingSeconds=0;
+let recordingSlideIdx=-1; // which slide we're recording narration for
+const imageCache={};
+
+function loadImage(src){
+  if(imageCache[src])return Promise.resolve(imageCache[src]);
+  return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{imageCache[src]=img;res(img)};img.onerror=rej;img.src=src});
+}
+
+function createTextOverlay(){
+  return {
+    id:Date.now()+Math.random(),
+    text:"Text", font:FONTS[0].value, fontName:FONTS[0].name,
+    size:36, color:"#ffffff", bold:false, italic:false,
+    bgColor:"#000000", bgOpacity:0.5, shadow:true,
+    x:50, y:50, // position in percent
+    align:"center",
+  };
+}
+
+function createSlide(url,name){
+  return {
+    id:Date.now()+Math.random(), type:'image',
+    imageUrl:url, fileName:name,
+    duration:5, kenBurns:{...KEN_BURNS_PRESETS[0]},
+    cropX:0,cropY:0,cropW:1,cropH:1, croppedUrl:null,
+    textOverlays:[], // array of text overlays
+    narrationUrl:null, narrationName:"",
+  };
+}
+
+function createTitleCard(){
+  return {
+    id:Date.now()+Math.random(), type:'title',
+    imageUrl:null, fileName:"Title Card",
+    titleBg:TITLE_BACKGROUNDS[0].bg, titleBgName:TITLE_BACKGROUNDS[0].name,
+    customBgColor1:"#0f0f1a", customBgColor2:"#1a1a2e",
+    duration:5, kenBurns:{...KEN_BURNS_PRESETS[9]}, // slow drift
+    cropX:0,cropY:0,cropW:1,cropH:1, croppedUrl:null,
+    textOverlays:[
+      {...createTextOverlay(), text:"Your Title Here", size:56, font:"'Playfair Display',serif", fontName:"Playfair Display", y:40, bold:true},
+      {...createTextOverlay(), id:Date.now()+1, text:"Subtitle goes here", size:24, font:"'DM Sans',sans-serif", fontName:"DM Sans", y:58, bgOpacity:0, shadow:true, color:"#cccccc"},
+    ],
+    narrationUrl:null, narrationName:"",
+  };
+}
+
+function getDisplayUrl(s){return s.croppedUrl||s.imageUrl}
+function totalDuration(){return state.slides.reduce((a,s)=>a+s.duration,0)}
+function getSlideAtTime(time){
+  let acc=0;
+  for(let i=0;i<state.slides.length;i++){
+    if(time<acc+state.slides[i].duration)return{index:i,slideProgress:(time-acc)/state.slides[i].duration};
+    acc+=state.slides[i].duration;
+  }
+  return{index:state.slides.length-1,slideProgress:1};
+}
+function qs(s){return document.querySelector(s)}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════
+function render(){
+  if(state.playing){renderPlayback();return}
+  renderEditor();
+  if(state.showExportModal)renderExportModal();
+}
+
+function renderEditor(){
+  const sel=state.selectedIndex>=0&&state.selectedIndex<state.slides.length?state.slides[state.selectedIndex]:null;
+  const total=totalDuration();
+  const isCrop=state.editorMode==='crop'&&sel&&sel.type==='image';
+  const isTitle=sel&&sel.type==='title';
+  const dUrl=sel?getDisplayUrl(sel):'';
+
+  document.getElementById('app').innerHTML=`
+    <div class="topbar">
+      <div style="display:flex;align-items:center">
+        <span class="logo">StoryMotion</span>
+        <span class="topbar-info">${state.slides.length} slide${state.slides.length!==1?'s':''} · ${total}s total</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn-small" onclick="addTitleCard()">+ Title Card</button>
+        <button class="btn-small" onclick="document.getElementById('photoInput').click()">+ Add Photos</button>
+        ${state.slides.length>=1?`
+          <button class="btn-small" onclick="openExportModal()">⬇ Export Video</button>
+          <button class="btn-primary" onclick="startPlayback()">▶ Play Story</button>`:''}
+      </div>
+    </div>
+    <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="handlePhotoUpload(event)">
+    <input type="file" id="musicInput" accept="audio/*" style="display:none" onchange="handleAudioUpload(event,'music')">
+    <input type="file" id="slideNarrInput" accept="audio/*" style="display:none" onchange="handleSlideNarrationUpload(event)">
+
+    <div class="main">
+      <div class="preview-area">
+        ${sel?`<div class="mode-tabs">
+          <button class="mode-tab ${state.editorMode==='preview'?'active':''}" onclick="setEditorMode('preview')">Preview</button>
+          ${sel.type==='image'?`<button class="mode-tab ${state.editorMode==='crop'?'active':''}" onclick="setEditorMode('crop')">Crop</button>`:''}
+        </div>`:''}
+
+        <div class="preview-canvas" id="previewCanvas" ${!isCrop&&sel?'onwheel="handleEditorWheel(event)"':''}>
+          <div class="drop-overlay" id="dropOverlay" style="display:none">
+            <div class="drop-overlay-text">Drop image here to add as slide</div>
+          </div>
+          ${isTitle?`<div class="title-card-bg" style="background:${sel.titleBg}"></div>`:''}
+          ${sel&&sel.type==='image'&&dUrl?`<img id="previewImg" src="${dUrl}" alt=""
+            style="transform:scale(${isCrop?1:editorZoom}) translate(${isCrop?0:editorPanX}px,${isCrop?0:editorPanY}px);transform-origin:center center;">`:''}
+          ${!sel?`<div class="preview-empty"><div class="preview-empty-icon">🎬</div>
+            <div style="font-size:16px">${state.slides.length===0?'Add photos or a title card to begin':'Select a slide to preview'}</div>
+            ${state.slides.length===0?`<div style="display:flex;gap:10px;justify-content:center;margin-top:20px">
+              <button class="btn-primary" onclick="document.getElementById('photoInput').click()">+ Upload Photos</button>
+              <button class="btn-small" style="padding:10px 20px" onclick="addTitleCard()">+ Title Card</button></div>`:''}
+          </div>`:''}
+          ${sel&&!isCrop?renderTextOverlays(sel):''}
+          ${isCrop?'<div class="crop-overlay" id="cropOverlay"></div>':''}
+          ${isCrop&&cropBox?renderCropBox():''}
+          ${!isCrop&&sel?`<div class="zoom-toolbar">
+            <button onclick="editorZoomTo(editorZoom-0.25)">−</button>
+            <input type="range" min="0.5" max="4" step="0.1" value="${editorZoom}" oninput="editorZoomTo(parseFloat(this.value))">
+            <span>${Math.round(editorZoom*100)}%</span>
+            <button onclick="editorZoomTo(editorZoom+0.25)">+</button>
+            <button onclick="editorZoomTo(1);editorPanX=0;editorPanY=0;render();" style="font-size:11px;width:auto;padding:0 8px">Reset</button>
+          </div>`:''}
+          ${isCrop?`<div class="crop-toolbar">
+            <button class="btn-small" onclick="initFullCrop()">Select All</button>
+            <button class="btn-primary" onclick="applyCrop()" style="padding:6px 18px;font-size:12px" ${!cropBox?'disabled':''}>Apply Crop</button>
+            <button class="btn-small" onclick="resetCrop()">Reset</button>
+            <button class="btn-danger" onclick="setEditorMode('preview')">Cancel</button>
+          </div>`:''}
+        </div>
+
+        <div class="slide-strip">
+          ${state.slides.map((s,i)=>`
+            <div class="slide-thumb ${i===state.selectedIndex?'selected':''}" id="thumb_${i}"
+                 draggable="true" onclick="selectSlide(${i})"
+                 ondragstart="onDragStart(event,${i})" ondragover="onDragOver(event,${i})"
+                 ondragleave="onDragLeave(event,${i})" ondrop="onDrop(event,${i})">
+              ${s.type==='title'?`<div class="title-thumb" style="width:100%;height:100%;background:${s.titleBg};color:#fff">Title</div>`
+              :`<img src="${getDisplayUrl(s)}" alt="">`}
+              <div class="slide-thumb-label">${i+1} · ${s.duration}s</div>
+              <button class="slide-thumb-remove" onclick="event.stopPropagation();removeSlide(${i})">×</button>
+            </div>`).join('')}
+          ${state.slides.length>0?'<button class="slide-add-btn" onclick="document.getElementById(\'photoInput\').click()">+</button>':''}
+        </div>
+      </div>
+
+      <div class="sidebar">
+        ${sel?renderSidebarForSlide(sel):`<div class="panel" style="text-align:center;color:#555;padding:32px">
+          ${state.slides.length===0?'Upload photos or add a title card to get started':'Select a slide to edit'}</div>`}
+      </div>
+    </div>`;
+
+  if(isCrop)setupCropListeners();
+  else if(sel){setupPanListeners();setupTextDrag();startPreviewAnimation();}
+}
+
+// ─── Text Overlays in preview ───
+function renderTextOverlays(slide){
+  return slide.textOverlays.map((t,i)=>{
+    const bgRgba=hexToRgba(t.bgColor,t.bgOpacity);
+    const shadow=t.shadow?'2px 2px 6px rgba(0,0,0,0.8)':'none';
+    const sel=i===state.selectedTextIndex;
+    return `<div class="text-overlay ${sel?'selected-overlay':''}" data-tidx="${i}"
+      style="left:${t.x}%;top:${t.y}%;transform:translate(-50%,-50%);
+        font-family:${t.font};font-size:${t.size * editorZoom}px;color:${t.color};
+        font-weight:${t.bold?'700':'400'};font-style:${t.italic?'italic':'normal'};
+        text-shadow:${shadow};background:${bgRgba};text-align:${t.align};"
+      onmousedown="startTextDrag(event,${i})">${escHtml(t.text)}</div>`;
+  }).join('');
+}
+
+// ─── Sidebar ───
+function renderSidebarForSlide(sel){
+  const idx=state.selectedIndex;
+  const isTitle=sel.type==='title';
+  return `
+    <div><div class="label">${isTitle?'Title Card':'Slide '+(idx+1)+': '+sel.fileName}</div></div>
+
+    ${isTitle?renderTitleCardSettings(sel):''}
+
+    <div class="panel"><div class="label">Duration</div>
+      <div class="dur-row"><input type="range" min="2" max="20" step="0.5" value="${sel.duration}"
+        oninput="updateSlideDuration(${idx},parseFloat(this.value))"><span class="dur-val" id="durVal">${sel.duration}s</span></div></div>
+
+    ${!isTitle?renderKenBurnsPanel(sel):''}
+
+    ${renderTextOverlayPanel(sel)}
+
+    ${renderSlideNarrationPanel(sel,idx)}
+
+    <div class="panel">
+      <div class="label">🎵 Background Music</div>
+      <div class="audio-row">
+        <button class="btn-small" onclick="document.getElementById('musicInput').click()">${state.musicUrl?'Change Music':'Upload Music'}</button>
+        ${state.musicUrl?`
+          <div class="audio-file-info"><span>♫ ${state.musicName||'Audio'}</span><button class="audio-remove" onclick="removeGlobalAudio()">×</button></div>
+          <div class="volume-row"><span class="volume-label">Vol</span>
+            <input type="range" min="0" max="1" step="0.05" value="${state.musicVolume}" oninput="state.musicVolume=parseFloat(this.value);qs('#musicVol').textContent=Math.round(this.value*100)+'%'">
+            <span class="volume-val" id="musicVol">${Math.round(state.musicVolume*100)}%</span></div>`:''}
+      </div>
+    </div>
+
+    <div class="search-panel">
+      <div class="label">🔍 Find Images</div>
+      <div class="search-row">
+        <input type="text" class="search-input" id="imgSearchInput" placeholder="Search for images..." onkeydown="if(event.key==='Enter')searchImages()">
+        <button class="btn-small" onclick="searchImages()" style="padding:8px 12px">Go</button>
+      </div>
+      <div class="search-engines">
+        <button class="search-eng-btn" onclick="searchImages('google')">Google Images</button>
+        <button class="search-eng-btn" onclick="searchImages('unsplash')">Unsplash</button>
+        <button class="search-eng-btn" onclick="searchImages('pexels')">Pexels</button>
+        <button class="search-eng-btn" onclick="searchImages('pixabay')">Pixabay</button>
+      </div>
+      <div class="search-hint">Opens in a new tab. Drag images back in or copy → Ctrl+V.</div>
+    </div>
+
+    <div class="tips"><strong>Keyboard:</strong> ← → navigate · Space play · Esc stop · Del remove slide</div>`;
+}
+
+function renderTitleCardSettings(sel){
+  return `<div class="panel"><div class="label">Background</div>
+    <div class="tc-colors">${TITLE_BACKGROUNDS.map((bg,i)=>
+      `<div class="tc-color-btn ${sel.titleBgName===bg.name?'active':''}" style="background:${bg.bg}" onclick="setTitleBg(${i})" title="${bg.name}"></div>`
+    ).join('')}</div>
+    <div class="tc-custom-row">
+      <label>Color 1</label><input type="color" value="${sel.customBgColor1}" onchange="setCustomTitleBg(this.value,null)">
+      <label>Color 2</label><input type="color" value="${sel.customBgColor2}" onchange="setCustomTitleBg(null,this.value)">
+    </div>
+  </div>`;
+}
+
+function renderKenBurnsPanel(sel){
+  const kb=sel.kenBurns;
+  const tunes=[["startScale","Start Zoom",0.8,2,0.05],["endScale","End Zoom",0.8,2,0.05],
+    ["startX","Start X",0,100,1],["startY","Start Y",0,100,1],["endX","End X",0,100,1],["endY","End Y",0,100,1]];
+  return `<div class="panel"><div class="label">Ken Burns Effect</div>
+    <div class="kb-grid">${KEN_BURNS_PRESETS.map((p,i)=>`<button class="kb-btn ${kb.name===p.name?'active':''}" onclick="applyPreset(${i})">${p.name}</button>`).join('')}</div>
+    <div style="font-size:11px;color:#666;margin-bottom:8px">Fine-tune</div>
+    ${tunes.map(([key,lbl,min,max,step])=>`<div class="tune-row"><span class="tune-label">${lbl}</span>
+      <input type="range" min="${min}" max="${max}" step="${step}" value="${kb[key]}" oninput="updateKenBurns(${state.selectedIndex},'${key}',parseFloat(this.value))">
+      <span class="tune-val" id="tune_${key}">${key.includes('Scale')?kb[key].toFixed(1):Math.round(kb[key])}</span></div>`).join('')}
+  </div>`;
+}
+
+// ─── TEXT OVERLAY PANEL ───
+function renderTextOverlayPanel(sel){
+  const sti=state.selectedTextIndex;
+  const activeText=sti>=0&&sti<sel.textOverlays.length?sel.textOverlays[sti]:null;
+  return `<div class="panel"><div class="label" style="display:flex;justify-content:space-between;align-items:center">
+    <span>Text Overlays</span>
+    <button class="btn-small" style="padding:3px 10px;font-size:10px" onclick="addTextOverlay()">+ Add Text</button>
+  </div>
+  ${sel.textOverlays.length?`<div class="text-list">${sel.textOverlays.map((t,i)=>
+    `<div class="text-item ${i===sti?'active':''}" onclick="selectTextOverlay(${i})">
+      <div class="text-item-header">
+        <div class="text-item-preview" style="font-family:${t.font}">${escHtml(t.text.substring(0,30))}${t.text.length>30?'...':''}</div>
+        <button class="btn-icon" style="width:20px;height:20px;font-size:11px" onclick="event.stopPropagation();removeTextOverlay(${i})">×</button>
+      </div>
+      ${i===sti?renderTextEditor(t,i):''}
+    </div>`).join('')}</div>`:'<div style="font-size:11px;color:#666;margin-top:4px">No text overlays yet.</div>'}
+  </div>`;
+}
+
+function renderTextEditor(t,i){
+  return `<div class="text-edit-area">
+    <textarea oninput="updateText(${i},'text',this.value)" rows="2">${escHtml(t.text)}</textarea>
+    <div class="text-props">
+      <div class="text-prop"><label>Font</label>
+        <select onchange="updateTextFont(${i},this.value)">${FONTS.map(f=>`<option value="${f.name}" ${t.fontName===f.name?'selected':''}>${f.name}</option>`).join('')}</select></div>
+      <div class="text-prop"><label>Size</label>
+        <input type="number" min="12" max="120" value="${t.size}" onchange="updateText(${i},'size',parseInt(this.value))"></div>
+      <div class="text-prop"><label>Color</label><input type="color" value="${t.color}" oninput="updateText(${i},'color',this.value)"></div>
+      <div class="text-prop"><label>BG Color</label><input type="color" value="${t.bgColor}" oninput="updateText(${i},'bgColor',this.value)"></div>
+      <div class="text-prop"><label>BG Opacity</label>
+        <input type="range" min="0" max="1" step="0.1" value="${t.bgOpacity}" style="width:100%" oninput="updateText(${i},'bgOpacity',parseFloat(this.value))"></div>
+      <div class="text-prop"><label>Align</label>
+        <select onchange="updateText(${i},'align',this.value)"><option value="left" ${t.align==='left'?'selected':''}>Left</option><option value="center" ${t.align==='center'?'selected':''}>Center</option><option value="right" ${t.align==='right'?'selected':''}>Right</option></select></div>
+    </div>
+    <div class="text-style-row">
+      <button class="btn-icon ${t.bold?'active':''}" onclick="updateText(${i},'bold',!${t.bold})" title="Bold"><b>B</b></button>
+      <button class="btn-icon ${t.italic?'active':''}" onclick="updateText(${i},'italic',!${t.italic})" title="Italic"><i>I</i></button>
+      <button class="btn-icon ${t.shadow?'active':''}" onclick="updateText(${i},'shadow',!${t.shadow})" title="Shadow">S</button>
+    </div>
+    <div class="text-pos-row"><label>X</label>
+      <input type="range" min="5" max="95" value="${t.x}" oninput="updateText(${i},'x',parseInt(this.value))">
+      <span class="text-pos-val">${t.x}%</span></div>
+    <div class="text-pos-row"><label>Y</label>
+      <input type="range" min="5" max="95" value="${t.y}" oninput="updateText(${i},'y',parseInt(this.value))">
+      <span class="text-pos-val">${t.y}%</span></div>
+  </div>`;
+}
+
+// ─── PER-SLIDE NARRATION PANEL ───
+function renderSlideNarrationPanel(sel,idx){
+  const isRec=mediaRecorder&&mediaRecorder.state==='recording'&&recordingSlideIdx===idx;
+  return `<div class="panel"><div class="label">🎙 Slide Narration</div>
+    <div class="audio-row">
+      <div class="rec-row">
+        <button class="btn-record ${isRec?'btn-recording':''}" id="recBtn" onclick="toggleSlideRecording(${idx})">
+          ${isRec?`■ Stop (${Math.floor(recordingSeconds/60)}:${String(recordingSeconds%60).padStart(2,'0')})`:'⏺ Record'}
+        </button>
+        <button class="btn-small" onclick="recordingSlideIdx=${idx};document.getElementById('slideNarrInput').click()">Upload</button>
+        ${sel.narrationUrl?`<button class="btn-small" onclick="previewSlideNarration(${idx})">▶</button>`:''}
+      </div>
+      ${sel.narrationUrl?`
+        <div class="audio-file-info"><span>🎙 ${sel.narrationName||'Recording'}</span>
+          <button class="audio-remove" onclick="removeSlideNarration(${idx})">×</button></div>`
+        :'<div style="font-size:10px;color:#666;margin-top:2px">Record or upload narration for this slide</div>'}
+    </div>
+  </div>`;
+}
+
+function renderCropBox(){
+  if(!cropBox)return'';
+  return`<div class="crop-box" id="cropBox" style="left:${cropBox.x}%;top:${cropBox.y}%;width:${cropBox.w}%;height:${cropBox.h}%">
+    <div class="crop-handle tl" data-handle="tl"></div><div class="crop-handle tr" data-handle="tr"></div>
+    <div class="crop-handle bl" data-handle="bl"></div><div class="crop-handle br" data-handle="br"></div></div>`;
+}
+
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}
+function hexToRgba(hex,alpha){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return`rgba(${r},${g},${b},${alpha})`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  TEXT OVERLAY LOGIC
+// ═══════════════════════════════════════════════════════
+function addTextOverlay(){
+  if(state.selectedIndex<0)return;
+  const slide=state.slides[state.selectedIndex];
+  slide.textOverlays.push(createTextOverlay());
+  state.selectedTextIndex=slide.textOverlays.length-1;
+  render();
+}
+function removeTextOverlay(i){
+  const slide=state.slides[state.selectedIndex];
+  slide.textOverlays.splice(i,1);
+  if(state.selectedTextIndex>=slide.textOverlays.length)state.selectedTextIndex=slide.textOverlays.length-1;
+  render();
+}
+function selectTextOverlay(i){state.selectedTextIndex=i;render()}
+function updateText(i,key,val){
+  const slide=state.slides[state.selectedIndex];
+  slide.textOverlays[i][key]=val;
+  render();
+}
+function updateTextFont(i,fontName){
+  const slide=state.slides[state.selectedIndex];
+  const f=FONTS.find(x=>x.name===fontName);
+  if(f){slide.textOverlays[i].font=f.value;slide.textOverlays[i].fontName=f.name}
+  render();
+}
+
+// Drag text overlays in preview
+let textDragIdx=-1,textDragStartMouse={x:0,y:0},textDragStartPos={x:0,y:0};
+function startTextDrag(e,idx){
+  e.stopPropagation();
+  state.selectedTextIndex=idx;
+  textDragIdx=idx;
+  const canvas=document.getElementById('previewCanvas');
+  const rect=canvas.getBoundingClientRect();
+  textDragStartMouse={x:e.clientX,y:e.clientY};
+  const t=state.slides[state.selectedIndex].textOverlays[idx];
+  textDragStartPos={x:t.x,y:t.y};
+  render();
+}
+function setupTextDrag(){
+  const canvas=document.getElementById('previewCanvas');
+  if(!canvas)return;
+  canvas.addEventListener('mousemove',e=>{
+    if(textDragIdx<0)return;
+    const rect=canvas.getBoundingClientRect();
+    const dx=((e.clientX-textDragStartMouse.x)/rect.width)*100;
+    const dy=((e.clientY-textDragStartMouse.y)/rect.height)*100;
+    const t=state.slides[state.selectedIndex].textOverlays[textDragIdx];
+    t.x=Math.max(5,Math.min(95,textDragStartPos.x+dx));
+    t.y=Math.max(5,Math.min(95,textDragStartPos.y+dy));
+    const el=document.querySelectorAll('.text-overlay')[textDragIdx];
+    if(el){el.style.left=t.x+'%';el.style.top=t.y+'%';}
+  });
+  const stop=()=>{textDragIdx=-1};
+  canvas.addEventListener('mouseup',stop);
+  canvas.addEventListener('mouseleave',stop);
+}
+
+// ═══════════════════════════════════════════════════════
+//  TITLE CARD LOGIC
+// ═══════════════════════════════════════════════════════
+function addTitleCard(){
+  const card=createTitleCard();
+  if(!state.slides.length)state.selectedIndex=0;
+  else state.selectedIndex=state.slides.length;
+  state.slides.push(card);
+  state.selectedTextIndex=0;
+  editorZoom=1;editorPanX=0;editorPanY=0;
+  render();
+}
+function setTitleBg(i){
+  const sel=state.slides[state.selectedIndex];
+  sel.titleBg=TITLE_BACKGROUNDS[i].bg;
+  sel.titleBgName=TITLE_BACKGROUNDS[i].name;
+  render();
+}
+function setCustomTitleBg(c1,c2){
+  const sel=state.slides[state.selectedIndex];
+  if(c1)sel.customBgColor1=c1; if(c2)sel.customBgColor2=c2;
+  sel.titleBg=`linear-gradient(135deg,${sel.customBgColor1},${sel.customBgColor2})`;
+  sel.titleBgName='Custom';
+  render();
+}
+
+// ═══════════════════════════════════════════════════════
+//  PER-SLIDE NARRATION
+// ═══════════════════════════════════════════════════════
+async function toggleSlideRecording(idx){
+  if(mediaRecorder&&mediaRecorder.state==='recording'){
+    mediaRecorder.stop();clearInterval(recordingTimer);mediaRecorder=null;return;
+  }
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    recordingChunks=[];recordingSlideIdx=idx;
+    mediaRecorder=new MediaRecorder(stream);
+    mediaRecorder.ondataavailable=e=>recordingChunks.push(e.data);
+    mediaRecorder.onstop=()=>{
+      const blob=new Blob(recordingChunks,{type:'audio/webm'});
+      state.slides[recordingSlideIdx].narrationUrl=URL.createObjectURL(blob);
+      state.slides[recordingSlideIdx].narrationName='Recording';
+      stream.getTracks().forEach(t=>t.stop());mediaRecorder=null;render();
+    };
+    mediaRecorder.start();recordingSeconds=0;
+    recordingTimer=setInterval(()=>{recordingSeconds++;
+      const btn=document.getElementById('recBtn');
+      if(btn)btn.textContent=`■ Stop (${Math.floor(recordingSeconds/60)}:${String(recordingSeconds%60).padStart(2,'0')})`;
+    },1000);
+    render();
+  }catch(e){alert('Microphone access denied.')}
+}
+function handleSlideNarrationUpload(e){
+  const f=e.target.files[0];if(!f)return;
+  state.slides[recordingSlideIdx].narrationUrl=URL.createObjectURL(f);
+  state.slides[recordingSlideIdx].narrationName=f.name;
+  e.target.value='';render();
+}
+function removeSlideNarration(idx){state.slides[idx].narrationUrl=null;state.slides[idx].narrationName='';render()}
+function previewSlideNarration(idx){
+  const url=state.slides[idx].narrationUrl;if(!url)return;
+  const a=new Audio(url);a.play();
+}
+
+// ═══════════════════════════════════════════════════════
+//  EDITOR ZOOM/PAN + CROP (unchanged logic)
+// ═══════════════════════════════════════════════════════
+function editorZoomTo(v){editorZoom=Math.max(0.5,Math.min(4,v));if(editorZoom<=1){editorPanX=0;editorPanY=0}render()}
+function handleEditorWheel(e){e.preventDefault();editorZoomTo(editorZoom+(e.deltaY>0?-0.15:0.15))}
+function setupPanListeners(){
+  const c=document.getElementById('previewCanvas');if(!c)return;
+  c.addEventListener('mousedown',e=>{
+    if(e.target.closest('.zoom-toolbar')||e.target.closest('.text-overlay')||e.target.closest('.crop-toolbar'))return;
+    if(editorZoom<=1)return;
+    isPanning=true;panStartX=e.clientX;panStartY=e.clientY;panOriginX=editorPanX;panOriginY=editorPanY;c.style.cursor='grabbing';
+  });
+  c.addEventListener('mousemove',e=>{if(!isPanning)return;
+    editorPanX=panOriginX+(e.clientX-panStartX)/editorZoom;editorPanY=panOriginY+(e.clientY-panStartY)/editorZoom;
+    const img=document.getElementById('previewImg');if(img)img.style.transform=`scale(${editorZoom}) translate(${editorPanX}px,${editorPanY}px)`;});
+  const stop=()=>{isPanning=false;if(c)c.style.cursor=''};
+  c.addEventListener('mouseup',stop);c.addEventListener('mouseleave',stop);
+}
+function setEditorMode(m){state.editorMode=m;if(m==='crop'){cropBox=null;editorZoom=1;editorPanX=0;editorPanY=0}render()}
+function initFullCrop(){cropBox={x:5,y:5,w:90,h:90};render()}
+function setupCropListeners(){
+  const ov=document.getElementById('cropOverlay');if(!ov)return;
+  ov.addEventListener('mousedown',e=>{
+    const h=e.target.closest('.crop-handle'),b=e.target.closest('.crop-box');
+    const r=ov.getBoundingClientRect();const mx=((e.clientX-r.left)/r.width)*100,my=((e.clientY-r.top)/r.height)*100;
+    if(h){cropDragging=h.dataset.handle;cropStartMouse={x:mx,y:my};cropStartBox={...cropBox}}
+    else if(b){cropDragging='move';cropStartMouse={x:mx,y:my};cropStartBox={...cropBox}}
+    else{cropBox={x:mx,y:my,w:0,h:0};cropDragging='br';cropStartMouse={x:mx,y:my};cropStartBox={...cropBox};render();setupCropListeners();return}
+    e.preventDefault();e.stopPropagation();
+  });
+  document.addEventListener('mousemove',cropMouseMove);document.addEventListener('mouseup',cropMouseUp);
+}
+function cropMouseMove(e){
+  if(!cropDragging||!cropBox)return;const ov=document.getElementById('cropOverlay');if(!ov)return;
+  const r=ov.getBoundingClientRect();const mx=Math.max(0,Math.min(100,((e.clientX-r.left)/r.width)*100));
+  const my=Math.max(0,Math.min(100,((e.clientY-r.top)/r.height)*100));
+  const dx=mx-cropStartMouse.x,dy=my-cropStartMouse.y,sb=cropStartBox;
+  if(cropDragging==='move'){let nx=sb.x+dx,ny=sb.y+dy;nx=Math.max(0,Math.min(100-sb.w,nx));ny=Math.max(0,Math.min(100-sb.h,ny));cropBox={...sb,x:nx,y:ny}}
+  else if(cropDragging==='br'){cropBox={...sb,w:Math.max(5,sb.w+dx),h:Math.max(5,sb.h+dy)}}
+  else if(cropDragging==='tl'){cropBox={x:sb.x+dx,y:sb.y+dy,w:Math.max(5,sb.w-dx),h:Math.max(5,sb.h-dy)}}
+  else if(cropDragging==='tr'){cropBox={x:sb.x,y:sb.y+dy,w:Math.max(5,sb.w+dx),h:Math.max(5,sb.h-dy)}}
+  else if(cropDragging==='bl'){cropBox={x:sb.x+dx,y:sb.y,w:Math.max(5,sb.w-dx),h:Math.max(5,sb.h+dy)}}
+  cropBox.x=Math.max(0,cropBox.x);cropBox.y=Math.max(0,cropBox.y);
+  if(cropBox.x+cropBox.w>100)cropBox.w=100-cropBox.x;if(cropBox.y+cropBox.h>100)cropBox.h=100-cropBox.y;
+  const el=document.getElementById('cropBox');
+  if(el){el.style.left=cropBox.x+'%';el.style.top=cropBox.y+'%';el.style.width=cropBox.w+'%';el.style.height=cropBox.h+'%'}
+}
+function cropMouseUp(){cropDragging=null;document.removeEventListener('mousemove',cropMouseMove);document.removeEventListener('mouseup',cropMouseUp)}
+async function applyCrop(){
+  if(!cropBox||state.selectedIndex<0)return;const slide=state.slides[state.selectedIndex];
+  const img=await loadImage(slide.imageUrl);
+  const cx=(cropBox.x/100)*img.naturalWidth,cy=(cropBox.y/100)*img.naturalHeight;
+  const cw=(cropBox.w/100)*img.naturalWidth,ch=(cropBox.h/100)*img.naturalHeight;
+  const canvas=document.createElement('canvas');canvas.width=Math.round(cw);canvas.height=Math.round(ch);
+  canvas.getContext('2d').drawImage(img,cx,cy,cw,ch,0,0,canvas.width,canvas.height);
+  slide.croppedUrl=canvas.toDataURL('image/jpeg',0.92);
+  cropBox=null;state.editorMode='preview';render();
+}
+function resetCrop(){if(state.selectedIndex<0)return;const s=state.slides[state.selectedIndex];s.croppedUrl=null;cropBox=null;render()}
+
+// ═══════════════════════════════════════════════════════
+//  PREVIEW ANIMATION
+// ═══════════════════════════════════════════════════════
+function startPreviewAnimation(){
+  cancelAnimationFrame(previewAnimId);
+  const sel=state.selectedIndex>=0?state.slides[state.selectedIndex]:null;
+  if(!sel||state.playing||state.editorMode==='crop'||sel.type==='title')return;
+  const dur=sel.duration*1000,start=performance.now();
+  function animate(){
+    const el=document.getElementById('previewImg');if(!el||state.editorMode==='crop')return;
+    const t=((performance.now()-start)%dur)/dur;
+    const kb=state.slides[state.selectedIndex]?.kenBurns;if(!kb)return;
+    const scale=(kb.startScale+(kb.endScale-kb.startScale)*t)*editorZoom;
+    const x=kb.startX+(kb.endX-kb.startX)*t,y=kb.startY+(kb.endY-kb.startY)*t;
+    el.style.transform=`scale(${scale}) translate(${editorPanX}px,${editorPanY}px)`;
+    el.style.transformOrigin=`${x}% ${y}%`;
+    previewAnimId=requestAnimationFrame(animate);
+  }
+  previewAnimId=requestAnimationFrame(animate);
+}
+
+// ═══════════════════════════════════════════════════════
+//  PLAYBACK
+// ═══════════════════════════════════════════════════════
+function startPlayback(){
+  if(!state.slides.length)return;
+  state.playing=true;const total=totalDuration();
+  playbackState={startTime:performance.now(),musicAudio:null,slideAudios:{},animId:null,currentSlideAudioIdx:-1};
+  if(state.musicUrl){playbackState.musicAudio=new Audio(state.musicUrl);playbackState.musicAudio.volume=state.musicVolume;playbackState.musicAudio.loop=true;playbackState.musicAudio.play().catch(()=>{})}
+  render();
+  function anim(){
+    const elapsed=(performance.now()-playbackState.startTime)/1000;
+    if(elapsed>=total){stopPlayback();return}
+    const{index,slideProgress}=getSlideAtTime(elapsed);
+    const slide=state.slides[index];
+    // Per-slide narration
+    if(index!==playbackState.currentSlideAudioIdx){
+      // Stop previous
+      if(playbackState.slideAudios[playbackState.currentSlideAudioIdx]){
+        playbackState.slideAudios[playbackState.currentSlideAudioIdx].pause();
+      }
+      playbackState.currentSlideAudioIdx=index;
+      if(slide.narrationUrl){
+        const a=new Audio(slide.narrationUrl);a.play().catch(()=>{});
+        playbackState.slideAudios[index]=a;
+      }
+    }
+
+    const isTitle=slide.type==='title';
+    const kb=slide.kenBurns;
+    const scale=kb.startScale+(kb.endScale-kb.startScale)*slideProgress;
+    const x=kb.startX+(kb.endX-kb.startX)*slideProgress,y=kb.startY+(kb.endY-kb.startY)*slideProgress;
+    // Update image
+    const img=document.getElementById('playImg');
+    const titleBg=document.getElementById('playTitleBg');
+    if(isTitle){
+      if(img)img.style.display='none';
+      if(titleBg){titleBg.style.display='block';titleBg.style.background=slide.titleBg}
+    }else{
+      if(titleBg)titleBg.style.display='none';
+      if(img){img.style.display='block';
+        if(img.dataset.idx!=''+index){img.src=getDisplayUrl(slide);img.dataset.idx=index}
+        img.style.transform=`scale(${scale})`;img.style.transformOrigin=`${x}% ${y}%`;}
+    }
+    // Crossfade
+    const tr=0.8,rem=slide.duration-(slideProgress*slide.duration);
+    let a=1;if(rem<tr)a=rem/tr;else if(slideProgress*slide.duration<tr)a=Math.min(1,(slideProgress*slide.duration)/tr);
+    const w=document.getElementById('playWrapper');if(w)w.style.opacity=a;
+    // Text overlays
+    const tc=document.getElementById('playTexts');
+    if(tc)tc.innerHTML=slide.textOverlays.map(t=>{
+      const bgRgba=hexToRgba(t.bgColor,t.bgOpacity);
+      const shadow=t.shadow?'2px 2px 6px rgba(0,0,0,0.8)':'none';
+      return`<div style="position:absolute;left:${t.x}%;top:${t.y}%;transform:translate(-50%,-50%);
+        font-family:${t.font};font-size:${t.size}px;color:${t.color};font-weight:${t.bold?'700':'400'};
+        font-style:${t.italic?'italic':'normal'};text-shadow:${shadow};background:${bgRgba};
+        text-align:${t.align};padding:6px 12px;border-radius:4px;white-space:pre-wrap;max-width:80%">${escHtml(t.text)}</div>`;
+    }).join('');
+    // Progress
+    const bar=document.getElementById('playBar');if(bar)bar.style.width=`${(elapsed/total)*100}%`;
+    const ctr=document.getElementById('playCounter');if(ctr)ctr.textContent=`${index+1} / ${state.slides.length}`;
+    playbackState.animId=requestAnimationFrame(anim);
+  }
+  playbackState.animId=requestAnimationFrame(anim);
+}
+function stopPlayback(){
+  if(playbackState){cancelAnimationFrame(playbackState.animId);
+    if(playbackState.musicAudio){playbackState.musicAudio.pause();playbackState.musicAudio=null}
+    Object.values(playbackState.slideAudios).forEach(a=>{try{a.pause()}catch(e){}});
+    playbackState=null}
+  state.playing=false;render();
+}
+function renderPlayback(){
+  const first=state.slides[0];
+  document.getElementById('app').innerHTML=`<div class="playback-overlay">
+    <div id="playWrapper" style="width:100%;height:100%;position:relative;overflow:hidden">
+      <div id="playTitleBg" class="title-card-bg" style="display:${first.type==='title'?'block':'none'};background:${first.type==='title'?first.titleBg:''}"></div>
+      <img id="playImg" src="${first.type==='image'?getDisplayUrl(first):''}" data-idx="0" alt=""
+        style="position:absolute;width:100%;height:100%;object-fit:contain;display:${first.type==='image'?'block':'none'}">
+      <div id="playTexts" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></div>
+    </div>
+    <div class="playback-progress"><div class="playback-progress-bar" id="playBar"></div></div>
+    <div class="playback-counter" id="playCounter">1 / ${state.slides.length}</div>
+    <button class="playback-stop" onclick="stopPlayback()">■ Stop</button></div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  VIDEO EXPORT
+// ═══════════════════════════════════════════════════════
+function openExportModal(){state.showExportModal=true;state.exporting=false;state.exportProgress=0;state.exportStatus='';render()}
+function closeExportModal(){state.showExportModal=false;render()}
+function renderExportModal(){
+  let el=document.getElementById('exportModal');if(el)el.remove();
+  const div=document.createElement('div');div.id='exportModal';div.className='modal-backdrop';
+  div.innerHTML=`<div class="modal">
+    <h2>Export Video</h2><p>Render your story as a downloadable WebM video with audio, text overlays, and title cards.</p>
+    <div class="form-row"><div class="form-label">Resolution</div>
+      <select id="exportRes" onchange="state.exportResolution=this.value" ${state.exporting?'disabled':''}>
+        <option value="1280x720" ${state.exportResolution==='1280x720'?'selected':''}>720p (1280×720)</option>
+        <option value="1920x1080" ${state.exportResolution==='1920x1080'?'selected':''}>1080p (1920×1080)</option>
+        <option value="854x480" ${state.exportResolution==='854x480'?'selected':''}>480p (854×480)</option>
+      </select></div>
+    ${state.exporting?`<div class="export-progress"><div class="export-status" id="expStatus">${state.exportStatus}</div>
+      <div class="export-bar-bg"><div class="export-bar" id="expBar" style="width:${state.exportProgress}%"></div></div></div>`:''}
+    <div class="modal-actions">
+      <button class="btn-small" onclick="closeExportModal()" ${state.exporting?'disabled':''}>Cancel</button>
+      <button class="btn-primary" onclick="startExport()" ${state.exporting?'disabled':''}>${state.exporting?'Exporting...':'⬇ Export'}</button>
+    </div></div>`;
+  document.body.appendChild(div);
+}
+
+async function startExport(){
+  state.exporting=true;state.exportProgress=0;state.exportStatus='Loading images...';renderExportModal();
+  const[w,h]=state.exportResolution.split('x').map(Number);
+  const total=totalDuration();
+  // Preload images
+  const images=[];
+  for(const slide of state.slides){
+    if(slide.type==='image'){images.push(await loadImage(getDisplayUrl(slide)))}
+    else images.push(null);
+  }
+  const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+  const ctx=canvas.getContext('2d');
+  const stream=canvas.captureStream(30);
+  // Audio mixing
+  const audioCtx=new AudioContext();const dest=audioCtx.createMediaStreamDestination();
+  let mSrc=null;
+  async function loadBuf(url){const r=await fetch(url);const b=await r.arrayBuffer();return await audioCtx.decodeAudioData(b)}
+  // Music
+  if(state.musicUrl)try{const buf=await loadBuf(state.musicUrl);mSrc=audioCtx.createBufferSource();mSrc.buffer=buf;mSrc.loop=true;
+    const g=audioCtx.createGain();g.gain.value=state.musicVolume;mSrc.connect(g).connect(dest)}catch(e){}
+  // Per-slide narrations: schedule them
+  const narrSources=[];
+  let slideStart=0;
+  for(const slide of state.slides){
+    if(slide.narrationUrl){
+      try{const buf=await loadBuf(slide.narrationUrl);
+        const src=audioCtx.createBufferSource();src.buffer=buf;
+        const g=audioCtx.createGain();g.gain.value=1;
+        src.connect(g).connect(dest);
+        narrSources.push({src,startAt:slideStart});
+      }catch(e){}
+    }
+    slideStart+=slide.duration;
+  }
+  const at=dest.stream.getAudioTracks()[0];if(at)stream.addTrack(at);
+  let mimeType='video/webm;codecs=vp9,opus';
+  if(!MediaRecorder.isTypeSupported(mimeType)){mimeType='video/webm;codecs=vp8,opus';if(!MediaRecorder.isTypeSupported(mimeType))mimeType='video/webm'}
+  const rec=new MediaRecorder(stream,{mimeType,videoBitsPerSecond:5000000});
+  const chunks=[];rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data)};
+  rec.onstop=()=>{audioCtx.close();const blob=new Blob(chunks,{type:'video/webm'});
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='StoryMotion-export.webm';a.click();URL.revokeObjectURL(url);
+    state.exporting=false;closeExportModal()};
+  rec.start();
+  if(mSrc)mSrc.start();
+  narrSources.forEach(ns=>ns.src.start(audioCtx.currentTime+ns.startAt));
+  state.exportStatus='Rendering...';qs('#expStatus')&&(qs('#expStatus').textContent='Rendering...');
+  const startTime=performance.now();
+  function renderFrame(){
+    const elapsed=(performance.now()-startTime)/1000;
+    if(elapsed>=total){rec.stop();if(mSrc)try{mSrc.stop()}catch(e){}narrSources.forEach(ns=>{try{ns.src.stop()}catch(e){}});return}
+    const{index,slideProgress}=getSlideAtTime(elapsed);
+    const slide=state.slides[index];const img=images[index];const kb=slide.kenBurns;
+    const scale=kb.startScale+(kb.endScale-kb.startScale)*slideProgress;
+    const ox=(kb.startX+(kb.endX-kb.startX)*slideProgress)/100;
+    const oy=(kb.startY+(kb.endY-kb.startY)*slideProgress)/100;
+    ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
+    // Crossfade
+    const tr=0.8,rem=slide.duration-(slideProgress*slide.duration);
+    let alpha=1;if(rem<tr)alpha=rem/tr;else if(slideProgress*slide.duration<tr)alpha=Math.min(1,(slideProgress*slide.duration)/tr);
+    ctx.globalAlpha=alpha;
+    if(slide.type==='title'){
+      // Draw gradient background
+      const grd=ctx.createLinearGradient(0,0,w,h);
+      // Parse colors from gradient string
+      const colors=slide.titleBg.match(/#[0-9a-fA-F]{6}/g)||['#0f0f1a','#1a1a2e'];
+      colors.forEach((c,i)=>grd.addColorStop(i/(colors.length-1||1),c));
+      ctx.fillStyle=grd;ctx.fillRect(0,0,w,h);
+    }else if(img){
+      const ia=img.naturalWidth/img.naturalHeight,ca=w/h;let dW,dH;
+      if(ia>ca){dW=w*scale;dH=dW/ia}else{dH=h*scale;dW=dH*ia}
+      const dX=(w-dW)*ox,dY=(h-dH)*oy;
+      ctx.drawImage(img,dX,dY,dW,dH);
+    }
+    // Text overlays
+    slide.textOverlays.forEach(t=>{
+      const fontSize=t.size*(w/1280);
+      ctx.save();
+      ctx.font=`${t.italic?'italic ':''} ${t.bold?'700':'400'} ${fontSize}px ${t.font}`;
+      ctx.textAlign=t.align;ctx.textBaseline='middle';
+      const tx=t.x/100*w,ty=t.y/100*h;
+      // BG
+      if(t.bgOpacity>0){
+        const lines=t.text.split('\n');
+        const lineH=fontSize*1.3;const totalH=lines.length*lineH;
+        let maxW=0;lines.forEach(l=>{const m=ctx.measureText(l);if(m.width>maxW)maxW=m.width});
+        ctx.fillStyle=hexToRgba(t.bgColor,t.bgOpacity*alpha);
+        ctx.fillRect(tx-(t.align==='center'?maxW/2+12:t.align==='right'?maxW+12:0),ty-totalH/2-6,maxW+24,totalH+12);
+      }
+      if(t.shadow){ctx.shadowColor='rgba(0,0,0,0.8)';ctx.shadowBlur=6;ctx.shadowOffsetX=2;ctx.shadowOffsetY=2}
+      ctx.fillStyle=t.color;
+      const lines=t.text.split('\n');const lineH=fontSize*1.3;const startY=ty-((lines.length-1)*lineH)/2;
+      lines.forEach((l,li)=>{ctx.fillText(l,tx,startY+li*lineH)});
+      ctx.restore();
+    });
+    ctx.globalAlpha=1;
+    const pct=Math.round((elapsed/total)*100);
+    const se=document.getElementById('expStatus'),be=document.getElementById('expBar');
+    if(se)se.textContent=`Rendering... ${pct}% (Slide ${index+1}/${state.slides.length})`;
+    if(be)be.style.width=pct+'%';
+    requestAnimationFrame(renderFrame);
+  }
+  requestAnimationFrame(renderFrame);
+}
+
+// ═══════════════════════════════════════════════════════
+//  EVENTS
+// ═══════════════════════════════════════════════════════
+function handlePhotoUpload(e){
+  const files=Array.from(e.target.files);let loaded=0;const ns=[];
+  files.forEach(f=>{const r=new FileReader();r.onload=ev=>{ns.push(createSlide(ev.target.result,f.name));loaded++;
+    if(loaded===files.length){if(!state.slides.length)state.selectedIndex=0;state.slides=[...state.slides,...ns];editorZoom=1;editorPanX=0;editorPanY=0;state.selectedTextIndex=-1;render()}};r.readAsDataURL(f)});
+  e.target.value='';
+}
+function handleAudioUpload(e,type){const f=e.target.files[0];if(!f)return;const url=URL.createObjectURL(f);
+  state.musicUrl=url;state.musicName=f.name;e.target.value='';render()}
+function removeGlobalAudio(){state.musicUrl=null;state.musicName='';render()}
+function selectSlide(i){state.selectedIndex=i;state.editorMode='preview';editorZoom=1;editorPanX=0;editorPanY=0;cropBox=null;state.selectedTextIndex=-1;render()}
+function removeSlide(i){state.slides.splice(i,1);if(state.selectedIndex>=state.slides.length)state.selectedIndex=Math.max(0,state.slides.length-1);if(!state.slides.length)state.selectedIndex=-1;render()}
+function updateSlideDuration(i,v){state.slides[i].duration=v;const el=document.getElementById('durVal');if(el)el.textContent=v+'s'}
+function applyPreset(i){if(state.selectedIndex<0)return;state.slides[state.selectedIndex].kenBurns={...KEN_BURNS_PRESETS[i]};render()}
+function updateKenBurns(si,key,val){state.slides[si].kenBurns[key]=val;state.slides[si].kenBurns.name='Custom';
+  const el=document.getElementById('tune_'+key);if(el)el.textContent=key.includes('Scale')?val.toFixed(1):Math.round(val);
+  document.querySelectorAll('.kb-btn').forEach(b=>b.classList.remove('active'))}
+
+let dragFromIndex=-1;
+function onDragStart(e,i){dragFromIndex=i;e.dataTransfer.effectAllowed='move'}
+function onDragOver(e,i){e.preventDefault();document.getElementById('thumb_'+i)?.classList.add('dragover')}
+function onDragLeave(e,i){document.getElementById('thumb_'+i)?.classList.remove('dragover')}
+function onDrop(e,to){e.preventDefault();if(dragFromIndex===to||dragFromIndex<0)return;
+  const[m]=state.slides.splice(dragFromIndex,1);state.slides.splice(to,0,m);
+  if(state.selectedIndex===dragFromIndex)state.selectedIndex=to;dragFromIndex=-1;render()}
+
+// Keyboard
+document.addEventListener('keydown',e=>{
+  if(state.showExportModal){if(e.key==='Escape')closeExportModal();return}
+  if(state.playing&&e.key==='Escape'){stopPlayback();return}
+  if(!state.playing&&state.slides.length>0){
+    if(e.key==='ArrowRight'&&document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='TEXTAREA')selectSlide(Math.min(state.selectedIndex+1,state.slides.length-1));
+    if(e.key==='ArrowLeft'&&document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='TEXTAREA')selectSlide(Math.max(state.selectedIndex-1,0));
+    if(e.key==='Delete'&&state.selectedIndex>=0&&document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='TEXTAREA')removeSlide(state.selectedIndex);
+    if(e.key===' '&&document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='TEXTAREA'){e.preventDefault();startPlayback()}
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  IMAGE SEARCH + DRAG/DROP + PASTE
+// ═══════════════════════════════════════════════════════
+function searchImages(engine){
+  const input=document.getElementById('imgSearchInput');const query=input?input.value.trim():'';
+  if(!query){if(input)input.focus();return}engine=engine||'google';
+  const urls={google:`https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=isch`,
+    unsplash:`https://unsplash.com/s/photos/${encodeURIComponent(query)}`,
+    pexels:`https://www.pexels.com/search/${encodeURIComponent(query)}/`,
+    pixabay:`https://pixabay.com/images/search/${encodeURIComponent(query)}/`};
+  window.open(urls[engine],'_blank');
+}
+let dropCounter=0;
+document.addEventListener('dragenter',e=>{if(state.playing||state.showExportModal)return;
+  if(e.dataTransfer&&(e.dataTransfer.types.includes('Files')||e.dataTransfer.types.includes('text/uri-list')||e.dataTransfer.types.includes('text/html'))){
+    dropCounter++;const ov=document.getElementById('dropOverlay');if(ov)ov.style.display='flex'}});
+document.addEventListener('dragleave',e=>{dropCounter--;if(dropCounter<=0){dropCounter=0;const ov=document.getElementById('dropOverlay');if(ov)ov.style.display='none'}});
+document.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy'});
+document.addEventListener('drop',e=>{e.preventDefault();dropCounter=0;const ov=document.getElementById('dropOverlay');if(ov)ov.style.display='none';
+  if(state.playing||state.showExportModal)return;
+  if(e.dataTransfer.files&&e.dataTransfer.files.length>0){const files=Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/'));if(files.length>0){addImageFiles(files);return}}
+  const html=e.dataTransfer.getData('text/html');if(html){const match=html.match(/<img[^>]+src=["']([^"']+)["']/i);if(match&&match[1]){addImageFromUrl(match[1]);return}}
+  const uri=e.dataTransfer.getData('text/uri-list')||e.dataTransfer.getData('text/plain');
+  if(uri&&/\.(jpg|jpeg|png|gif|webp|bmp|svg)/i.test(uri))addImageFromUrl(uri);
+});
+document.addEventListener('paste',e=>{if(state.playing||state.showExportModal)return;
+  if(document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='TEXTAREA')return;
+  const items=Array.from(e.clipboardData.items);
+  const imageItem=items.find(item=>item.type.startsWith('image/'));
+  if(imageItem){e.preventDefault();const file=imageItem.getAsFile();if(file)addImageFiles([file]);return}
+  const textItem=items.find(item=>item.type==='text/plain');
+  if(textItem)textItem.getAsString(text=>{text=text.trim();if(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|bmp|svg)/i.test(text))addImageFromUrl(text)});
+});
+function addImageFiles(files){
+  let loaded=0;const ns=[];files.forEach(f=>{const r=new FileReader();r.onload=ev=>{ns.push(createSlide(ev.target.result,f.name||'Dropped image'));loaded++;
+    if(loaded===files.length){if(!state.slides.length)state.selectedIndex=0;state.slides=[...state.slides,...ns];editorZoom=1;editorPanX=0;editorPanY=0;render()}};r.readAsDataURL(f)});
+}
+function addImageFromUrl(url){
+  const img=new Image();img.crossOrigin='anonymous';
+  img.onload=()=>{const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
+    canvas.getContext('2d').drawImage(img,0,0);try{const du=canvas.toDataURL('image/jpeg',0.92);
+      const name=url.split('/').pop().split('?')[0]||'Web image';if(!state.slides.length)state.selectedIndex=0;
+      state.slides.push(createSlide(du,decodeURIComponent(name).substring(0,40)));render()}
+    catch(e){const name=url.split('/').pop().split('?')[0]||'Web image';if(!state.slides.length)state.selectedIndex=0;
+      state.slides.push(createSlide(url,decodeURIComponent(name).substring(0,40)));render()}};
+  img.onerror=()=>{const img2=new Image();img2.onload=()=>{const name=url.split('/').pop().split('?')[0]||'Web image';
+    if(!state.slides.length)state.selectedIndex=0;state.slides.push(createSlide(url,decodeURIComponent(name).substring(0,40)));render()};
+    img2.onerror=()=>alert('Could not load that image. Try right-click → "Copy Image" then paste with Ctrl+V.');img2.src=url};
+  img.src=url;
+}
+
+// ═══════════════════════════════════════════════════════
+render();
+</script>
+</body>
+</html>
