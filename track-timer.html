@@ -127,6 +127,33 @@
     box-shadow: 0 0 10px rgba(0,232,123,0.5);
   }
 
+  /* ── Stabilization Toggle ── */
+  .stab-wrap {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 3;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    background: rgba(0,0,0,0.5); border-radius: 16px; padding: 12px 10px;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .stab-icon { font-size: 22px; line-height: 1; }
+  .stab-label { color: #fff; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-align: center; line-height: 1.2; }
+  .stab-toggle {
+    width: 44px; height: 24px; border-radius: 12px; border: none; cursor: pointer;
+    background: #333; position: relative; transition: background 0.2s;
+  }
+  .stab-toggle.on { background: #00e87b; }
+  .stab-toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 20px; height: 20px; border-radius: 50%; background: #fff;
+    transition: transform 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  .stab-toggle.on::after { transform: translateX(20px); }
+  .stab-status {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .stab-status.active { color: #00e87b; }
+  .stab-status.off { color: #666; }
+
   /* ── Review Screen ── */
   #review {
     display: none; min-height: 100vh; min-height: 100dvh;
@@ -197,6 +224,7 @@
       <p><b>3.</b> Tap LAP each time a lap completes</p>
       <p><b>4.</b> Auto-stops at final lap, or tap STOP</p>
       <p><b>5.</b> Review &amp; download video with splits baked in</p>
+      <p style="margin-top:10px;color:#555;font-size:12px">💡 Enable <b style="color:#00e87b">STAB</b> on the camera screen to reduce hand shake (uses phone gyroscope, crops in ~15%)</p>
     </div>
   </div>
 </div>
@@ -214,6 +242,14 @@
     <input type="range" id="zoom-slider" min="100" max="400" value="100" step="10"
            oninput="onZoom(this.value)">
     <div class="zlabel">ZOOM</div>
+  </div>
+
+  <!-- Stabilization toggle -->
+  <div class="stab-wrap" id="stab-wrap">
+    <div class="stab-icon">📷</div>
+    <div class="stab-label">STAB</div>
+    <button class="stab-toggle" id="stab-toggle" onclick="toggleStab()"></button>
+    <div class="stab-status off" id="stab-status">OFF</div>
   </div>
 
   <div class="ctrl-bar" id="ctrl-bar"></div>
@@ -248,6 +284,19 @@ let drawRAF = null;
 let tickRAF = null;
 let zoomLevel = 1.0; // 1.0 = no zoom, 4.0 = max zoom
 
+/* ── Stabilization State ── */
+let stabEnabled = false;
+let stabOffsetX = 0;    // smoothed offset in pixels (canvas coords)
+let stabOffsetY = 0;
+let stabRawX = 0;       // raw accumulated gyro offset
+let stabRawY = 0;
+let stabLastTime = null;
+const STAB_SMOOTHING = 0.08;    // lower = smoother but more lag
+const STAB_BUFFER = 0.15;       // 15% crop buffer for stabilization room
+const STAB_SENSITIVITY = 4.0;   // gyro degrees → pixel multiplier
+const STAB_DECAY = 0.98;        // slowly recenter when still
+let motionListenerActive = false;
+
 /* ── Helpers ── */
 function fmt(ms) {
   const m = Math.floor(ms / 60000);
@@ -281,6 +330,88 @@ function onZoom(val) {
   document.getElementById("zoom-level").textContent = zoomLevel.toFixed(1) + "×";
 }
 
+/* ── Stabilization ── */
+function toggleStab() {
+  stabEnabled = !stabEnabled;
+  const btn = document.getElementById("stab-toggle");
+  const status = document.getElementById("stab-status");
+  btn.classList.toggle("on", stabEnabled);
+  status.textContent = stabEnabled ? "ON" : "OFF";
+  status.className = "stab-status " + (stabEnabled ? "active" : "off");
+
+  if (stabEnabled) {
+    startMotionListener();
+  } else {
+    stabOffsetX = 0;
+    stabOffsetY = 0;
+    stabRawX = 0;
+    stabRawY = 0;
+  }
+}
+
+function handleDeviceMotion(e) {
+  if (!stabEnabled) return;
+  const rr = e.rotationRate;
+  if (!rr) return;
+
+  const now = performance.now();
+  if (stabLastTime === null) { stabLastTime = now; return; }
+  const dt = (now - stabLastTime) / 1000; // seconds
+  stabLastTime = now;
+  if (dt > 0.2) return; // skip big gaps
+
+  // rotationRate is in deg/s — integrate to get angular displacement
+  // alpha = z-axis, beta = x-axis (pitch), gamma = y-axis (yaw)
+  // For a phone held upright filming landscape:
+  // gamma (yaw) → horizontal shake
+  // beta (pitch) → vertical shake
+  const gyroX = (rr.gamma || 0) * dt; // degrees of horizontal rotation
+  const gyroY = (rr.beta || 0) * dt;  // degrees of vertical rotation
+
+  // Accumulate raw offset (this is what the phone "moved")
+  stabRawX += gyroX * STAB_SENSITIVITY;
+  stabRawY += gyroY * STAB_SENSITIVITY;
+
+  // Decay toward center to prevent drift
+  stabRawX *= STAB_DECAY;
+  stabRawY *= STAB_DECAY;
+}
+
+async function startMotionListener() {
+  if (motionListenerActive) return;
+
+  // iOS 13+ requires permission
+  if (typeof DeviceMotionEvent !== 'undefined' &&
+      typeof DeviceMotionEvent.requestPermission === 'function') {
+    try {
+      const perm = await DeviceMotionEvent.requestPermission();
+      if (perm !== 'granted') {
+        alert('Motion sensor permission is required for stabilization. Please allow and try again.');
+        stabEnabled = false;
+        document.getElementById("stab-toggle").classList.remove("on");
+        document.getElementById("stab-status").textContent = "OFF";
+        document.getElementById("stab-status").className = "stab-status off";
+        return;
+      }
+    } catch (e) {
+      alert('Could not request motion permission. Stabilization unavailable.');
+      stabEnabled = false;
+      document.getElementById("stab-toggle").classList.remove("on");
+      document.getElementById("stab-status").textContent = "OFF";
+      document.getElementById("stab-status").className = "stab-status off";
+      return;
+    }
+  }
+
+  window.addEventListener('devicemotion', handleDeviceMotion, { passive: true });
+  motionListenerActive = true;
+  stabLastTime = null;
+  stabRawX = 0;
+  stabRawY = 0;
+  stabOffsetX = 0;
+  stabOffsetY = 0;
+}
+
 /* ── Show / hide screens ── */
 function showScreen(id) {
   ["setup", "camera-screen", "review"].forEach(s => {
@@ -297,7 +428,13 @@ async function prepareCamera() {
   try {
     if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: camFacing, width: { ideal: 1280 }, height: { ideal: 720 } },
+      video: {
+        facingMode: camFacing,
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        // Request hardware stabilization if available (Chrome Android)
+        videoStabilization: { ideal: true }
+      },
       audio: true
     });
     const vid = document.getElementById("live-video");
@@ -312,6 +449,7 @@ async function prepareCamera() {
     zoomLevel = 1.0;
     document.getElementById("zoom-slider").value = 100;
     document.getElementById("zoom-level").textContent = "1.0×";
+    stabOffsetX = 0; stabOffsetY = 0; stabRawX = 0; stabRawY = 0; stabLastTime = null;
 
     showScreen("camera-screen");
     setupCanvas();
@@ -337,13 +475,44 @@ function startDrawLoop() {
   const w = canvas.width, h = canvas.height;
 
   function draw() {
-    // Video frame with zoom (crop center of source)
     const vw = vid.videoWidth || w;
     const vh = vid.videoHeight || h;
-    const cropW = vw / zoomLevel;
-    const cropH = vh / zoomLevel;
-    const sx = (vw - cropW) / 2;
-    const sy = (vh - cropH) / 2;
+
+    // Effective zoom: when stabilization is on, we add a buffer crop
+    const stabZoom = stabEnabled ? STAB_BUFFER : 0;
+    const effectiveZoom = zoomLevel * (1 + stabZoom);
+
+    const cropW = vw / effectiveZoom;
+    const cropH = vh / effectiveZoom;
+
+    // Center crop position
+    let sx = (vw - cropW) / 2;
+    let sy = (vh - cropH) / 2;
+
+    // Apply stabilization offset
+    if (stabEnabled) {
+      // Smooth the offset (exponential moving average)
+      stabOffsetX += (stabRawX - stabOffsetX) * STAB_SMOOTHING;
+      stabOffsetY += (stabRawY - stabOffsetY) * STAB_SMOOTHING;
+
+      // Convert pixel offset to source-image coordinates
+      const scaleX = vw / w;
+      const scaleY = vh / h;
+      const maxShiftX = (vw - cropW) / 2 * 0.85; // leave some margin
+      const maxShiftY = (vh - cropH) / 2 * 0.85;
+
+      // Clamp offsets — negate to counter the motion
+      const ox = Math.max(-maxShiftX, Math.min(maxShiftX, -stabOffsetX * scaleX));
+      const oy = Math.max(-maxShiftY, Math.min(maxShiftY, -stabOffsetY * scaleY));
+
+      sx += ox;
+      sy += oy;
+    }
+
+    // Clamp to valid source region
+    sx = Math.max(0, Math.min(sx, vw - cropW));
+    sy = Math.max(0, Math.min(sy, vh - cropH));
+
     ctx.drawImage(vid, sx, sy, cropW, cropH, 0, 0, w, h);
 
     // Top bar
