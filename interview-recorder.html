@@ -114,6 +114,8 @@
     font-size: 12px; font-weight: 600; font-family: 'DM Mono', monospace; border: none;
   }
 
+  .btn-export:disabled { opacity: 0.5; cursor: wait; }
+
   /* How it works */
   .info-card {
     margin-top: 32px; background: #111; border-radius: 16px;
@@ -172,7 +174,10 @@
 
     <!-- Playback -->
     <div class="playback" id="playback" style="display:none">
-      <div class="section-label">FULL RECORDING</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <div class="section-label" style="margin-bottom:0">FULL RECORDING</div>
+        <button class="btn-export" style="background:#22222288; color:#888; border:1px solid #333; font-size:11px; padding:4px 10px;" onclick="exportFull()">↓ Save Full</button>
+      </div>
       <audio id="audioPlayer" controls></audio>
     </div>
 
@@ -218,6 +223,8 @@ let audioStream = null;
 let audioContext = null;
 let analyser = null;
 let animFrame = null;
+let recordedBlob = null;
+let diarSegments = [];
 
 // ─── DOM Refs ────────────────────────────────────────────────────────────────
 const $dot = document.getElementById('statusDot');
@@ -350,6 +357,7 @@ async function startRecording() {
 
     mediaRecorder.onstop = () => {
       const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      recordedBlob = blob;
       const url = URL.createObjectURL(blob);
       $audioPlayer.src = url;
     };
@@ -408,6 +416,8 @@ function stopRecording() {
 function resetRecording() {
   state = 'idle';
   elapsed = 0;
+  recordedBlob = null;
+  diarSegments = [];
   $playback.style.display = 'none';
   $timeline.style.display = 'none';
   $tracks.style.display = 'none';
@@ -429,6 +439,7 @@ function simulateDiarization() {
     t += len;
     spk = spk === 0 ? 1 : Math.random() > 0.3 ? 0 : Math.min(spk + 1, 2);
   }
+  diarSegments = segments;
 
   // Show playback
   $playback.style.display = 'block';
@@ -472,7 +483,7 @@ function simulateDiarization() {
         <div class="track-name">Speaker ${spk + 1}</div>
         <div class="track-meta">${spkSegs.length} segments · ${formatTime(Math.round(totalDur))} total</div>
       </div>
-      <button class="btn-export" style="background:${color}22; color:${color}; border: 1px solid ${color}55;">↓ Export</button>
+      <button class="btn-export" style="background:${color}22; color:${color}; border: 1px solid ${color}55;" onclick="exportSpeaker(${spk})">↓ Export</button>
     `;
     $trackList.appendChild(div);
   });
@@ -482,7 +493,142 @@ function simulateDiarization() {
   updateUI();
 }
 
+// ─── Audio Export ────────────────────────────────────────────────────────────
+
+function encodeWAV(audioBuffer) {
+  const numChannels = audioBuffer.numberOfChannels;
+  const sampleRate = audioBuffer.sampleRate;
+  const length = audioBuffer.length * numChannels;
+  const buffer = new ArrayBuffer(44 + length * 2);
+  const view = new DataView(buffer);
+
+  function writeString(offset, str) {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  }
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + length * 2, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numChannels * 2, true);
+  view.setUint16(32, numChannels * 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, length * 2, true);
+
+  // Interleave channels
+  let offset = 44;
+  if (numChannels === 1) {
+    const chan = audioBuffer.getChannelData(0);
+    for (let i = 0; i < chan.length; i++) {
+      const s = Math.max(-1, Math.min(1, chan[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      offset += 2;
+    }
+  } else {
+    const channels = [];
+    for (let c = 0; c < numChannels; c++) channels.push(audioBuffer.getChannelData(c));
+    for (let i = 0; i < audioBuffer.length; i++) {
+      for (let c = 0; c < numChannels; c++) {
+        const s = Math.max(-1, Math.min(1, channels[c][i]));
+        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        offset += 2;
+      }
+    }
+  }
+
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+
+async function exportSpeaker(speakerIndex) {
+  if (!recordedBlob) {
+    alert('No recording available.');
+    return;
+  }
+
+  const speakerSegs = diarSegments.filter(s => s.speaker === speakerIndex);
+  if (!speakerSegs.length) return;
+
+  // Find the export button and show loading state
+  const buttons = document.querySelectorAll('.btn-export');
+  const btnIndex = [...new Set(diarSegments.map(s => s.speaker))].sort().indexOf(speakerIndex);
+  const btn = buttons[btnIndex];
+  if (btn) { btn.textContent = '⟳ Processing...'; btn.disabled = true; }
+
+  try {
+    // Decode the full recording
+    const arrayBuf = await recordedBlob.arrayBuffer();
+    const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 1, 44100);
+    const decoded = await offlineCtx.decodeAudioData(arrayBuf);
+
+    const sampleRate = decoded.sampleRate;
+    const numChannels = decoded.numberOfChannels;
+
+    // Calculate total length for the speaker's segments
+    let totalSamples = 0;
+    for (const seg of speakerSegs) {
+      const startSample = Math.floor(seg.start * sampleRate);
+      const endSample = Math.min(Math.floor(seg.end * sampleRate), decoded.length);
+      totalSamples += (endSample - startSample);
+    }
+
+    // Create a new buffer with only this speaker's segments
+    const offCtx2 = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(numChannels, totalSamples, sampleRate);
+    const outputBuffer = offCtx2.createBuffer(numChannels, totalSamples, sampleRate);
+
+    let writeOffset = 0;
+    for (const seg of speakerSegs) {
+      const startSample = Math.floor(seg.start * sampleRate);
+      const endSample = Math.min(Math.floor(seg.end * sampleRate), decoded.length);
+      const segLength = endSample - startSample;
+
+      for (let ch = 0; ch < numChannels; ch++) {
+        const srcData = decoded.getChannelData(ch);
+        const dstData = outputBuffer.getChannelData(ch);
+        for (let i = 0; i < segLength; i++) {
+          dstData[writeOffset + i] = srcData[startSample + i];
+        }
+      }
+      writeOffset += segLength;
+    }
+
+    // Encode as WAV and download
+    const wavBlob = encodeWAV(outputBuffer);
+    const url = URL.createObjectURL(wavBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `speaker-${speakerIndex + 1}.wav`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+  } catch (err) {
+    console.error('Export failed:', err);
+    alert('Export failed: ' + err.message);
+  } finally {
+    if (btn) { btn.textContent = '↓ Export'; btn.disabled = false; }
+  }
+}
+
 // ─── Init ────────────────────────────────────────────────────────────────────
+
+function exportFull() {
+  if (!recordedBlob) { alert('No recording available.'); return; }
+  const url = URL.createObjectURL(recordedBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'full-recording.webm';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 window.addEventListener('resize', () => { initCanvas(); });
 initCanvas();
 drawWaveform();
