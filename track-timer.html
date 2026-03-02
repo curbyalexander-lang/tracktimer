@@ -7,296 +7,187 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0b0b10;
-    --card: #14141c;
-    --border: #23233a;
-    --accent: #00e87b;
-    --accent2: #00c264;
-    --red: #ff4455;
-    --blue: #3b8bff;
-    --yellow: #ffb800;
-    --text: #e8e8f0;
-    --dim: #6a6a80;
+    --bg: #0b0b10; --card: #14141c; --border: #23233a;
+    --accent: #00e87b; --accent2: #00c264;
+    --red: #ff4455; --blue: #3b8bff; --yellow: #ffb800;
+    --text: #e8e8f0; --dim: #6a6a80;
     --mono: 'JetBrains Mono', monospace;
     --sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   }
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; min-height: 100dvh; }
-  button { font-family: var(--sans); cursor: pointer; }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { font-family:var(--sans); background:var(--bg); color:var(--text); min-height:100vh; min-height:100dvh; }
+  button { font-family:var(--sans); cursor:pointer; }
+  input[type=text], input[type=date], input[type=number] {
+    width:100%; padding:10px 12px; background:rgba(255,255,255,0.04);
+    border:1px solid var(--border); border-radius:8px;
+    color:#fff; font-family:var(--sans); font-size:14px; outline:none;
+  }
+  input:focus { border-color:var(--accent); }
+  input::placeholder { color:var(--dim); }
 
-  /* ── Shared ── */
-  .screen { display: none; min-height: 100vh; min-height: 100dvh; }
-  .screen.active { display: flex; }
-  .centered { align-items: center; justify-content: center; padding: 16px; }
+  .screen { display:none; min-height:100vh; min-height:100dvh; }
+  .screen.active { display:flex; }
+  .centered { align-items:center; justify-content:center; padding:16px; }
 
-  .card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 20px;
-    padding: 28px 22px; max-width: 440px; width: 100%;
-  }
-  .label {
-    display: block; text-align: left; color: var(--accent); font-size: 11px;
-    font-weight: 700; letter-spacing: 2px; margin-bottom: 6px; margin-top: 18px;
-  }
-  .label:first-of-type { margin-top: 0; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:24px 20px; max-width:440px; width:100%; }
+  .label { display:block; text-align:left; color:var(--accent); font-size:10px; font-weight:700; letter-spacing:2px; margin-bottom:5px; margin-top:14px; }
 
-  /* ── Setup ── */
-  .logo { text-align: center; margin-bottom: 20px; }
-  .logo-icon { font-size: 44px; }
-  .logo h1 { font-size: 24px; font-weight: 800; letter-spacing: 3px; margin: 4px 0 2px; }
-  .logo p { color: var(--dim); font-size: 13px; }
+  /* Setup */
+  .logo { text-align:center; margin-bottom:16px; }
+  .logo-icon { font-size:40px; }
+  .logo h1 { font-size:22px; font-weight:800; letter-spacing:3px; margin:4px 0 2px; }
+  .logo p { color:var(--dim); font-size:12px; }
 
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .opt-btn {
-    background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px;
-    padding: 12px 8px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px;
-  }
-  .opt-btn strong { color: #fff; font-size: 15px; }
-  .opt-btn span { color: var(--dim); font-size: 11px; }
-  .opt-btn.active { border-color: var(--accent); background: rgba(0,232,123,0.06); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .opt-btn { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:10px 6px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .opt-btn strong { color:#fff; font-size:14px; }
+  .opt-btn span { color:var(--dim); font-size:10px; }
+  .opt-btn.active { border-color:var(--accent); background:rgba(0,232,123,0.06); }
 
-  .upload-zone {
-    margin-top: 8px; border: 2px dashed var(--border); border-radius: 14px;
-    padding: 28px 16px; text-align: center; cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
-    position: relative; overflow: hidden;
-  }
-  .upload-zone:hover, .upload-zone.dragover {
-    border-color: var(--accent); background: rgba(0,232,123,0.04);
-  }
-  .upload-zone .uz-icon { font-size: 32px; margin-bottom: 6px; }
-  .upload-zone .uz-text { color: var(--dim); font-size: 14px; line-height: 1.5; }
-  .upload-zone .uz-text b { color: var(--accent); }
-  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-  .upload-zone.has-file { border-style: solid; border-color: var(--accent); background: rgba(0,232,123,0.04); }
-  .file-info { display: flex; align-items: center; gap: 10px; justify-content: center; }
-  .file-info .fi-name { color: #fff; font-weight: 600; font-size: 14px; }
-  .file-info .fi-size { color: var(--dim); font-size: 12px; }
-  .file-info .fi-remove {
-    background: rgba(255,68,85,0.15); border: none; border-radius: 6px;
-    color: var(--red); font-size: 12px; font-weight: 700; padding: 4px 10px; margin-left: 6px;
-  }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 
-  .primary-btn {
-    display: block; width: 100%; padding: 16px; margin-top: 20px;
-    background: linear-gradient(135deg, var(--accent2), var(--accent));
-    border: none; border-radius: 12px; color: #000; font-size: 15px; font-weight: 800;
-    letter-spacing: 2px; box-shadow: 0 4px 24px rgba(0,232,123,0.2);
-  }
-  .primary-btn:disabled { opacity: 0.35; pointer-events: none; }
+  .upload-zone { margin-top:6px; border:2px dashed var(--border); border-radius:12px; padding:22px 14px; text-align:center; cursor:pointer; position:relative; overflow:hidden; transition:border-color .2s; }
+  .upload-zone:hover, .upload-zone.dragover { border-color:var(--accent); background:rgba(0,232,123,0.04); }
+  .upload-zone .uz-icon { font-size:28px; margin-bottom:4px; }
+  .upload-zone .uz-text { color:var(--dim); font-size:13px; line-height:1.4; }
+  .upload-zone .uz-text b { color:var(--accent); }
+  .upload-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .upload-zone.has-file { border-style:solid; border-color:var(--accent); background:rgba(0,232,123,0.04); }
+  .file-info { display:flex; align-items:center; gap:8px; justify-content:center; }
+  .file-info .fi-name { color:#fff; font-weight:600; font-size:13px; }
+  .file-info .fi-size { color:var(--dim); font-size:11px; }
+  .file-info .fi-remove { background:rgba(255,68,85,0.15); border:none; border-radius:6px; color:var(--red); font-size:11px; font-weight:700; padding:3px 8px; margin-left:4px; }
 
-  .help { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 14px; text-align: left; }
-  .help p { color: var(--dim); font-size: 12.5px; margin: 5px 0; line-height: 1.5; }
-  .help b { color: var(--accent); }
+  .primary-btn { display:block; width:100%; padding:15px; margin-top:16px; background:linear-gradient(135deg,var(--accent2),var(--accent)); border:none; border-radius:12px; color:#000; font-size:14px; font-weight:800; letter-spacing:2px; box-shadow:0 4px 20px rgba(0,232,123,0.2); }
+  .primary-btn:disabled { opacity:0.35; pointer-events:none; }
 
-  /* ── Timing Screen ── */
-  #timing-screen {
-    flex-direction: column; padding: 0;
-    background: #000; height: 100vh; height: 100dvh;
-    overflow: hidden;
-  }
-  .video-wrap {
-    position: relative; width: 100%; flex: 1 1 0%;
-    min-height: 0; /* critical: allows flex child to shrink */
-    display: flex; align-items: center; justify-content: center;
-    background: #000; overflow: hidden;
-  }
-  .video-wrap video {
-    width: 100%; height: 100%; object-fit: contain; display: block;
-  }
-  /* Timer overlay on video */
-  .timer-overlay {
-    position: absolute; top: 0; left: 0; right: 0;
-    padding: 6px 12px 8px;
-    background: linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.3) 85%, transparent 100%);
-    pointer-events: none; z-index: 1;
-  }
-  .timer-overlay .to-row { display: flex; justify-content: space-between; align-items: center; }
-  .timer-overlay .to-event { color: #aaa; font-size: 11px; font-weight: 700; }
-  .timer-overlay .to-lap { color: #aaa; font-size: 11px; font-weight: 700; }
-  .timer-overlay .to-time {
-    font-family: var(--mono); font-size: 34px; font-weight: 800;
-    text-align: center; line-height: 1.1; margin-top: 1px;
-    text-shadow: 0 2px 12px rgba(0,0,0,0.9);
-  }
-  .timer-overlay .to-hint {
-    text-align: center; font-size: 12px; font-weight: 700; margin-top: 1px;
-  }
+  .help { margin-top:16px; border-top:1px solid var(--border); padding-top:12px; text-align:left; }
+  .help p { color:var(--dim); font-size:11.5px; margin:4px 0; line-height:1.4; }
+  .help b { color:var(--accent); }
 
-  /* Splits sidebar on video */
-  .splits-overlay {
-    position: absolute; top: 64px; right: 6px; z-index: 1;
-    background: rgba(0,0,0,0.6); border-radius: 8px; padding: 6px 8px;
-    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-    pointer-events: none; min-width: 155px;
-  }
-  .splits-overlay .so-title { color: var(--dim); font-size: 9px; font-weight: 700; letter-spacing: 1px; margin-bottom: 2px; }
-  .so-row { display: flex; justify-content: space-between; gap: 5px; padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
-  .so-row:last-child { border: none; }
-  .so-row .so-lap { color: #aaa; font-size: 11px; min-width: 20px; }
-  .so-row .so-split { color: var(--accent); font-family: var(--mono); font-size: 12px; font-weight: 700; }
-  .so-row .so-laptime { color: #777; font-family: var(--mono); font-size: 10px; }
+  /* Timing */
+  #timing-screen { flex-direction:column; padding:0; background:#000; height:100vh; height:100dvh; overflow:hidden; }
+  .video-wrap { position:relative; width:100%; flex:1 1 0%; min-height:0; display:flex; align-items:center; justify-content:center; background:#000; overflow:hidden; }
+  .video-wrap video { width:100%; height:100%; object-fit:contain; display:block; }
 
-  /* Controls panel below video */
-  .controls-panel {
-    background: var(--card); border-top: 1px solid var(--border);
-    padding: 10px 16px calc(12px + env(safe-area-inset-bottom, 4px)); width: 100%;
-    display: flex; flex-direction: column; gap: 8px;
-    flex-shrink: 0; /* never shrink — always visible */
-  }
-  .ctrl-row { display: flex; gap: 16px; align-items: center; justify-content: center; }
+  .timer-overlay { position:absolute; top:0; left:0; right:0; padding:5px 10px 6px; background:linear-gradient(180deg,rgba(0,0,0,0.8) 0%,rgba(0,0,0,0.3) 85%,transparent 100%); pointer-events:none; z-index:1; }
+  .timer-overlay .to-row { display:flex; justify-content:space-between; align-items:center; }
+  .timer-overlay .to-meta { color:#888; font-size:10px; font-weight:600; }
+  .timer-overlay .to-time { font-family:var(--mono); font-size:32px; font-weight:800; text-align:center; line-height:1; margin-top:1px; text-shadow:0 2px 12px rgba(0,0,0,0.9); }
+  .timer-overlay .to-runner { text-align:center; color:#ddd; font-size:12px; font-weight:700; margin-top:1px; text-shadow:0 1px 6px rgba(0,0,0,0.8); }
+  .timer-overlay .to-pace { text-align:center; font-size:11px; font-weight:700; margin-top:1px; }
+  .timer-overlay .to-hint { text-align:center; font-size:11px; font-weight:700; margin-top:1px; }
 
-  .btn-start {
-    width: 76px; height: 76px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent2), var(--accent));
-    border: 3px solid rgba(255,255,255,0.15);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    box-shadow: 0 0 24px rgba(0,232,123,0.35);
-    font-family: var(--sans);
-  }
-  .btn-start .bi { font-size: 24px; color: #000; margin-left: 3px; line-height: 1; }
-  .btn-start .bt { font-size: 9px; font-weight: 800; color: #000; letter-spacing: 1px; }
+  .splits-overlay { position:absolute; top:58px; right:6px; z-index:1; background:rgba(0,0,0,0.6); border-radius:8px; padding:5px 7px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); pointer-events:none; min-width:145px; }
+  .splits-overlay .so-title { color:var(--dim); font-size:8px; font-weight:700; letter-spacing:1px; margin-bottom:2px; }
+  .so-row { display:flex; justify-content:space-between; gap:4px; padding:2px 0; border-bottom:1px solid rgba(255,255,255,0.07); }
+  .so-row:last-child { border:none; }
+  .so-row .so-lap { color:#aaa; font-size:10px; min-width:18px; }
+  .so-row .so-split { color:var(--accent); font-family:var(--mono); font-size:11px; font-weight:700; }
+  .so-row .so-delta { font-family:var(--mono); font-size:9px; font-weight:700; min-width:48px; text-align:right; }
 
-  .btn-lap {
-    width: 76px; height: 76px; border-radius: 50%;
-    background: linear-gradient(135deg, #0066dd, var(--blue));
-    border: 3px solid rgba(255,255,255,0.12);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    box-shadow: 0 0 20px rgba(59,139,255,0.3);
-    font-family: var(--sans);
-  }
-  .btn-lap .bt { font-size: 15px; font-weight: 800; color: #fff; letter-spacing: 1px; }
-  .btn-lap .bn { font-size: 10px; color: rgba(255,255,255,0.55); }
+  .controls-panel { background:var(--card); border-top:1px solid var(--border); padding:6px 12px calc(8px + env(safe-area-inset-bottom,4px)); width:100%; display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
+  .ctrl-row { display:flex; gap:12px; align-items:center; justify-content:center; }
+  .ctrl-aux { display:flex; gap:6px; align-items:center; justify-content:center; flex-wrap:wrap; }
 
-  .btn-stop {
-    width: 56px; height: 56px; border-radius: 50%;
-    background: linear-gradient(135deg, #cc0000, var(--red));
-    border: 3px solid rgba(255,255,255,0.12);
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 0 14px rgba(255,0,0,0.25);
-    font-size: 10px; font-weight: 800; color: #fff; letter-spacing: 1px;
-    font-family: var(--sans);
-  }
+  .btn-start { width:70px; height:70px; border-radius:50%; background:linear-gradient(135deg,var(--accent2),var(--accent)); border:3px solid rgba(255,255,255,0.15); display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow:0 0 20px rgba(0,232,123,0.3); }
+  .btn-start .bi { font-size:22px; color:#000; margin-left:3px; line-height:1; }
+  .btn-start .bt { font-size:8px; font-weight:800; color:#000; letter-spacing:1px; }
 
-  .btn-back {
-    background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 8px;
-    color: var(--dim); padding: 7px 14px; font-size: 13px;
-  }
-  .btn-review {
-    background: linear-gradient(135deg, var(--accent2), var(--accent));
-    border: none; border-radius: 10px;
-    color: #000; padding: 12px 24px; font-size: 14px; font-weight: 800; letter-spacing: 1px;
-  }
+  .btn-lap { width:70px; height:70px; border-radius:50%; background:linear-gradient(135deg,#0066dd,var(--blue)); border:3px solid rgba(255,255,255,0.12); display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow:0 0 18px rgba(59,139,255,0.3); }
+  .btn-lap .bt { font-size:14px; font-weight:800; color:#fff; letter-spacing:1px; }
+  .btn-lap .bn { font-size:9px; color:rgba(255,255,255,0.5); }
 
-  .phase-hint {
-    text-align: center; color: var(--dim); font-size: 11px; line-height: 1.3;
-  }
-  .phase-hint b { color: var(--yellow); }
+  .btn-stop { width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,#cc0000,var(--red)); border:3px solid rgba(255,255,255,0.12); display:flex; align-items:center; justify-content:center; box-shadow:0 0 12px rgba(255,0,0,0.25); font-size:9px; font-weight:800; color:#fff; letter-spacing:1px; }
 
-  /* ── Review Screen ── */
-  #review-screen { flex-direction: column; padding: 0; }
-  .review-top {
-    background: var(--card); border-bottom: 1px solid var(--border);
-    padding: 20px 16px; text-align: center;
-  }
-  .review-top .rt-label { color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: 3px; }
-  .review-top .rt-time { font-family: var(--mono); font-size: 40px; font-weight: 800; color: #fff; margin: 4px 0; }
-  .review-top .rt-badge {
-    display: inline-block; background: rgba(0,232,123,0.1); border: 1px solid rgba(0,232,123,0.25);
-    border-radius: 6px; padding: 2px 12px; color: var(--accent); font-size: 12px; font-weight: 700;
-  }
+  .btn-sm { padding:5px 10px; border-radius:6px; font-size:11px; font-weight:700; border:1px solid var(--border); background:rgba(255,255,255,0.05); color:var(--dim); }
+  .btn-sm.active { border-color:var(--accent); color:var(--accent); background:rgba(0,232,123,0.08); }
+  .btn-sm.undo { border-color:var(--yellow); color:var(--yellow); }
 
-  .review-body { flex: 1; overflow-y: auto; padding: 16px; }
+  .btn-back { background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:var(--dim); padding:6px 12px; font-size:12px; }
+  .btn-review { background:linear-gradient(135deg,var(--accent2),var(--accent)); border:none; border-radius:10px; color:#000; padding:10px 20px; font-size:13px; font-weight:800; letter-spacing:1px; }
 
-  .review-video-wrap { margin-bottom: 16px; }
-  .review-video-wrap video { width: 100%; border-radius: 12px; background: #000; max-height: 240px; }
+  .phase-hint { text-align:center; color:var(--dim); font-size:10px; line-height:1.2; }
+  .phase-hint b { color:var(--yellow); }
 
-  .review-table { margin-bottom: 16px; }
-  .rt-hdr { display: flex; padding: 8px 10px; border-bottom: 1px solid var(--border); }
-  .rt-hdr span { flex: 1; color: var(--dim); font-size: 11px; font-weight: 700; letter-spacing: 1px; }
-  .rt-row { display: flex; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.04); }
-  .rt-row span { flex: 1; font-size: 14px; font-weight: 600; color: var(--text); }
-  .rt-row .mono { font-family: var(--mono); }
-  .rt-row.fast { background: rgba(0,232,123,0.05); }
-  .rt-row.slow { background: rgba(255,68,85,0.04); }
+  /* Review */
+  #review-screen { flex-direction:column; padding:0; }
+  .review-top { background:var(--card); border-bottom:1px solid var(--border); padding:16px; text-align:center; }
+  .review-top .rt-label { color:var(--accent); font-size:10px; font-weight:800; letter-spacing:3px; }
+  .review-top .rt-runner { font-size:18px; font-weight:700; color:#fff; margin:2px 0; }
+  .review-top .rt-time { font-family:var(--mono); font-size:36px; font-weight:800; color:#fff; margin:2px 0; }
+  .review-top .rt-badge { display:inline-block; background:rgba(0,232,123,0.1); border:1px solid rgba(0,232,123,0.25); border-radius:6px; padding:2px 10px; color:var(--accent); font-size:11px; font-weight:700; }
+  .review-top .rt-meet { color:var(--dim); font-size:11px; margin-top:4px; }
 
-  .stats-grid { display: flex; gap: 6px; margin-bottom: 16px; }
-  .stat-card {
-    flex: 1; background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-    border-radius: 10px; padding: 10px 6px; text-align: center;
-  }
-  .stat-card .sc-label { color: var(--dim); font-size: 10px; font-weight: 700; letter-spacing: 1px; }
-  .stat-card .sc-val { font-family: var(--mono); font-size: 15px; font-weight: 700; margin-top: 3px; }
+  .review-body { flex:1; overflow-y:auto; padding:14px; }
+  .review-video-wrap { margin-bottom:14px; }
+  .review-video-wrap video { width:100%; border-radius:12px; background:#000; max-height:220px; }
 
-  .review-actions { display: flex; gap: 10px; padding: 0 0 20px; }
-  .review-actions .ghost-btn {
-    flex: 1; padding: 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--border);
-    border-radius: 12px; color: #fff; font-size: 14px; font-weight: 700;
-  }
-  .review-actions .accent-btn {
-    flex: 1; padding: 14px;
-    background: linear-gradient(135deg, var(--accent2), var(--accent));
-    border: none; border-radius: 12px; color: #000; font-size: 14px; font-weight: 800; letter-spacing: 1px;
-  }
+  .review-table { margin-bottom:14px; }
+  .rt-hdr { display:flex; padding:7px 8px; border-bottom:1px solid var(--border); }
+  .rt-hdr span { flex:1; color:var(--dim); font-size:10px; font-weight:700; letter-spacing:1px; }
+  .rt-row { display:flex; padding:8px; border-bottom:1px solid rgba(255,255,255,0.04); }
+  .rt-row span { flex:1; font-size:13px; font-weight:600; color:var(--text); }
+  .rt-row .mono { font-family:var(--mono); }
+  .rt-row.fast { background:rgba(0,232,123,0.05); }
+  .rt-row.slow { background:rgba(255,68,85,0.04); }
 
-  /* ── Export Modal ── */
-  .export-modal {
-    display: none; position: fixed; inset: 0; z-index: 100;
-    background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-    align-items: center; justify-content: center; padding: 20px;
-  }
-  .export-modal.active { display: flex; }
-  .export-box {
-    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-    padding: 24px; max-width: 360px; width: 100%; text-align: center;
-  }
-  .export-box h3 { font-size: 16px; font-weight: 800; margin-bottom: 12px; letter-spacing: 1px; }
-  .export-progress-bar {
-    width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px;
-    overflow: hidden; margin: 12px 0;
-  }
-  .export-progress-fill {
-    height: 100%; background: var(--accent); border-radius: 4px;
-    transition: width 0.3s ease;
-  }
-  .export-status { color: var(--dim); font-size: 13px; margin-bottom: 12px; }
-  .export-cancel {
-    background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 8px;
-    color: var(--dim); padding: 8px 20px; font-size: 13px; font-family: var(--sans); cursor: pointer;
-  }
+  .stats-grid { display:flex; gap:5px; margin-bottom:14px; }
+  .stat-card { flex:1; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:8px 4px; text-align:center; }
+  .stat-card .sc-label { color:var(--dim); font-size:9px; font-weight:700; letter-spacing:1px; }
+  .stat-card .sc-val { font-family:var(--mono); font-size:14px; font-weight:700; margin-top:2px; }
 
-  /* Export buttons in review */
-  .export-row {
-    display: flex; gap: 8px; margin-bottom: 12px;
-  }
-  .export-btn {
-    flex: 1; padding: 12px 8px; border-radius: 10px; border: 1px solid var(--border);
-    background: rgba(255,255,255,0.04); color: var(--text); font-size: 13px; font-weight: 700;
-    font-family: var(--sans); cursor: pointer; display: flex; align-items: center;
-    justify-content: center; gap: 6px; transition: background 0.15s;
-  }
-  .export-btn:hover { background: rgba(255,255,255,0.08); }
-  .export-btn .eicon { font-size: 16px; }
+  .export-row { display:flex; gap:8px; margin-bottom:10px; }
+  .export-btn { flex:1; padding:11px 6px; border-radius:10px; border:1px solid var(--border); background:rgba(255,255,255,0.04); color:var(--text); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:5px; }
 
-  /* Animations */
-  @keyframes pulse-green { 0%,100% { box-shadow: 0 0 20px rgba(0,232,123,0.3); } 50% { box-shadow: 0 0 40px rgba(0,232,123,0.5); } }
-  .pulse { animation: pulse-green 1.8s ease-in-out infinite; }
-  @keyframes flash-lap { 0% { background: rgba(59,139,255,0.25); } 100% { background: transparent; } }
-  .flash { animation: flash-lap 0.4s ease-out; }
+  .review-actions { display:flex; gap:8px; padding:0 0 20px; }
+  .review-actions .ghost-btn { flex:1; padding:13px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:12px; color:#fff; font-size:13px; font-weight:700; }
+  .review-actions .accent-btn { flex:1; padding:13px; background:linear-gradient(135deg,var(--accent2),var(--accent)); border:none; border-radius:12px; color:#000; font-size:13px; font-weight:800; letter-spacing:1px; }
+
+  /* Export modal */
+  .export-modal { display:none; position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.85); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px; }
+  .export-modal.active { display:flex; }
+  .export-box { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; max-width:360px; width:100%; text-align:center; }
+  .export-box h3 { font-size:15px; font-weight:800; margin-bottom:10px; }
+  .export-progress-bar { width:100%; height:7px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden; margin:10px 0; }
+  .export-progress-fill { height:100%; background:var(--accent); border-radius:4px; transition:width .3s; }
+  .export-status { color:var(--dim); font-size:12px; margin-bottom:10px; }
+  .export-cancel { background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:var(--dim); padding:7px 18px; font-size:12px; }
+
+  @keyframes pulse-green { 0%,100%{box-shadow:0 0 16px rgba(0,232,123,0.3)} 50%{box-shadow:0 0 32px rgba(0,232,123,0.5)} }
+  .pulse { animation:pulse-green 1.8s ease-in-out infinite; }
+  @keyframes flash-lap { 0%{background:rgba(59,139,255,0.25)} 100%{background:transparent} }
+  .flash { animation:flash-lap .4s ease-out; }
 </style>
 </head>
 <body>
 
-<!-- ═══════ SETUP SCREEN ═══════ -->
+<!-- ═══════ SETUP ═══════ -->
 <div class="screen centered active" id="setup-screen">
-  <div class="card">
+  <div class="card" style="max-height:96vh;overflow-y:auto">
     <div class="logo">
       <div class="logo-icon">⏱️</div>
       <h1>TRACK TIMER</h1>
       <p>Upload race video · Mark splits · Analyze laps</p>
     </div>
 
+    <span class="label">RUNNER</span>
+    <input type="text" id="runner-name" placeholder="Athlete name (optional)">
+
+    <span class="label">MEET INFO</span>
+    <div class="row2">
+      <input type="text" id="meet-name" placeholder="Meet name">
+      <input type="date" id="meet-date">
+    </div>
+
     <span class="label">EVENT</span>
     <div class="grid2" id="event-grid"></div>
+
+    <span class="label">TARGET TIME <span style="color:var(--dim);font-weight:400;letter-spacing:0">(optional, in seconds)</span></span>
+    <div class="row2">
+      <input type="number" id="target-time" placeholder="e.g. 300 for 5:00" min="0" step="1">
+      <div style="display:flex;align-items:center;color:var(--dim);font-size:12px" id="target-preview">—</div>
+    </div>
 
     <span class="label">RACE VIDEO</span>
     <div class="upload-zone" id="upload-zone">
@@ -308,44 +199,42 @@
     <button class="primary-btn" id="go-btn" disabled onclick="startTiming()">LOAD VIDEO &amp; TIME</button>
 
     <div class="help">
-      <p><b>1.</b> Choose your event &amp; upload race video</p>
+      <p><b>1.</b> Enter runner &amp; meet info, choose event, upload video</p>
       <p><b>2.</b> Play video, tap <b>START</b> when the gun fires</p>
-      <p><b>3.</b> Tap <b>LAP</b> each time a runner completes a lap</p>
+      <p><b>3.</b> Tap <b>LAP</b> each lap · use <b>UNDO</b> if you misclick</p>
       <p><b>4.</b> Final lap auto-finishes, or tap <b>STOP</b></p>
-      <p><b>5.</b> Review splits, stats &amp; re-watch with overlay</p>
+      <p><b>5.</b> Review splits, pace analysis &amp; export PDF/video</p>
     </div>
   </div>
 </div>
 
-<!-- ═══════ TIMING SCREEN ═══════ -->
+<!-- ═══════ TIMING ═══════ -->
 <div class="screen" id="timing-screen">
   <div class="video-wrap">
     <video id="race-video" playsinline controls></video>
-
-    <!-- Timer overlay -->
     <div class="timer-overlay" id="timer-overlay">
       <div class="to-row">
-        <span class="to-event" id="to-event"></span>
-        <span class="to-lap" id="to-lap"></span>
+        <span class="to-meta" id="to-event"></span>
+        <span class="to-meta" id="to-lap"></span>
       </div>
+      <div class="to-runner" id="to-runner"></div>
       <div class="to-time" id="to-time" style="color:#fff">00:00.00</div>
+      <div class="to-pace" id="to-pace"></div>
       <div class="to-hint" id="to-hint"></div>
     </div>
-
-    <!-- Splits overlay -->
     <div class="splits-overlay" id="splits-overlay" style="display:none"></div>
   </div>
-
-  <!-- Control panel -->
   <div class="controls-panel" id="controls-panel"></div>
 </div>
 
-<!-- ═══════ REVIEW SCREEN ═══════ -->
+<!-- ═══════ REVIEW ═══════ -->
 <div class="screen" id="review-screen">
   <div class="review-top">
     <div class="rt-label">RACE COMPLETE</div>
+    <div class="rt-runner" id="rv-runner"></div>
     <div class="rt-time" id="rv-time"></div>
     <span class="rt-badge" id="rv-event"></span>
+    <div class="rt-meet" id="rv-meet"></div>
   </div>
   <div class="review-body" id="review-body"></div>
 </div>
@@ -353,143 +242,119 @@
 <!-- ═══════ EXPORT MODAL ═══════ -->
 <div class="export-modal" id="export-modal">
   <div class="export-box">
-    <h3 id="export-title">Exporting Video…</h3>
+    <h3 id="export-title">Exporting…</h3>
     <div class="export-progress-bar"><div class="export-progress-fill" id="export-fill" style="width:0%"></div></div>
     <div class="export-status" id="export-status">Preparing…</div>
     <button class="export-cancel" id="export-cancel" onclick="cancelExport()">Cancel</button>
   </div>
 </div>
-
-<!-- Hidden canvas for video export -->
 <canvas id="export-canvas" style="display:none"></canvas>
 <video id="export-video" style="display:none" playsinline muted></video>
 
 <script>
-/* ═══════════════════════════════════════════
-   STATE
-   ═══════════════════════════════════════════ */
-const EVENTS = { "1600m": 4, "3200m": 8, "800m": 2, "Custom": null };
+/* ═══════ STATE ═══════ */
+const EVENTS = {"1600m":4,"3200m":8,"800m":2,"Custom":null};
 let selectedEvent = "1600m";
-let videoFile = null;
-let videoURL = null;
-
-// Timing state
+let videoFile = null, videoURL = null;
+let runnerName = "", meetName = "", meetDate = "", targetTimeSec = 0;
 let phase = "idle"; // idle | timing | done
-let gunVideoTime = null; // video currentTime when user pressed START
-let splits = []; // { lap, split (ms from gun), lapTime (ms), videoTime }
+let gunVideoTime = null;
+let splits = [];
 let timerRAF = null;
 let exportCancelled = false;
+let currentSpeed = 1;
 
-/* ═══════════════════════════════════════════
-   HELPERS
-   ═══════════════════════════════════════════ */
+/* ═══════ HELPERS ═══════ */
 function fmt(ms) {
   if (ms < 0) ms = 0;
-  const m = Math.floor(ms / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  const c = Math.floor((ms % 1000) / 10);
+  const m = Math.floor(ms/60000), s = Math.floor((ms%60000)/1000), c = Math.floor((ms%1000)/10);
   return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${String(c).padStart(2,"0")}`;
 }
-
+function fmtSec(sec) { return fmt(sec * 1000); }
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach(el => el.classList.remove("active"));
   document.getElementById(id).classList.add("active");
 }
+function getTargetLapMs() {
+  if (!targetTimeSec || !EVENTS[selectedEvent]) return 0;
+  return (targetTimeSec * 1000) / EVENTS[selectedEvent];
+}
+function getPaceDelta(elapsed, lapNum) {
+  if (!targetTimeSec || !EVENTS[selectedEvent]) return null;
+  const targetAtLap = (targetTimeSec * 1000 / EVENTS[selectedEvent]) * lapNum;
+  return elapsed - targetAtLap;
+}
 
-/* ═══════════════════════════════════════════
-   SETUP SCREEN
-   ═══════════════════════════════════════════ */
-// Event selection
+/* ═══════ SETUP ═══════ */
+// Event grid
 const eventGrid = document.getElementById("event-grid");
 Object.keys(EVENTS).forEach(e => {
   const btn = document.createElement("button");
   btn.className = "opt-btn" + (e === selectedEvent ? " active" : "");
   btn.innerHTML = `<strong>${e}</strong>${EVENTS[e] ? `<span>${EVENTS[e]} laps</span>` : ""}`;
-  btn.onclick = () => {
-    selectedEvent = e;
-    eventGrid.querySelectorAll(".opt-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-  };
+  btn.onclick = () => { selectedEvent = e; eventGrid.querySelectorAll(".opt-btn").forEach(b => b.classList.remove("active")); btn.classList.add("active"); };
   eventGrid.appendChild(btn);
 });
+
+// Target time preview
+document.getElementById("target-time").addEventListener("input", (e) => {
+  const sec = parseFloat(e.target.value);
+  const el = document.getElementById("target-preview");
+  if (sec > 0) { el.textContent = "= " + fmtSec(sec); el.style.color = "var(--accent)"; }
+  else { el.textContent = "—"; el.style.color = "var(--dim)"; }
+});
+
+// Set today's date as default
+document.getElementById("meet-date").value = new Date().toISOString().split("T")[0];
 
 // File upload
 const uploadZone = document.getElementById("upload-zone");
 const fileInput = document.getElementById("file-input");
 const goBtn = document.getElementById("go-btn");
 
-fileInput.addEventListener("change", (e) => {
-  if (e.target.files.length > 0) setFile(e.target.files[0]);
-});
-
-uploadZone.addEventListener("dragover", (e) => { e.preventDefault(); uploadZone.classList.add("dragover"); });
+fileInput.addEventListener("change", e => { if (e.target.files.length) setFile(e.target.files[0]); });
+uploadZone.addEventListener("dragover", e => { e.preventDefault(); uploadZone.classList.add("dragover"); });
 uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("dragover"));
-uploadZone.addEventListener("drop", (e) => {
-  e.preventDefault();
-  uploadZone.classList.remove("dragover");
-  if (e.dataTransfer.files.length > 0) setFile(e.dataTransfer.files[0]);
-});
+uploadZone.addEventListener("drop", e => { e.preventDefault(); uploadZone.classList.remove("dragover"); if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]); });
 
 function setFile(file) {
   if (!file.type.startsWith("video/")) { alert("Please select a video file."); return; }
   videoFile = file;
   if (videoURL) URL.revokeObjectURL(videoURL);
   videoURL = URL.createObjectURL(file);
-
-  const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+  const sizeMB = (file.size/(1024*1024)).toFixed(1);
   uploadZone.classList.add("has-file");
-  uploadZone.innerHTML = `
-    <div class="file-info">
-      <span style="font-size:24px">🎥</span>
-      <div style="text-align:left">
-        <div class="fi-name">${file.name.length > 28 ? file.name.slice(0,25) + "…" : file.name}</div>
-        <div class="fi-size">${sizeMB} MB</div>
-      </div>
-      <button class="fi-remove" onclick="event.stopPropagation(); removeFile()">✕</button>
-    </div>
-    <input type="file" accept="video/*" id="file-input" style="position:absolute;inset:0;opacity:0;cursor:pointer">
-  `;
-  // Re-bind input
-  document.getElementById("file-input").addEventListener("change", (e) => {
-    if (e.target.files.length > 0) setFile(e.target.files[0]);
-  });
+  uploadZone.innerHTML = `<div class="file-info"><span style="font-size:20px">🎥</span><div style="text-align:left"><div class="fi-name">${file.name.length>25?file.name.slice(0,22)+"…":file.name}</div><div class="fi-size">${sizeMB} MB</div></div><button class="fi-remove" onclick="event.stopPropagation();removeFile()">✕</button></div><input type="file" accept="video/*" id="file-input" style="position:absolute;inset:0;opacity:0;cursor:pointer">`;
+  document.getElementById("file-input").addEventListener("change", e => { if (e.target.files.length) setFile(e.target.files[0]); });
   goBtn.disabled = false;
 }
-
 function removeFile() {
-  videoFile = null;
-  if (videoURL) { URL.revokeObjectURL(videoURL); videoURL = null; }
+  videoFile = null; if (videoURL) { URL.revokeObjectURL(videoURL); videoURL = null; }
   uploadZone.classList.remove("has-file");
-  uploadZone.innerHTML = `
-    <div class="uz-icon">🎬</div>
-    <div class="uz-text">Tap to select video or <b>drag &amp; drop</b></div>
-    <input type="file" accept="video/*" id="file-input" style="position:absolute;inset:0;opacity:0;cursor:pointer">
-  `;
-  document.getElementById("file-input").addEventListener("change", (e) => {
-    if (e.target.files.length > 0) setFile(e.target.files[0]);
-  });
+  uploadZone.innerHTML = `<div class="uz-icon">🎬</div><div class="uz-text">Tap to select video or <b>drag &amp; drop</b></div><input type="file" accept="video/*" id="file-input" style="position:absolute;inset:0;opacity:0;cursor:pointer">`;
+  document.getElementById("file-input").addEventListener("change", e => { if (e.target.files.length) setFile(e.target.files[0]); });
   goBtn.disabled = true;
 }
 
-/* ═══════════════════════════════════════════
-   TIMING SCREEN
-   ═══════════════════════════════════════════ */
+/* ═══════ TIMING ═══════ */
 function startTiming() {
   if (!videoURL) return;
+  runnerName = document.getElementById("runner-name").value.trim();
+  meetName = document.getElementById("meet-name").value.trim();
+  meetDate = document.getElementById("meet-date").value;
+  targetTimeSec = parseFloat(document.getElementById("target-time").value) || 0;
 
-  phase = "idle";
-  gunVideoTime = null;
-  splits = [];
-
+  phase = "idle"; gunVideoTime = null; splits = []; currentSpeed = 1;
   const vid = document.getElementById("race-video");
-  vid.src = videoURL;
-  vid.load();
+  vid.src = videoURL; vid.load(); vid.playbackRate = 1;
 
   document.getElementById("to-event").textContent = selectedEvent;
+  document.getElementById("to-runner").textContent = runnerName || "";
   document.getElementById("to-time").textContent = "00:00.00";
   document.getElementById("to-time").style.color = "#fff";
+  document.getElementById("to-pace").textContent = "";
+  document.getElementById("to-hint").textContent = "";
   document.getElementById("splits-overlay").style.display = "none";
-  document.getElementById("splits-overlay").innerHTML = "";
 
   showScreen("timing-screen");
   renderTimingControls();
@@ -498,225 +363,215 @@ function startTiming() {
 
 function getElapsedMs() {
   if (gunVideoTime === null) return 0;
-  const vid = document.getElementById("race-video");
-  return Math.max(0, (vid.currentTime - gunVideoTime) * 1000);
+  return Math.max(0, (document.getElementById("race-video").currentTime - gunVideoTime) * 1000);
 }
 
 function startTimerLoop() {
-  const timeEl = document.getElementById("to-time");
   function tick() {
     if (phase === "timing") {
-      timeEl.textContent = fmt(getElapsedMs());
+      const el = getElapsedMs();
+      document.getElementById("to-time").textContent = fmt(el);
+      updatePaceIndicator(el);
     }
     timerRAF = requestAnimationFrame(tick);
   }
   tick();
 }
-
-function stopTimerLoop() {
-  if (timerRAF) { cancelAnimationFrame(timerRAF); timerRAF = null; }
-}
+function stopTimerLoop() { if (timerRAF) { cancelAnimationFrame(timerRAF); timerRAF = null; } }
 
 function updateLapLabel() {
   const totalLaps = EVENTS[selectedEvent];
   const cur = splits.length + (phase === "timing" ? 1 : 0);
-  const el = document.getElementById("to-lap");
-  el.textContent = totalLaps ? `Lap ${Math.min(cur || 1, totalLaps)}/${totalLaps}` : `Lap ${cur || 1}`;
+  document.getElementById("to-lap").textContent = totalLaps ? `Lap ${Math.min(cur||1,totalLaps)}/${totalLaps}` : `Lap ${cur||1}`;
+}
+
+function updatePaceIndicator(elapsed) {
+  const el = document.getElementById("to-pace");
+  if (!targetTimeSec || !EVENTS[selectedEvent]) { el.textContent = ""; return; }
+  const lapsDone = splits.length;
+  const currentLap = lapsDone + 1;
+  const targetPerLap = getTargetLapMs();
+  const targetAtNow = targetPerLap * lapsDone + (elapsed - (splits.length > 0 ? splits[splits.length-1].split : 0));
+  // Use completed laps for accuracy
+  const delta = getPaceDelta(elapsed, lapsDone + (elapsed - (splits.length > 0 ? splits[splits.length-1].split : 0)) / targetPerLap);
+  if (delta === null) { el.textContent = ""; return; }
+  const absDelta = Math.abs(delta);
+  if (delta <= -500) { el.textContent = `▲ ${fmt(absDelta)} ahead`; el.style.color = "var(--accent)"; }
+  else if (delta >= 500) { el.textContent = `▼ ${fmt(absDelta)} behind`; el.style.color = "var(--red)"; }
+  else { el.textContent = "● on pace"; el.style.color = "var(--yellow)"; }
 }
 
 function updateSplitsOverlay() {
   const el = document.getElementById("splits-overlay");
-  if (splits.length === 0) { el.style.display = "none"; return; }
+  if (!splits.length) { el.style.display = "none"; return; }
   el.style.display = "block";
   let html = '<div class="so-title">SPLITS</div>';
+  const targetPerLap = getTargetLapMs();
   splits.slice(-6).forEach(s => {
-    html += `<div class="so-row">
-      <span class="so-lap">L${s.lap}</span>
-      <span class="so-split">${fmt(s.split)}</span>
-      <span class="so-laptime">${fmt(s.lapTime)}</span>
-    </div>`;
+    let deltaHtml = "";
+    if (targetPerLap > 0) {
+      const d = getPaceDelta(s.split, s.lap);
+      if (d !== null) {
+        const sign = d <= 0 ? "−" : "+";
+        const color = d <= 0 ? "var(--accent)" : "var(--red)";
+        deltaHtml = `<span class="so-delta" style="color:${color}">${sign}${fmt(Math.abs(d))}</span>`;
+      }
+    }
+    html += `<div class="so-row"><span class="so-lap">L${s.lap}</span><span class="so-split">${fmt(s.split)}</span>${deltaHtml || `<span class="so-delta" style="color:#555">${fmt(s.lapTime)}</span>`}</div>`;
   });
   el.innerHTML = html;
 }
 
-/* ── Gun / Start ── */
 function pressStart() {
   const vid = document.getElementById("race-video");
-  // Auto-play video if paused
   if (vid.paused) vid.play();
   gunVideoTime = vid.currentTime;
   phase = "timing";
-
   document.getElementById("to-time").style.color = "var(--accent)";
   document.getElementById("to-hint").textContent = "";
-
-  startTimerLoop();
-  renderTimingControls();
-  updateLapLabel();
+  startTimerLoop(); renderTimingControls(); updateLapLabel();
 }
 
-/* ── Lap ── */
 function pressLap() {
   if (phase !== "timing") return;
-
   const elapsed = getElapsedMs();
-  const prev = splits.length > 0 ? splits[splits.length - 1].split : 0;
+  const prev = splits.length > 0 ? splits[splits.length-1].split : 0;
   const vid = document.getElementById("race-video");
-
-  splits.push({
-    lap: splits.length + 1,
-    split: elapsed,
-    lapTime: elapsed - prev,
-    videoTime: vid.currentTime
-  });
-
-  updateSplitsOverlay();
-  updateLapLabel();
-
-  // Flash the video area
-  const wrap = document.querySelector(".video-wrap");
-  wrap.classList.remove("flash");
-  void wrap.offsetWidth;
-  wrap.classList.add("flash");
-
-  // Auto-stop on final lap
+  splits.push({ lap:splits.length+1, split:elapsed, lapTime:elapsed-prev, videoTime:vid.currentTime });
+  updateSplitsOverlay(); updateLapLabel();
+  document.querySelector(".video-wrap").classList.remove("flash");
+  void document.querySelector(".video-wrap").offsetWidth;
+  document.querySelector(".video-wrap").classList.add("flash");
   const totalLaps = EVENTS[selectedEvent];
-  if (totalLaps && splits.length >= totalLaps) {
-    finishRace();
-  } else {
-    renderTimingControls();
-  }
+  if (totalLaps && splits.length >= totalLaps) finishRace();
+  else renderTimingControls();
 }
 
-/* ── Stop ── */
-function pressStop() {
-  finishRace();
+function undoLap() {
+  if (splits.length === 0) return;
+  splits.pop();
+  updateSplitsOverlay(); updateLapLabel(); renderTimingControls();
 }
+
+function pressStop() { finishRace(); }
 
 function finishRace() {
   const elapsed = getElapsedMs();
-  // Add final split if not already at a lap boundary
-  const prev = splits.length > 0 ? splits[splits.length - 1].split : 0;
+  const prev = splits.length > 0 ? splits[splits.length-1].split : 0;
   if (splits.length === 0 || elapsed - prev > 300) {
-    const vid = document.getElementById("race-video");
-    splits.push({
-      lap: splits.length + 1,
-      split: elapsed,
-      lapTime: elapsed - prev,
-      videoTime: vid.currentTime
-    });
+    splits.push({ lap:splits.length+1, split:elapsed, lapTime:elapsed-prev, videoTime:document.getElementById("race-video").currentTime });
     updateSplitsOverlay();
   }
-
-  phase = "done";
-  stopTimerLoop();
-
+  phase = "done"; stopTimerLoop();
   document.getElementById("to-time").style.color = "var(--red)";
-  document.getElementById("to-time").textContent = fmt(splits.length > 0 ? splits[splits.length - 1].split : elapsed);
+  document.getElementById("to-time").textContent = fmt(splits.length > 0 ? splits[splits.length-1].split : elapsed);
+  document.getElementById("to-pace").textContent = "";
   document.getElementById("to-hint").innerHTML = '<span style="color:var(--red);font-weight:800">FINAL</span>';
   updateLapLabel();
-
-  // Pause video
-  const vid = document.getElementById("race-video");
-  vid.pause();
-
+  document.getElementById("race-video").pause();
   renderTimingControls();
 }
 
-/* ── Render Controls ── */
+function setSpeed(spd) {
+  currentSpeed = spd;
+  document.getElementById("race-video").playbackRate = spd;
+  document.querySelectorAll(".spd-btn").forEach(b => {
+    b.classList.toggle("active", parseFloat(b.dataset.spd) === spd);
+  });
+}
+
 function renderTimingControls() {
   const panel = document.getElementById("controls-panel");
   const totalLaps = EVENTS[selectedEvent];
 
+  const speedBtns = [0.25, 0.5, 1, 2].map(s =>
+    `<button class="btn-sm spd-btn${s===currentSpeed?" active":""}" data-spd="${s}" onclick="setSpeed(${s})">${s}×</button>`
+  ).join("");
+
   if (phase === "idle") {
     panel.innerHTML = `
-      <div class="phase-hint">Play the video, then tap <b>START</b> when the gun fires</div>
+      <div class="ctrl-aux">${speedBtns}</div>
       <div class="ctrl-row">
         <button class="btn-back" onclick="goBackSetup()">← Back</button>
-        <button class="btn-start pulse" onclick="pressStart()">
-          <span class="bi">▶</span><span class="bt">START</span>
-        </button>
+        <button class="btn-start pulse" onclick="pressStart()"><span class="bi">▶</span><span class="bt">START</span></button>
       </div>
-    `;
+      <div class="phase-hint">Play video, tap <b>START</b> when gun fires</div>`;
   } else if (phase === "timing") {
     panel.innerHTML = `
-      <div class="phase-hint">Tap <b>LAP</b> each time a runner completes a lap</div>
+      <div class="ctrl-aux">${speedBtns}<button class="btn-sm undo" onclick="undoLap()" ${splits.length===0?"disabled style='opacity:.3'":""}>↩ Undo</button></div>
       <div class="ctrl-row">
-        <button class="btn-lap" onclick="pressLap()">
-          <span class="bt">LAP</span>
-          <span class="bn">${splits.length + 1}${totalLaps ? "/" + totalLaps : ""}</span>
-        </button>
+        <button class="btn-lap" onclick="pressLap()"><span class="bt">LAP</span><span class="bn">${splits.length+1}${totalLaps?"/"+totalLaps:""}</span></button>
         <button class="btn-stop" onclick="pressStop()">STOP</button>
-      </div>
-    `;
+      </div>`;
   } else if (phase === "done") {
     panel.innerHTML = `
       <div class="ctrl-row">
         <button class="btn-back" onclick="resetTiming()">↻ Retime</button>
         <button class="btn-review" onclick="showReview()">VIEW RESULTS →</button>
-      </div>
-    `;
+      </div>`;
   }
 }
 
-function goBackSetup() {
-  stopTimerLoop();
-  const vid = document.getElementById("race-video");
-  vid.pause();
-  vid.src = "";
-  showScreen("setup-screen");
-}
-
+function goBackSetup() { stopTimerLoop(); document.getElementById("race-video").pause(); showScreen("setup-screen"); }
 function resetTiming() {
-  stopTimerLoop();
-  phase = "idle";
-  gunVideoTime = null;
-  splits = [];
-  const vid = document.getElementById("race-video");
-  vid.currentTime = 0;
-  vid.pause();
+  stopTimerLoop(); phase = "idle"; gunVideoTime = null; splits = []; currentSpeed = 1;
+  const vid = document.getElementById("race-video"); vid.currentTime = 0; vid.pause(); vid.playbackRate = 1;
   document.getElementById("to-time").textContent = "00:00.00";
   document.getElementById("to-time").style.color = "#fff";
-  document.getElementById("to-hint").innerHTML = "";
+  document.getElementById("to-hint").textContent = "";
+  document.getElementById("to-pace").textContent = "";
   document.getElementById("splits-overlay").style.display = "none";
-  renderTimingControls();
-  updateLapLabel();
+  renderTimingControls(); updateLapLabel();
 }
 
-/* ═══════════════════════════════════════════
-   REVIEW SCREEN
-   ═══════════════════════════════════════════ */
+/* ═══════ REVIEW ═══════ */
 function showReview() {
-  const totalTime = splits.length > 0 ? splits[splits.length - 1].split : 0;
+  const totalTime = splits.length > 0 ? splits[splits.length-1].split : 0;
+  document.getElementById("rv-runner").textContent = runnerName || "Athlete";
   document.getElementById("rv-time").textContent = fmt(totalTime);
   document.getElementById("rv-event").textContent = selectedEvent;
+  const meetParts = [];
+  if (meetName) meetParts.push(meetName);
+  if (meetDate) meetParts.push(new Date(meetDate + "T00:00").toLocaleDateString());
+  document.getElementById("rv-meet").textContent = meetParts.join(" · ");
 
   let fastest = null, slowest = null;
   if (splits.length > 1) {
-    fastest = splits.reduce((a, b) => a.lapTime < b.lapTime ? a : b);
-    slowest = splits.reduce((a, b) => a.lapTime > b.lapTime ? a : b);
+    fastest = splits.reduce((a,b) => a.lapTime < b.lapTime ? a : b);
+    slowest = splits.reduce((a,b) => a.lapTime > b.lapTime ? a : b);
   }
+  const targetPerLap = getTargetLapMs();
 
   const body = document.getElementById("review-body");
   let html = "";
 
-  // Video
-  html += `<div class="review-video-wrap">
-    <video src="${videoURL}" controls playsinline></video>
-  </div>`;
+  // Target result
+  if (targetTimeSec > 0) {
+    const diff = totalTime - targetTimeSec * 1000;
+    const ahead = diff <= 0;
+    html += `<div style="text-align:center;margin-bottom:14px;padding:10px;background:rgba(${ahead?"0,232,123":"255,68,85"},0.08);border:1px solid rgba(${ahead?"0,232,123":"255,68,85"},0.2);border-radius:10px">
+      <div style="font-size:11px;color:var(--dim);font-weight:700;letter-spacing:1px">VS TARGET ${fmtSec(targetTimeSec)}</div>
+      <div style="font-family:var(--mono);font-size:22px;font-weight:800;color:${ahead?"var(--accent)":"var(--red)"};margin-top:2px">${ahead?"−":"+"}${fmt(Math.abs(diff))}</div>
+    </div>`;
+  }
 
-  // Splits table
-  html += `<div class="review-table">
-    <div class="rt-hdr"><span>LAP</span><span>SPLIT</span><span>LAP TIME</span></div>`;
+  html += `<div class="review-video-wrap"><video src="${videoURL}" controls playsinline></video></div>`;
+
+  // Table
+  html += `<div class="review-table"><div class="rt-hdr"><span>LAP</span><span>SPLIT</span><span>LAP TIME</span>${targetPerLap?"<span>VS PACE</span>":""}</div>`;
   splits.forEach(s => {
     const isFast = fastest && s.lap === fastest.lap;
     const isSlow = slowest && s.lap === slowest.lap;
-    const cls = "rt-row" + (isFast ? " fast" : "") + (isSlow ? " slow" : "");
-    html += `<div class="${cls}">
-      <span>${s.lap}${isFast ? " 🟢" : ""}${isSlow ? " 🔴" : ""}</span>
-      <span class="mono">${fmt(s.split)}</span>
-      <span class="mono">${fmt(s.lapTime)}</span>
-    </div>`;
+    let deltaCell = "";
+    if (targetPerLap) {
+      const d = getPaceDelta(s.split, s.lap);
+      if (d !== null) {
+        const sign = d <= 0 ? "−" : "+";
+        const color = d <= 0 ? "var(--accent)" : "var(--red)";
+        deltaCell = `<span class="mono" style="color:${color}">${sign}${fmt(Math.abs(d))}</span>`;
+      }
+    }
+    html += `<div class="rt-row${isFast?" fast":""}${isSlow?" slow":""}"><span>${s.lap}${isFast?" 🟢":""}${isSlow?" 🔴":""}</span><span class="mono">${fmt(s.split)}</span><span class="mono">${fmt(s.lapTime)}</span>${deltaCell}</div>`;
   });
   html += `</div>`;
 
@@ -725,56 +580,37 @@ function showReview() {
     const avg = totalTime / splits.length;
     html += `<div class="stats-grid">
       <div class="stat-card"><div class="sc-label">AVG LAP</div><div class="sc-val" style="color:#fff">${fmt(avg)}</div></div>
-      <div class="stat-card"><div class="sc-label">FASTEST</div><div class="sc-val" style="color:var(--accent)">${fastest ? fmt(fastest.lapTime) : "—"}</div></div>
-      <div class="stat-card"><div class="sc-label">SLOWEST</div><div class="sc-val" style="color:var(--red)">${slowest ? fmt(slowest.lapTime) : "—"}</div></div>
+      <div class="stat-card"><div class="sc-label">FASTEST</div><div class="sc-val" style="color:var(--accent)">${fastest?fmt(fastest.lapTime):"—"}</div></div>
+      <div class="stat-card"><div class="sc-label">SLOWEST</div><div class="sc-val" style="color:var(--red)">${slowest?fmt(slowest.lapTime):"—"}</div></div>
     </div>`;
-
-    // Pace chart (simple bar chart)
+    // Pace bars
     const maxLap = Math.max(...splits.map(s => s.lapTime));
-    html += `<span class="label" style="margin-bottom:8px">LAP PACE</span>
-    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px">`;
+    html += `<div style="margin-bottom:14px">`;
     splits.forEach(s => {
-      const pct = (s.lapTime / maxLap * 100);
+      const pct = s.lapTime / maxLap * 100;
       const isFast = fastest && s.lap === fastest.lap;
       const isSlow = slowest && s.lap === slowest.lap;
       const color = isFast ? "var(--accent)" : isSlow ? "var(--red)" : "var(--blue)";
-      html += `<div style="display:flex;align-items:center;gap:8px">
-        <span style="color:var(--dim);font-size:12px;min-width:22px;font-weight:700">L${s.lap}</span>
-        <div style="flex:1;height:22px;background:rgba(255,255,255,0.04);border-radius:4px;overflow:hidden;position:relative">
-          <div style="width:${pct}%;height:100%;background:${color};border-radius:4px;opacity:0.7"></div>
+      html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span style="color:var(--dim);font-size:11px;min-width:20px;font-weight:700">L${s.lap}</span>
+        <div style="flex:1;height:18px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:${color};border-radius:3px;opacity:.7"></div>
         </div>
-        <span style="font-family:var(--mono);font-size:12px;color:var(--text);min-width:65px;text-align:right">${fmt(s.lapTime)}</span>
+        <span style="font-family:var(--mono);font-size:11px;min-width:58px;text-align:right">${fmt(s.lapTime)}</span>
       </div>`;
     });
     html += `</div>`;
+    // Target line on pace bars
+    if (targetPerLap) {
+      html += `<div style="color:var(--dim);font-size:10px;margin-bottom:14px">Target per lap: <span style="color:var(--yellow)">${fmt(targetPerLap)}</span></div>`;
+    }
   }
 
-  // Video timestamps
-  html += `<span class="label" style="margin-bottom:8px">VIDEO TIMESTAMPS</span>
-  <div style="margin-bottom:20px">`;
-  if (gunVideoTime !== null) {
-    const gunMins = Math.floor(gunVideoTime / 60);
-    const gunSecs = (gunVideoTime % 60).toFixed(1);
-    html += `<div style="color:var(--dim);font-size:12px;margin-bottom:4px">
-      Gun/Start at <b style="color:var(--yellow)">${gunMins}:${String(gunSecs).padStart(4,'0')}</b> in video
-    </div>`;
-  }
-  splits.forEach(s => {
-    const vMins = Math.floor(s.videoTime / 60);
-    const vSecs = (s.videoTime % 60).toFixed(1);
-    html += `<div style="color:var(--dim);font-size:12px;padding:2px 0">
-      Lap ${s.lap} at <span style="color:var(--text)">${vMins}:${String(vSecs).padStart(4,'0')}</span>
-    </div>`;
-  });
-  html += `</div>`;
-
-  // Export buttons
+  // Exports
   html += `<div class="export-row">
-    <button class="export-btn" onclick="exportVideo()"><span class="eicon">🎬</span> Export Video</button>
-    <button class="export-btn" onclick="exportPDF()"><span class="eicon">📄</span> Export PDF</button>
+    <button class="export-btn" onclick="exportVideo()">🎬 Export Video</button>
+    <button class="export-btn" onclick="exportPDF()">📄 Export PDF</button>
   </div>`;
-
-  // Actions
   html += `<div class="review-actions">
     <button class="ghost-btn" onclick="backToTiming()">↻ Retime</button>
     <button class="accent-btn" onclick="newRace()">NEW RACE</button>
@@ -784,606 +620,251 @@ function showReview() {
   showScreen("review-screen");
 }
 
-function backToTiming() {
-  phase = "idle";
-  gunVideoTime = null;
-  splits = [];
-  const vid = document.getElementById("race-video");
-  vid.currentTime = 0;
-  vid.pause();
-  document.getElementById("to-time").textContent = "00:00.00";
-  document.getElementById("to-time").style.color = "#fff";
-  document.getElementById("to-hint").innerHTML = "";
-  document.getElementById("splits-overlay").style.display = "none";
-  renderTimingControls();
-  updateLapLabel();
-  showScreen("timing-screen");
-}
+function backToTiming() { resetTiming(); showScreen("timing-screen"); }
+function newRace() { stopTimerLoop(); phase = "idle"; gunVideoTime = null; splits = []; showScreen("setup-screen"); }
 
-function newRace() {
-  stopTimerLoop();
-  phase = "idle";
-  gunVideoTime = null;
-  splits = [];
-  showScreen("setup-screen");
-}
-
-/* ═══════════════════════════════════════════
-   VIDEO EXPORT — bakes overlay onto video
-   ═══════════════════════════════════════════ */
-function cancelExport() {
-  exportCancelled = true;
-  document.getElementById("export-modal").classList.remove("active");
-}
-
-function showExportModal(title) {
-  exportCancelled = false;
-  document.getElementById("export-title").textContent = title;
-  document.getElementById("export-fill").style.width = "0%";
-  document.getElementById("export-status").textContent = "Preparing…";
-  document.getElementById("export-cancel").style.display = "";
-  document.getElementById("export-modal").classList.add("active");
-}
-
-function updateExportProgress(pct, status) {
-  document.getElementById("export-fill").style.width = pct + "%";
-  document.getElementById("export-status").textContent = status;
-}
+/* ═══════ VIDEO EXPORT ═══════ */
+function cancelExport() { exportCancelled = true; document.getElementById("export-modal").classList.remove("active"); }
+function showExportModal(t) { exportCancelled=false; document.getElementById("export-title").textContent=t; document.getElementById("export-fill").style.width="0%"; document.getElementById("export-status").textContent="Preparing…"; document.getElementById("export-cancel").style.display=""; document.getElementById("export-modal").classList.add("active"); }
+function updateExportProgress(p,s) { document.getElementById("export-fill").style.width=p+"%"; document.getElementById("export-status").textContent=s; }
 
 async function exportVideo() {
   showExportModal("Exporting Video…");
-
   const vid = document.getElementById("export-video");
   const canvas = document.getElementById("export-canvas");
-  vid.src = videoURL;
-  vid.currentTime = 0;
-  vid.playbackRate = 1;
+  vid.src = videoURL; vid.currentTime = 0; vid.playbackRate = 1;
+  await new Promise(r => { vid.onloadedmetadata = r; vid.load(); });
+  await new Promise(r => setTimeout(r, 200));
 
-  await new Promise((res) => { vid.onloadedmetadata = res; vid.load(); });
-  await new Promise((res) => setTimeout(res, 200));
-
-  const vw = vid.videoWidth || 1280;
-  const vh = vid.videoHeight || 720;
-  canvas.width = vw;
-  canvas.height = vh;
+  const vw = vid.videoWidth||1280, vh = vid.videoHeight||720;
+  canvas.width = vw; canvas.height = vh;
   const ctx = canvas.getContext("2d");
   const duration = vid.duration;
   const totalLaps = EVENTS[selectedEvent];
+  const targetPerLap = getTargetLapMs();
 
-  // Setup recorder
   const canvasStream = canvas.captureStream(30);
   let recOpts = {};
-  const types = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"];
-  for (const t of types) {
-    if (MediaRecorder.isTypeSupported(t)) { recOpts.mimeType = t; break; }
-  }
+  for (const t of ["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm","video/mp4"]) { if (MediaRecorder.isTypeSupported(t)) { recOpts.mimeType = t; break; } }
   const chunks = [];
   const recorder = new MediaRecorder(canvasStream, recOpts);
-  recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+  recorder.start(200); vid.play();
 
-  recorder.start(200);
-  vid.play();
+  function getOE(vt) { return gunVideoTime===null ? -1 : (vt - gunVideoTime)*1000; }
+  function getSplitsAt(vt) { return splits.filter(s => s.videoTime <= vt); }
 
-  // Draw loop
-  function getOverlayElapsed(videoTime) {
-    if (gunVideoTime === null) return -1;
-    return (videoTime - gunVideoTime) * 1000;
-  }
-
-  function getSplitsAtTime(videoTime) {
-    return splits.filter(s => s.videoTime <= videoTime);
-  }
-
-  function drawOverlayFrame() {
+  function drawFrame() {
     const w = canvas.width, h = canvas.height;
     ctx.drawImage(vid, 0, 0, w, h);
+    const elapsed = getOE(vid.currentTime);
+    const vs = getSplitsAt(vid.currentTime);
+    const raceOver = vs.length >= splits.length && splits.length > 0;
+    if (elapsed < -2000) return;
+    const sf = Math.max(w/1280, 0.6);
 
-    const elapsed = getOverlayElapsed(vid.currentTime);
-    const visibleSplits = getSplitsAtTime(vid.currentTime);
-    const raceOver = visibleSplits.length >= splits.length && splits.length > 0;
-
-    // Only draw overlay after gun time
-    if (elapsed < -2000) return; // 2 sec before gun, no overlay
-
-    // Scale factor for overlay elements relative to video resolution
-    const sf = Math.max(w / 1280, 0.6);
-
-    // Top bar
-    ctx.fillStyle = "rgba(0,0,0,0.6)";
-    ctx.fillRect(0, 0, w, 82 * sf);
-
+    ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, w, 82*sf);
     ctx.textBaseline = "middle";
+    ctx.font = `bold ${14*sf}px sans-serif`; ctx.fillStyle = "#aaa"; ctx.textAlign = "left"; ctx.fillText(selectedEvent, 14*sf, 18*sf);
+    const curLap = raceOver ? vs.length : vs.length+1;
+    ctx.textAlign = "right"; ctx.fillText(totalLaps ? `Lap ${Math.min(curLap,totalLaps)}/${totalLaps}` : `Lap ${curLap}`, w-14*sf, 18*sf);
 
-    // Event label
-    ctx.font = `bold ${16 * sf}px sans-serif`;
-    ctx.fillStyle = "#aaa";
-    ctx.textAlign = "left";
-    ctx.fillText(selectedEvent, 14 * sf, 22 * sf);
+    if (runnerName) { ctx.font = `bold ${14*sf}px sans-serif`; ctx.fillStyle = "#ddd"; ctx.textAlign = "center"; ctx.fillText(runnerName, w/2, 18*sf); }
 
-    // Lap label
-    const curLap = raceOver ? visibleSplits.length : visibleSplits.length + 1;
-    const lapTxt = totalLaps ? `Lap ${Math.min(curLap, totalLaps)}/${totalLaps}` : `Lap ${curLap}`;
-    ctx.textAlign = "right";
-    ctx.fillText(lapTxt, w - 14 * sf, 22 * sf);
+    const displayTime = raceOver ? splits[splits.length-1].split : Math.max(0, elapsed);
+    ctx.font = `bold ${48*sf}px monospace`; ctx.textAlign = "center";
+    ctx.fillStyle = elapsed < 0 ? "#fff" : raceOver ? "#ff4455" : "#00FF88";
+    ctx.fillText(elapsed >= 0 ? fmt(displayTime) : "00:00.00", w/2, 48*sf);
 
-    // Timer
-    const displayTime = raceOver ? splits[splits.length - 1].split : Math.max(0, elapsed);
-    ctx.font = `bold ${54 * sf}px monospace`;
-    ctx.textAlign = "center";
-    if (elapsed < 0) {
-      ctx.fillStyle = "#ffffff";
-    } else if (raceOver) {
-      ctx.fillStyle = "#ff4455";
-    } else {
-      ctx.fillStyle = "#00FF88";
-    }
-    ctx.fillText(elapsed >= 0 ? fmt(displayTime) : "00:00.00", w / 2, 52 * sf);
-
-    // Status
-    if (elapsed < 0) {
-      // Before gun
-    } else if (raceOver) {
-      ctx.font = `bold ${16 * sf}px sans-serif`;
-      ctx.fillStyle = "#ff4455";
-      ctx.fillText("FINAL", w / 2, 76 * sf);
+    if (raceOver) { ctx.font = `bold ${14*sf}px sans-serif`; ctx.fillStyle = "#ff4455"; ctx.fillText("FINAL", w/2, 72*sf); }
+    else if (targetPerLap > 0 && elapsed > 0) {
+      const lapsDone = vs.length;
+      const sinceLastLap = elapsed - (vs.length > 0 ? vs[vs.length-1].split : 0);
+      const d = getPaceDelta(elapsed, lapsDone + sinceLastLap/targetPerLap);
+      if (d !== null) {
+        ctx.font = `bold ${13*sf}px sans-serif`;
+        ctx.fillStyle = d <= -500 ? "#00e87b" : d >= 500 ? "#ff4455" : "#ffb800";
+        ctx.fillText(d <= -500 ? `▲ ${fmt(Math.abs(d))} ahead` : d >= 500 ? `▼ ${fmt(Math.abs(d))} behind` : "● on pace", w/2, 72*sf);
+      }
     }
 
-    // Splits panel
-    if (visibleSplits.length > 0) {
-      const shown = visibleSplits.slice(-8);
-      const panelH = (shown.length * 30 + 32) * sf;
-      const panelW = 260 * sf;
-      const px = w - panelW - 10 * sf, py = 92 * sf;
-
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(px, py, panelW, panelH, 10 * sf);
-      else { ctx.rect(px, py, panelW, panelH); }
-      ctx.fill();
-
-      ctx.font = `bold ${11 * sf}px sans-serif`;
-      ctx.fillStyle = "#888";
-      ctx.textAlign = "left";
-      ctx.fillText("SPLITS", px + 10 * sf, py + 16 * sf);
-
-      shown.forEach((s, i) => {
-        const y = py + (34 + i * 30) * sf;
-        ctx.font = `bold ${14 * sf}px sans-serif`;
-        ctx.fillStyle = "#aaa";
-        ctx.textAlign = "left";
-        ctx.fillText(`L${s.lap}`, px + 10 * sf, y);
-        ctx.font = `bold ${16 * sf}px monospace`;
-        ctx.fillStyle = "#00FF88";
-        ctx.textAlign = "left";
-        ctx.fillText(fmt(s.split), px + 44 * sf, y);
-        ctx.font = `${13 * sf}px monospace`;
-        ctx.fillStyle = "#888";
-        ctx.textAlign = "right";
-        ctx.fillText(fmt(s.lapTime), px + panelW - 10 * sf, y);
+    if (vs.length > 0) {
+      const shown = vs.slice(-8);
+      const panelH = (shown.length*28+30)*sf, panelW = 240*sf;
+      const px = w-panelW-10*sf, py = 88*sf;
+      ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(px,py,panelW,panelH,8*sf); else ctx.rect(px,py,panelW,panelH); ctx.fill();
+      ctx.font = `bold ${10*sf}px sans-serif`; ctx.fillStyle = "#888"; ctx.textAlign = "left"; ctx.fillText("SPLITS", px+10*sf, py+14*sf);
+      shown.forEach((s,i) => {
+        const y = py+(28+i*28)*sf;
+        ctx.font = `bold ${12*sf}px sans-serif`; ctx.fillStyle = "#aaa"; ctx.textAlign = "left"; ctx.fillText(`L${s.lap}`, px+10*sf, y);
+        ctx.font = `bold ${14*sf}px monospace`; ctx.fillStyle = "#00FF88"; ctx.textAlign = "left"; ctx.fillText(fmt(s.split), px+38*sf, y);
+        ctx.font = `${11*sf}px monospace`; ctx.fillStyle = "#888"; ctx.textAlign = "right"; ctx.fillText(fmt(s.lapTime), px+panelW-10*sf, y);
       });
     }
   }
 
-  await new Promise((resolve) => {
+  await new Promise(resolve => {
     function processFrame() {
-      if (exportCancelled) {
-        vid.pause();
-        recorder.stop();
-        resolve();
-        return;
-      }
-
-      if (vid.ended || vid.currentTime >= duration - 0.1) {
-        drawOverlayFrame();
-        updateExportProgress(100, "Finalizing…");
-        vid.pause();
-        recorder.stop();
-        recorder.onstop = () => resolve();
-        return;
-      }
-
-      drawOverlayFrame();
-      const pct = Math.round((vid.currentTime / duration) * 100);
-      updateExportProgress(pct, `Processing… ${pct}%`);
+      if (exportCancelled) { vid.pause(); recorder.stop(); resolve(); return; }
+      if (vid.ended || vid.currentTime >= duration-0.1) { drawFrame(); updateExportProgress(100,"Finalizing…"); vid.pause(); recorder.stop(); recorder.onstop=()=>resolve(); return; }
+      drawFrame();
+      updateExportProgress(Math.round(vid.currentTime/duration*100), `Processing… ${Math.round(vid.currentTime/duration*100)}%`);
       requestAnimationFrame(processFrame);
     }
     requestAnimationFrame(processFrame);
   });
 
-  if (exportCancelled) {
-    document.getElementById("export-modal").classList.remove("active");
-    return;
-  }
-
-  // Build download
-  const mimeType = recorder.mimeType || "video/webm";
-  const blob = new Blob(chunks, { type: mimeType });
-  const ext = mimeType.includes("mp4") ? "mp4" : "webm";
+  if (exportCancelled) return;
+  const mime = recorder.mimeType||"video/webm";
+  const blob = new Blob(chunks,{type:mime});
+  const ext = mime.includes("mp4")?"mp4":"webm";
   const url = URL.createObjectURL(blob);
-
-  document.getElementById("export-cancel").style.display = "none";
-  updateExportProgress(100, "Done!");
-  document.getElementById("export-title").textContent = "Export Complete!";
-
-  // Replace cancel with download link
+  document.getElementById("export-cancel").style.display="none";
+  updateExportProgress(100,"Done!");
+  document.getElementById("export-title").textContent="Export Complete!";
   const box = document.querySelector(".export-box");
-  const dlBtn = document.createElement("a");
-  dlBtn.href = url;
-  dlBtn.download = `${selectedEvent}_race_${Date.now()}.${ext}`;
-  dlBtn.textContent = "DOWNLOAD VIDEO";
-  dlBtn.style.cssText = `display:inline-block;padding:12px 28px;background:linear-gradient(135deg,var(--accent2),var(--accent));border-radius:10px;color:#000;font-size:14px;font-weight:800;letter-spacing:1px;text-decoration:none;margin-top:8px`;
-  box.appendChild(dlBtn);
-
-  const closeBtn = document.createElement("button");
-  closeBtn.textContent = "Close";
-  closeBtn.style.cssText = `display:block;margin:10px auto 0;background:none;border:1px solid var(--border);border-radius:8px;color:var(--dim);padding:8px 20px;font-size:13px;cursor:pointer;font-family:var(--sans)`;
-  closeBtn.onclick = () => {
-    document.getElementById("export-modal").classList.remove("active");
-    // Clean up added elements
-    dlBtn.remove();
-    closeBtn.remove();
-  };
-  box.appendChild(closeBtn);
+  const dl = document.createElement("a"); dl.href=url; dl.download=`${runnerName||selectedEvent}_race_${Date.now()}.${ext}`; dl.textContent="DOWNLOAD VIDEO";
+  dl.style.cssText="display:inline-block;padding:11px 24px;background:linear-gradient(135deg,var(--accent2),var(--accent));border-radius:10px;color:#000;font-size:13px;font-weight:800;letter-spacing:1px;text-decoration:none;margin-top:8px";
+  box.appendChild(dl);
+  const cl = document.createElement("button"); cl.textContent="Close";
+  cl.style.cssText="display:block;margin:8px auto 0;background:none;border:1px solid var(--border);border-radius:8px;color:var(--dim);padding:7px 18px;font-size:12px;cursor:pointer";
+  cl.onclick=()=>{document.getElementById("export-modal").classList.remove("active");dl.remove();cl.remove();};
+  box.appendChild(cl);
 }
 
-/* ═══════════════════════════════════════════
-   PDF EXPORT — pure canvas, zero dependencies
-   ═══════════════════════════════════════════ */
+/* ═══════ PDF EXPORT ═══════ */
 function exportPDF() {
-  const totalTime = splits.length > 0 ? splits[splits.length - 1].split : 0;
-  let fastest = null, slowest = null;
-  if (splits.length > 1) {
-    fastest = splits.reduce((a, b) => a.lapTime < b.lapTime ? a : b);
-    slowest = splits.reduce((a, b) => a.lapTime > b.lapTime ? a : b);
+  const totalTime = splits.length > 0 ? splits[splits.length-1].split : 0;
+  let fastest=null, slowest=null;
+  if (splits.length > 1) { fastest=splits.reduce((a,b)=>a.lapTime<b.lapTime?a:b); slowest=splits.reduce((a,b)=>a.lapTime>b.lapTime?a:b); }
+  const targetPerLap = getTargetLapMs();
+
+  const DPI=2, W=595*DPI, H=842*DPI;
+  const canvas=document.createElement("canvas"); canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext("2d");
+  const ml=50*DPI, mr=50*DPI, cw=W-ml-mr;
+  let y=0;
+
+  ctx.fillStyle="#0b0b10"; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle="#14141c"; ctx.fillRect(0,0,W,150*DPI);
+  ctx.fillStyle="#00e87b"; ctx.fillRect(0,0,W,4*DPI);
+
+  y=30*DPI;
+  ctx.font=`bold ${9*DPI}px sans-serif`; ctx.fillStyle="#00e87b"; ctx.textBaseline="top"; ctx.fillText("TRACK TIMER — RACE REPORT",ml,y);
+  y+=14*DPI;
+  if (runnerName) { ctx.font=`bold ${20*DPI}px sans-serif`; ctx.fillStyle="#fff"; ctx.fillText(runnerName,ml,y); y+=26*DPI; }
+  ctx.font=`bold ${30*DPI}px monospace`; ctx.fillStyle="#fff"; ctx.fillText(fmt(totalTime),ml,y);
+  const tw=ctx.measureText(fmt(totalTime)).width;
+  ctx.font=`bold ${13*DPI}px sans-serif`; ctx.fillStyle="#00e87b"; ctx.fillText(selectedEvent,ml+tw+10*DPI,y+12*DPI);
+  y+=36*DPI;
+
+  const meetParts=[];
+  if (meetName) meetParts.push(meetName);
+  if (meetDate) meetParts.push(new Date(meetDate+"T00:00").toLocaleDateString());
+  if (meetParts.length) { ctx.font=`${9*DPI}px sans-serif`; ctx.fillStyle="#6a6a80"; ctx.fillText(meetParts.join(" · "),ml,y); y+=14*DPI; }
+  ctx.font=`${9*DPI}px sans-serif`; ctx.fillStyle="#6a6a80"; ctx.fillText(`${splits.length} laps`,ml,y);
+
+  // Target comparison
+  if (targetTimeSec > 0) {
+    const diff = totalTime - targetTimeSec*1000;
+    const ahead = diff <= 0;
+    ctx.textAlign="right"; ctx.font=`bold ${12*DPI}px monospace`; ctx.fillStyle=ahead?"#00e87b":"#ff4455";
+    ctx.fillText(`${ahead?"−":"+"}${fmt(Math.abs(diff))} vs target ${fmtSec(targetTimeSec)}`, W-mr, y);
+    ctx.textAlign="left";
   }
 
-  // Create high-res canvas (A4 proportions at 2x)
-  const DPI = 2;
-  const W = 595 * DPI; // A4 width in points * 2
-  const H = 842 * DPI; // A4 height
-  const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext("2d");
-  const ml = 50 * DPI, mr = 50 * DPI;
-  const cw = W - ml - mr;
-  let y = 0;
+  y=160*DPI;
 
-  // ── Background ──
-  ctx.fillStyle = "#0b0b10";
-  ctx.fillRect(0, 0, W, H);
-
-  // ── Header band ──
-  ctx.fillStyle = "#14141c";
-  ctx.fillRect(0, 0, W, 140 * DPI);
-
-  // Accent line
-  ctx.fillStyle = "#00e87b";
-  ctx.fillRect(0, 0, W, 4 * DPI);
-
-  y = 36 * DPI;
-  ctx.font = `bold ${10 * DPI}px sans-serif`;
-  ctx.fillStyle = "#00e87b";
-  ctx.textBaseline = "top";
-  ctx.fillText("TRACK TIMER — RACE REPORT", ml, y);
-
-  y += 22 * DPI;
-  ctx.font = `bold ${32 * DPI}px monospace`;
-  ctx.fillStyle = "#ffffff";
-  ctx.fillText(fmt(totalTime), ml, y);
-
-  const timeW = ctx.measureText(fmt(totalTime)).width;
-  ctx.font = `bold ${14 * DPI}px sans-serif`;
-  ctx.fillStyle = "#00e87b";
-  ctx.fillText(selectedEvent, ml + timeW + 12 * DPI, y + 14 * DPI);
-
-  // Date right-aligned
-  const now = new Date();
-  ctx.font = `${9 * DPI}px sans-serif`;
-  ctx.fillStyle = "#6a6a80";
-  ctx.textAlign = "right";
-  ctx.fillText(now.toLocaleDateString() + "  " + now.toLocaleTimeString(), W - mr, 36 * DPI);
-  ctx.textAlign = "left";
-
-  y += 42 * DPI;
-  ctx.font = `${9 * DPI}px sans-serif`;
-  ctx.fillStyle = "#6a6a80";
-  ctx.fillText(`${splits.length} laps recorded`, ml, y);
-
-  y = 155 * DPI;
-
-  // ── Stats boxes ──
+  // Stats boxes
   if (splits.length > 1) {
-    const boxW = Math.floor((cw - 20 * DPI) / 3);
-    const boxH = 56 * DPI;
-    const stats = [
-      { label: "AVG LAP", val: fmt(totalTime / splits.length), color: "#ffffff" },
-      { label: "FASTEST", val: fastest ? fmt(fastest.lapTime) : "—", color: "#00e87b" },
-      { label: "SLOWEST", val: slowest ? fmt(slowest.lapTime) : "—", color: "#ff4455" },
-    ];
-    stats.forEach((s, i) => {
-      const bx = ml + i * (boxW + 10 * DPI);
-      ctx.fillStyle = "#1a1a28";
-      roundRect(ctx, bx, y, boxW, boxH, 8 * DPI);
-      ctx.fill();
-
-      ctx.font = `bold ${8 * DPI}px sans-serif`;
-      ctx.fillStyle = "#6a6a80";
-      ctx.textAlign = "center";
-      ctx.fillText(s.label, bx + boxW / 2, y + 16 * DPI);
-
-      ctx.font = `bold ${16 * DPI}px monospace`;
-      ctx.fillStyle = s.color;
-      ctx.fillText(s.val, bx + boxW / 2, y + 38 * DPI);
-      ctx.textAlign = "left";
+    const bw=Math.floor((cw-16*DPI)/3), bh=50*DPI;
+    [{l:"AVG LAP",v:fmt(totalTime/splits.length),c:"#fff"},{l:"FASTEST",v:fastest?fmt(fastest.lapTime):"—",c:"#00e87b"},{l:"SLOWEST",v:slowest?fmt(slowest.lapTime):"—",c:"#ff4455"}].forEach((s,i) => {
+      const bx=ml+i*(bw+8*DPI);
+      ctx.fillStyle="#1a1a28"; rr(ctx,bx,y,bw,bh,6*DPI); ctx.fill();
+      ctx.font=`bold ${8*DPI}px sans-serif`; ctx.fillStyle="#6a6a80"; ctx.textAlign="center"; ctx.fillText(s.l,bx+bw/2,y+14*DPI);
+      ctx.font=`bold ${15*DPI}px monospace`; ctx.fillStyle=s.c; ctx.fillText(s.v,bx+bw/2,y+34*DPI);
+      ctx.textAlign="left";
     });
-    y += boxH + 20 * DPI;
+    y+=bh+16*DPI;
   }
 
-  // ── Section: Splits Table ──
-  ctx.font = `bold ${10 * DPI}px sans-serif`;
-  ctx.fillStyle = "#00e87b";
-  ctx.fillText("LAP SPLITS", ml, y);
-  y += 16 * DPI;
+  // Splits table
+  ctx.font=`bold ${9*DPI}px sans-serif`; ctx.fillStyle="#00e87b"; ctx.fillText("LAP SPLITS",ml,y); y+=14*DPI;
+  ctx.fillStyle="#1a1a28"; ctx.fillRect(ml,y,cw,20*DPI);
+  ctx.font=`bold ${7*DPI}px sans-serif`; ctx.fillStyle="#6a6a80";
+  ctx.fillText("LAP",ml+8*DPI,y+13*DPI); ctx.fillText("SPLIT",ml+60*DPI,y+13*DPI);
+  ctx.fillText("LAP TIME",ml+160*DPI,y+13*DPI);
+  if (targetPerLap) ctx.fillText("VS PACE",ml+260*DPI,y+13*DPI);
+  y+=22*DPI;
 
-  // Table header
-  ctx.fillStyle = "#1a1a28";
-  ctx.fillRect(ml, y, cw, 22 * DPI);
-  ctx.font = `bold ${8 * DPI}px sans-serif`;
-  ctx.fillStyle = "#6a6a80";
-  ctx.fillText("LAP", ml + 10 * DPI, y + 14 * DPI);
-  ctx.fillText("SPLIT", ml + 70 * DPI, y + 14 * DPI);
-  ctx.fillText("LAP TIME", ml + 180 * DPI, y + 14 * DPI);
-  ctx.fillText("VIDEO", ml + 290 * DPI, y + 14 * DPI);
-  y += 24 * DPI;
-
-  splits.forEach((s) => {
-    const isFast = fastest && s.lap === fastest.lap;
-    const isSlow = slowest && s.lap === slowest.lap;
-
-    // Row highlight
-    if (isFast) { ctx.fillStyle = "rgba(0,232,123,0.06)"; ctx.fillRect(ml, y - 2 * DPI, cw, 22 * DPI); }
-    if (isSlow) { ctx.fillStyle = "rgba(255,68,85,0.06)"; ctx.fillRect(ml, y - 2 * DPI, cw, 22 * DPI); }
-
-    // Bottom border
-    ctx.fillStyle = "#1a1a24";
-    ctx.fillRect(ml, y + 18 * DPI, cw, 1);
-
-    ctx.font = `bold ${10 * DPI}px sans-serif`;
-    ctx.fillStyle = "#c8c8d0";
-    ctx.fillText(`${s.lap}${isFast ? "  ●" : ""}${isSlow ? "  ●" : ""}`, ml + 10 * DPI, y + 12 * DPI);
-
-    ctx.font = `bold ${11 * DPI}px monospace`;
-    ctx.fillStyle = "#e8e8f0";
-    ctx.fillText(fmt(s.split), ml + 70 * DPI, y + 12 * DPI);
-
-    ctx.fillStyle = isFast ? "#00e87b" : isSlow ? "#ff4455" : "#b0b0c0";
-    ctx.fillText(fmt(s.lapTime), ml + 180 * DPI, y + 12 * DPI);
-
-    ctx.font = `${9 * DPI}px monospace`;
-    ctx.fillStyle = "#6a6a80";
-    const vMins = Math.floor(s.videoTime / 60);
-    const vSecs = (s.videoTime % 60).toFixed(1);
-    ctx.fillText(`${vMins}:${String(vSecs).padStart(4, '0')}`, ml + 290 * DPI, y + 12 * DPI);
-
-    y += 22 * DPI;
+  splits.forEach(s => {
+    const isFast=fastest&&s.lap===fastest.lap, isSlow=slowest&&s.lap===slowest.lap;
+    if(isFast){ctx.fillStyle="rgba(0,232,123,0.06)";ctx.fillRect(ml,y-2*DPI,cw,20*DPI);}
+    if(isSlow){ctx.fillStyle="rgba(255,68,85,0.06)";ctx.fillRect(ml,y-2*DPI,cw,20*DPI);}
+    ctx.fillStyle="#1a1a24"; ctx.fillRect(ml,y+16*DPI,cw,1);
+    ctx.font=`bold ${9*DPI}px sans-serif`; ctx.fillStyle="#c8c8d0"; ctx.fillText(`${s.lap}${isFast?"  ●":""}${isSlow?"  ●":""}`,ml+8*DPI,y+10*DPI);
+    ctx.font=`bold ${10*DPI}px monospace`; ctx.fillStyle="#e8e8f0"; ctx.fillText(fmt(s.split),ml+60*DPI,y+10*DPI);
+    ctx.fillStyle=isFast?"#00e87b":isSlow?"#ff4455":"#b0b0c0"; ctx.fillText(fmt(s.lapTime),ml+160*DPI,y+10*DPI);
+    if (targetPerLap) {
+      const d=getPaceDelta(s.split,s.lap);
+      if(d!==null){ctx.fillStyle=d<=0?"#00e87b":"#ff4455"; ctx.fillText((d<=0?"−":"+")+fmt(Math.abs(d)),ml+260*DPI,y+10*DPI);}
+    }
+    y+=20*DPI;
   });
+  y+=10*DPI;
 
-  y += 14 * DPI;
-
-  // ── Pace Chart ──
+  // Pace bars
   if (splits.length > 1) {
-    ctx.font = `bold ${10 * DPI}px sans-serif`;
-    ctx.fillStyle = "#00e87b";
-    ctx.fillText("LAP PACE COMPARISON", ml, y);
-    y += 16 * DPI;
-
-    const maxLap = Math.max(...splits.map(s => s.lapTime));
-    const barMaxW = cw - 90 * DPI;
-    const barH = 18 * DPI;
-    const barGap = 6 * DPI;
-
-    splits.forEach((s) => {
-      const isFast = fastest && s.lap === fastest.lap;
-      const isSlow = slowest && s.lap === slowest.lap;
-      const pct = s.lapTime / maxLap;
-      const bw = pct * barMaxW;
-
-      // Lap label
-      ctx.font = `bold ${9 * DPI}px sans-serif`;
-      ctx.fillStyle = "#6a6a80";
-      ctx.fillText(`L${s.lap}`, ml, y + barH / 2 + 3 * DPI);
-
-      // Bar bg
-      ctx.fillStyle = "#1a1a28";
-      roundRect(ctx, ml + 28 * DPI, y, barMaxW, barH, 4 * DPI);
-      ctx.fill();
-
-      // Bar fill
-      ctx.fillStyle = isFast ? "#00c864" : isSlow ? "#dd3344" : "#3b8bff";
-      roundRect(ctx, ml + 28 * DPI, y, Math.max(bw, 4 * DPI), barH, 4 * DPI);
-      ctx.fill();
-
-      // Time label
-      ctx.font = `bold ${9 * DPI}px monospace`;
-      ctx.fillStyle = "#c8c8d0";
-      ctx.fillText(fmt(s.lapTime), ml + 28 * DPI + barMaxW + 8 * DPI, y + barH / 2 + 3 * DPI);
-
-      y += barH + barGap;
+    ctx.font=`bold ${9*DPI}px sans-serif`; ctx.fillStyle="#00e87b"; ctx.fillText("LAP PACE",ml,y); y+=14*DPI;
+    const maxLap=Math.max(...splits.map(s=>s.lapTime)), barMax=cw-80*DPI, barH=16*DPI;
+    splits.forEach(s=>{
+      const isFast=fastest&&s.lap===fastest.lap,isSlow=slowest&&s.lap===slowest.lap,bw=s.lapTime/maxLap*barMax;
+      ctx.font=`bold ${8*DPI}px sans-serif`; ctx.fillStyle="#6a6a80"; ctx.fillText(`L${s.lap}`,ml,y+barH/2+3*DPI);
+      ctx.fillStyle="#1a1a28"; rr(ctx,ml+24*DPI,y,barMax,barH,3*DPI); ctx.fill();
+      ctx.fillStyle=isFast?"#00c864":isSlow?"#dd3344":"#3b8bff"; rr(ctx,ml+24*DPI,y,Math.max(bw,3*DPI),barH,3*DPI); ctx.fill();
+      // Target line
+      if(targetPerLap>0&&targetPerLap<=maxLap){const tx=ml+24*DPI+(targetPerLap/maxLap)*barMax;ctx.strokeStyle="#ffb800";ctx.lineWidth=2*DPI;ctx.beginPath();ctx.moveTo(tx,y);ctx.lineTo(tx,y+barH);ctx.stroke();}
+      ctx.font=`bold ${8*DPI}px monospace`; ctx.fillStyle="#c8c8d0"; ctx.fillText(fmt(s.lapTime),ml+24*DPI+barMax+6*DPI,y+barH/2+3*DPI);
+      y+=barH+5*DPI;
     });
-
-    y += 10 * DPI;
+    if(targetPerLap){ctx.font=`${7*DPI}px sans-serif`;ctx.fillStyle="#ffb800";ctx.fillText(`▎ Target: ${fmt(targetPerLap)}/lap`,ml+24*DPI,y+2*DPI);y+=12*DPI;}
+    y+=8*DPI;
   }
 
-  // ── Delta Chart ──
-  if (splits.length > 2 && y < H - 120 * DPI) {
-    const avg = totalTime / splits.length;
-    const deltas = splits.map(s => s.lapTime - avg);
-    const maxDelta = Math.max(...deltas.map(d => Math.abs(d)));
+  // Footer
+  ctx.fillStyle="#2a2a40"; ctx.fillRect(ml,H-32*DPI,cw,1);
+  ctx.font=`${7*DPI}px sans-serif`; ctx.fillStyle="#4a4a60"; ctx.fillText("Generated by Track Timer",ml,H-20*DPI);
+  ctx.textAlign="right"; ctx.fillText(meetDate||new Date().toISOString().split("T")[0],W-mr,H-20*DPI); ctx.textAlign="left";
 
-    ctx.font = `bold ${10 * DPI}px sans-serif`;
-    ctx.fillStyle = "#00e87b";
-    ctx.fillText("LAP-TO-LAP DELTA (vs average)", ml, y);
-    y += 16 * DPI;
-
-    const chartH = 80 * DPI;
-    const midY = y + chartH / 2;
-    const barW = Math.min((cw / splits.length) - 6 * DPI, 36 * DPI);
-
-    // Zero line
-    ctx.strokeStyle = "#2a2a40";
-    ctx.lineWidth = 1 * DPI;
-    ctx.beginPath();
-    ctx.moveTo(ml, midY);
-    ctx.lineTo(ml + cw, midY);
-    ctx.stroke();
-
-    // Labels
-    ctx.font = `${7 * DPI}px sans-serif`;
-    ctx.fillStyle = "#00c864";
-    ctx.textAlign = "right";
-    ctx.fillText("FASTER ↑", ml - 6 * DPI, midY - 8 * DPI);
-    ctx.fillStyle = "#dd3344";
-    ctx.fillText("SLOWER ↓", ml - 6 * DPI, midY + 14 * DPI);
-    ctx.textAlign = "left";
-
-    splits.forEach((s, i) => {
-      const delta = deltas[i];
-      const isFast = fastest && s.lap === fastest.lap;
-      const isSlow = slowest && s.lap === slowest.lap;
-      const barMax = chartH / 2 - 8 * DPI;
-      const bh = maxDelta > 0 ? (Math.abs(delta) / maxDelta) * barMax : 0;
-      const bx = ml + (cw / splits.length) * i + ((cw / splits.length) - barW) / 2;
-
-      if (delta <= 0) {
-        ctx.fillStyle = isFast ? "#00c864" : "#3b8bff";
-        roundRect(ctx, bx, midY - bh, barW, bh, 3 * DPI);
-        ctx.fill();
-      } else {
-        ctx.fillStyle = isSlow ? "#dd3344" : "#c88030";
-        roundRect(ctx, bx, midY, barW, bh, 3 * DPI);
-        ctx.fill();
-      }
-
-      // Lap label
-      ctx.font = `bold ${8 * DPI}px sans-serif`;
-      ctx.fillStyle = "#6a6a80";
-      ctx.textAlign = "center";
-      ctx.fillText(`L${s.lap}`, bx + barW / 2, y + chartH + 12 * DPI);
-      ctx.textAlign = "left";
-    });
-
-    y += chartH + 24 * DPI;
-  }
-
-  // ── Footer ──
-  ctx.fillStyle = "#2a2a40";
-  ctx.fillRect(ml, H - 36 * DPI, cw, 1);
-  ctx.font = `${8 * DPI}px sans-serif`;
-  ctx.fillStyle = "#4a4a60";
-  ctx.fillText("Generated by Track Timer", ml, H - 22 * DPI);
-  ctx.textAlign = "right";
-  ctx.fillText(now.toISOString().split("T")[0], W - mr, H - 22 * DPI);
-  ctx.textAlign = "left";
-
-  // ── Convert canvas → PDF ──
-  const imgData = canvas.toDataURL("image/jpeg", 0.92);
-  const pdfBytes = buildPDF(W, H, imgData);
-  const blob = new Blob([pdfBytes], { type: "application/pdf" });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${selectedEvent}_race_report_${Date.now()}.pdf`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  // Build PDF
+  const imgData=canvas.toDataURL("image/jpeg",0.92);
+  const pdfBytes=buildPDF(W,H,imgData);
+  const blob=new Blob([pdfBytes],{type:"application/pdf"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download=`${runnerName||selectedEvent}_report_${Date.now()}.pdf`; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
 }
 
-// Rounded rect helper
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  if (ctx.roundRect) {
-    ctx.roundRect(x, y, w, h, r);
-  } else {
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-  }
-}
+function rr(ctx,x,y,w,h,r){ctx.beginPath();if(ctx.roundRect){ctx.roundRect(x,y,w,h,r);}else{ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}}
 
-// Build a minimal valid PDF with a single full-page JPEG image
-function buildPDF(imgW, imgH, jpegDataURL) {
-  // Convert data URL to raw bytes
-  const b64 = jpegDataURL.split(",")[1];
-  const raw = atob(b64);
-  const imgBytes = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) imgBytes[i] = raw.charCodeAt(i);
-
-  // PDF uses points: A4 = 595.28 x 841.89
-  const pageW = 595.28;
-  const pageH = 841.89;
-
-  const enc = new TextEncoder();
-  const parts = [];
-  const offsets = [];
-  let pos = 0;
-
-  function w(str) { const b = enc.encode(str); parts.push(b); pos += b.length; }
-  function wBytes(b) { parts.push(b); pos += b.length; }
-
-  // Header
+function buildPDF(imgW,imgH,jpegDataURL){
+  const b64=jpegDataURL.split(",")[1];const raw=atob(b64);const imgBytes=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++)imgBytes[i]=raw.charCodeAt(i);
+  const pageW=595.28,pageH=841.89;const enc=new TextEncoder();const parts=[];const offsets=[];let pos=0;
+  function w(s){const b=enc.encode(s);parts.push(b);pos+=b.length;}
+  function wB(b){parts.push(b);pos+=b.length;}
   w("%PDF-1.4\n%\xFF\xFF\xFF\xFF\n");
-
-  // Obj 1: Catalog
-  offsets[1] = pos;
-  w("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
-
-  // Obj 2: Pages
-  offsets[2] = pos;
-  w("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
-
-  // Obj 3: Page
-  offsets[3] = pos;
-  w(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 4 0 R /Resources << /XObject << /Img 5 0 R >> >> >>\nendobj\n`);
-
-  // Obj 4: Page content stream (draw image full page)
-  const stream = `q ${pageW} 0 0 ${pageH} 0 0 cm /Img Do Q\n`;
-  offsets[4] = pos;
-  w(`4 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}endstream\nendobj\n`);
-
-  // Obj 5: Image XObject
-  offsets[5] = pos;
-  w(`5 0 obj\n<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imgBytes.length} >>\nstream\n`);
-  wBytes(imgBytes);
-  w("\nendstream\nendobj\n");
-
-  // XRef
-  const xrefPos = pos;
-  w("xref\n");
-  w(`0 6\n`);
-  w("0000000000 65535 f \n");
-  for (let i = 1; i <= 5; i++) {
-    w(String(offsets[i]).padStart(10, "0") + " 00000 n \n");
-  }
-
-  // Trailer
-  w("trailer\n<< /Size 6 /Root 1 0 R >>\n");
-  w("startxref\n" + xrefPos + "\n%%EOF\n");
-
-  // Combine
-  let total = 0;
-  parts.forEach(p => total += p.length);
-  const pdf = new Uint8Array(total);
-  let off = 0;
-  parts.forEach(p => { pdf.set(p, off); off += p.length; });
-  return pdf;
+  offsets[1]=pos;w("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+  offsets[2]=pos;w("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+  offsets[3]=pos;w(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 4 0 R /Resources << /XObject << /Img 5 0 R >> >> >>\nendobj\n`);
+  const stream=`q ${pageW} 0 0 ${pageH} 0 0 cm /Img Do Q\n`;
+  offsets[4]=pos;w(`4 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}endstream\nendobj\n`);
+  offsets[5]=pos;w(`5 0 obj\n<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imgBytes.length} >>\nstream\n`);
+  wB(imgBytes);w("\nendstream\nendobj\n");
+  const xrefPos=pos;w("xref\n0 6\n");w("0000000000 65535 f \n");
+  for(let i=1;i<=5;i++)w(String(offsets[i]).padStart(10,"0")+" 00000 n \n");
+  w("trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n"+xrefPos+"\n%%EOF\n");
+  let total=0;parts.forEach(p=>total+=p.length);const pdf=new Uint8Array(total);let off=0;parts.forEach(p=>{pdf.set(p,off);off+=p.length;});return pdf;
 }
 </script>
 </body>
