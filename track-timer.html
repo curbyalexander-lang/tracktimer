@@ -4,308 +4,402 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Track Timer</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --bg: #0b0b10;
+    --card: #14141c;
+    --border: #23233a;
+    --accent: #00e87b;
+    --accent2: #00c264;
+    --red: #ff4455;
+    --blue: #3b8bff;
+    --yellow: #ffb800;
+    --text: #e8e8f0;
+    --dim: #6a6a80;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #08080d; color: #fff; overflow: hidden; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; min-height: 100dvh; }
+  button { font-family: var(--sans); cursor: pointer; }
 
-  /* ── Setup Screen ── */
-  #setup {
-    min-height: 100vh; min-height: 100dvh;
-    display: flex; align-items: center; justify-content: center; padding: 16px;
-    background: linear-gradient(160deg, #08080d, #101018, #0a0a12);
-  }
+  /* ── Shared ── */
+  .screen { display: none; min-height: 100vh; min-height: 100dvh; }
+  .screen.active { display: flex; }
+  .centered { align-items: center; justify-content: center; padding: 16px; }
+
   .card {
-    background: linear-gradient(180deg, #16161e, #111117);
-    border: 1px solid #28283a; border-radius: 20px;
-    padding: 28px 22px; max-width: 420px; width: 100%; text-align: center;
+    background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+    padding: 28px 22px; max-width: 440px; width: 100%;
   }
-  .card h1 { font-size: 26px; font-weight: 800; letter-spacing: 3px; margin-bottom: 2px; }
-  .card .sub { color: #666; font-size: 13px; margin-bottom: 24px; }
-  .label { display: block; text-align: left; color: #00e87b; font-size: 11px; font-weight: 700; letter-spacing: 2px; margin-bottom: 6px; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+  .label {
+    display: block; text-align: left; color: var(--accent); font-size: 11px;
+    font-weight: 700; letter-spacing: 2px; margin-bottom: 6px; margin-top: 18px;
+  }
+  .label:first-of-type { margin-top: 0; }
+
+  /* ── Setup ── */
+  .logo { text-align: center; margin-bottom: 20px; }
+  .logo-icon { font-size: 44px; }
+  .logo h1 { font-size: 24px; font-weight: 800; letter-spacing: 3px; margin: 4px 0 2px; }
+  .logo p { color: var(--dim); font-size: 13px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .opt-btn {
-    background: #1a1a24; border: 1px solid #28283a; border-radius: 10px; padding: 12px 8px;
-    cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 8px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px;
   }
   .opt-btn strong { color: #fff; font-size: 15px; }
-  .opt-btn span { color: #777; font-size: 11px; }
-  .opt-btn.active { border-color: #00e87b; background: rgba(0,232,123,0.07); box-shadow: 0 0 16px rgba(0,232,123,0.08); }
-  .cam-row { display: flex; gap: 8px; margin-bottom: 20px; }
-  .cam-btn {
-    flex: 1; background: #1a1a24; border: 1px solid #28283a; border-radius: 10px;
-    padding: 10px; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
+  .opt-btn span { color: var(--dim); font-size: 11px; }
+  .opt-btn.active { border-color: var(--accent); background: rgba(0,232,123,0.06); }
+
+  .upload-zone {
+    margin-top: 8px; border: 2px dashed var(--border); border-radius: 14px;
+    padding: 28px 16px; text-align: center; cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative; overflow: hidden;
   }
-  .cam-btn.active { border-color: #00e87b; background: rgba(0,232,123,0.07); }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent); background: rgba(0,232,123,0.04);
+  }
+  .upload-zone .uz-icon { font-size: 32px; margin-bottom: 6px; }
+  .upload-zone .uz-text { color: var(--dim); font-size: 14px; line-height: 1.5; }
+  .upload-zone .uz-text b { color: var(--accent); }
+  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .upload-zone.has-file { border-style: solid; border-color: var(--accent); background: rgba(0,232,123,0.04); }
+  .file-info { display: flex; align-items: center; gap: 10px; justify-content: center; }
+  .file-info .fi-name { color: #fff; font-weight: 600; font-size: 14px; }
+  .file-info .fi-size { color: var(--dim); font-size: 12px; }
+  .file-info .fi-remove {
+    background: rgba(255,68,85,0.15); border: none; border-radius: 6px;
+    color: var(--red); font-size: 12px; font-weight: 700; padding: 4px 10px; margin-left: 6px;
+  }
+
   .primary-btn {
-    display: block; width: 100%; padding: 15px;
-    background: linear-gradient(135deg, #00c264, #00e87b);
+    display: block; width: 100%; padding: 16px; margin-top: 20px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
     border: none; border-radius: 12px; color: #000; font-size: 15px; font-weight: 800;
-    letter-spacing: 2px; cursor: pointer; box-shadow: 0 4px 20px rgba(0,232,123,0.25);
+    letter-spacing: 2px; box-shadow: 0 4px 24px rgba(0,232,123,0.2);
   }
-  .error-msg { color: #ff6b6b; font-size: 13px; margin-top: 10px; }
-  .help { margin-top: 22px; border-top: 1px solid #222; padding-top: 14px; text-align: left; }
-  .help p { color: #777; font-size: 13px; margin: 5px 0; line-height: 1.5; }
-  .help b { color: #00e87b; }
+  .primary-btn:disabled { opacity: 0.35; pointer-events: none; }
 
-  /* ── Camera / Recording Screen ── */
-  #camera-screen {
-    display: none; position: fixed; inset: 0; background: #000;
+  .help { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 14px; text-align: left; }
+  .help p { color: var(--dim); font-size: 12.5px; margin: 5px 0; line-height: 1.5; }
+  .help b { color: var(--accent); }
+
+  /* ── Timing Screen ── */
+  #timing-screen {
+    flex-direction: column; padding: 0;
+    background: #000; height: 100vh; height: 100dvh;
+    overflow: hidden;
   }
-  #live-video { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
-  #overlay-canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
-  .ctrl-bar {
-    position: absolute; bottom: 0; left: 0; right: 0; z-index: 2;
-    padding: 20px 20px 36px; display: flex; justify-content: center; align-items: center; gap: 22px;
-    background: linear-gradient(transparent, rgba(0,0,0,0.65)); min-height: 130px;
-  }
-  .go-btn {
-    width: 110px; height: 110px; border-radius: 50%;
-    background: linear-gradient(135deg, #00c264, #00e87b);
-    border: 4px solid rgba(255,255,255,0.2); cursor: pointer;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    box-shadow: 0 0 36px rgba(0,232,123,0.4); font-family: inherit;
-  }
-  .go-btn .icon { font-size: 34px; color: #000; margin-left: 4px; line-height: 1; }
-  .go-btn .txt { font-size: 11px; font-weight: 800; color: #000; letter-spacing: 1px; }
-  .lap-btn {
-    width: 96px; height: 96px; border-radius: 50%;
-    background: linear-gradient(135deg, #0077ee, #0099ff);
-    border: 3px solid rgba(255,255,255,0.15); cursor: pointer;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    box-shadow: 0 0 24px rgba(0,120,255,0.35); font-family: inherit;
-  }
-  .lap-btn .txt { font-size: 17px; font-weight: 800; color: #fff; letter-spacing: 1px; }
-  .lap-btn .num { font-size: 11px; color: rgba(255,255,255,0.6); }
-  .stop-btn {
-    width: 68px; height: 68px; border-radius: 50%;
-    background: linear-gradient(135deg, #cc0000, #ff3333);
-    border: 3px solid rgba(255,255,255,0.15); cursor: pointer;
+  .video-wrap {
+    position: relative; width: 100%; flex: 1 1 0%;
+    min-height: 0; /* critical: allows flex child to shrink */
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 0 18px rgba(255,0,0,0.3); font-family: inherit;
-    font-size: 12px; font-weight: 800; color: #fff; letter-spacing: 1px;
+    background: #000; overflow: hidden;
   }
-  .back-btn {
-    position: absolute; top: 14px; left: 14px; z-index: 3;
-    background: rgba(0,0,0,0.55); border: 1px solid #444; border-radius: 8px;
-    color: #fff; padding: 8px 14px; font-size: 13px; cursor: pointer; font-family: inherit;
+  .video-wrap video {
+    width: 100%; height: 100%; object-fit: contain; display: block;
   }
-  .saving-msg { color: #FFAA00; font-weight: 700; font-size: 15px; text-shadow: 0 1px 6px rgba(0,0,0,0.8); }
-
-  /* ── Zoom Slider ── */
-  .zoom-wrap {
-    position: absolute; left: 12px; top: 50%; transform: translateY(-50%); z-index: 3;
-    display: flex; flex-direction: column; align-items: center; gap: 6px;
-    background: rgba(0,0,0,0.5); border-radius: 20px; padding: 10px 6px;
-    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  /* Timer overlay on video */
+  .timer-overlay {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: 6px 12px 8px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.3) 85%, transparent 100%);
+    pointer-events: none; z-index: 1;
   }
-  .zoom-wrap .zlabel {
-    color: #fff; font-size: 11px; font-weight: 700; writing-mode: vertical-rl;
-    text-orientation: mixed; letter-spacing: 1px; opacity: 0.6;
+  .timer-overlay .to-row { display: flex; justify-content: space-between; align-items: center; }
+  .timer-overlay .to-event { color: #aaa; font-size: 11px; font-weight: 700; }
+  .timer-overlay .to-lap { color: #aaa; font-size: 11px; font-weight: 700; }
+  .timer-overlay .to-time {
+    font-family: var(--mono); font-size: 34px; font-weight: 800;
+    text-align: center; line-height: 1.1; margin-top: 1px;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.9);
   }
-  .zoom-wrap .zlevel {
-    color: #00e87b; font-size: 13px; font-weight: 800; min-width: 32px; text-align: center;
-  }
-  #zoom-slider {
-    -webkit-appearance: none; appearance: none;
-    width: 160px; height: 6px; border-radius: 3px;
-    background: linear-gradient(90deg, #333, #00e87b);
-    outline: none; cursor: pointer;
-    /* Rotate to make it vertical */
-    transform: rotate(-90deg);
-    transform-origin: center center;
-    margin: 70px 0;
-  }
-  #zoom-slider::-webkit-slider-thumb {
-    -webkit-appearance: none; appearance: none;
-    width: 24px; height: 24px; border-radius: 50%;
-    background: #00e87b; border: 2px solid #fff;
-    box-shadow: 0 0 10px rgba(0,232,123,0.5);
-  }
-  #zoom-slider::-moz-range-thumb {
-    width: 24px; height: 24px; border-radius: 50%;
-    background: #00e87b; border: 2px solid #fff;
-    box-shadow: 0 0 10px rgba(0,232,123,0.5);
+  .timer-overlay .to-hint {
+    text-align: center; font-size: 12px; font-weight: 700; margin-top: 1px;
   }
 
-  /* ── Stabilization Toggle ── */
-  .stab-wrap {
-    position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 3;
-    display: flex; flex-direction: column; align-items: center; gap: 8px;
-    background: rgba(0,0,0,0.5); border-radius: 16px; padding: 12px 10px;
-    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  /* Splits sidebar on video */
+  .splits-overlay {
+    position: absolute; top: 64px; right: 6px; z-index: 1;
+    background: rgba(0,0,0,0.6); border-radius: 8px; padding: 6px 8px;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    pointer-events: none; min-width: 155px;
   }
-  .stab-icon { font-size: 22px; line-height: 1; }
-  .stab-label { color: #fff; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-align: center; line-height: 1.2; }
-  .stab-toggle {
-    width: 44px; height: 24px; border-radius: 12px; border: none; cursor: pointer;
-    background: #333; position: relative; transition: background 0.2s;
+  .splits-overlay .so-title { color: var(--dim); font-size: 9px; font-weight: 700; letter-spacing: 1px; margin-bottom: 2px; }
+  .so-row { display: flex; justify-content: space-between; gap: 5px; padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .so-row:last-child { border: none; }
+  .so-row .so-lap { color: #aaa; font-size: 11px; min-width: 20px; }
+  .so-row .so-split { color: var(--accent); font-family: var(--mono); font-size: 12px; font-weight: 700; }
+  .so-row .so-laptime { color: #777; font-family: var(--mono); font-size: 10px; }
+
+  /* Controls panel below video */
+  .controls-panel {
+    background: var(--card); border-top: 1px solid var(--border);
+    padding: 10px 16px calc(12px + env(safe-area-inset-bottom, 4px)); width: 100%;
+    display: flex; flex-direction: column; gap: 8px;
+    flex-shrink: 0; /* never shrink — always visible */
   }
-  .stab-toggle.on { background: #00e87b; }
-  .stab-toggle::after {
-    content: ''; position: absolute; top: 2px; left: 2px;
-    width: 20px; height: 20px; border-radius: 50%; background: #fff;
-    transition: transform 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  .ctrl-row { display: flex; gap: 16px; align-items: center; justify-content: center; }
+
+  .btn-start {
+    width: 76px; height: 76px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    border: 3px solid rgba(255,255,255,0.15);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    box-shadow: 0 0 24px rgba(0,232,123,0.35);
+    font-family: var(--sans);
   }
-  .stab-toggle.on::after { transform: translateX(20px); }
-  .stab-status {
-    font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
-    padding: 2px 6px; border-radius: 4px;
+  .btn-start .bi { font-size: 24px; color: #000; margin-left: 3px; line-height: 1; }
+  .btn-start .bt { font-size: 9px; font-weight: 800; color: #000; letter-spacing: 1px; }
+
+  .btn-lap {
+    width: 76px; height: 76px; border-radius: 50%;
+    background: linear-gradient(135deg, #0066dd, var(--blue));
+    border: 3px solid rgba(255,255,255,0.12);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    box-shadow: 0 0 20px rgba(59,139,255,0.3);
+    font-family: var(--sans);
   }
-  .stab-status.active { color: #00e87b; }
-  .stab-status.off { color: #666; }
+  .btn-lap .bt { font-size: 15px; font-weight: 800; color: #fff; letter-spacing: 1px; }
+  .btn-lap .bn { font-size: 10px; color: rgba(255,255,255,0.55); }
+
+  .btn-stop {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, #cc0000, var(--red));
+    border: 3px solid rgba(255,255,255,0.12);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 14px rgba(255,0,0,0.25);
+    font-size: 10px; font-weight: 800; color: #fff; letter-spacing: 1px;
+    font-family: var(--sans);
+  }
+
+  .btn-back {
+    background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--dim); padding: 7px 14px; font-size: 13px;
+  }
+  .btn-review {
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    border: none; border-radius: 10px;
+    color: #000; padding: 12px 24px; font-size: 14px; font-weight: 800; letter-spacing: 1px;
+  }
+
+  .phase-hint {
+    text-align: center; color: var(--dim); font-size: 11px; line-height: 1.3;
+  }
+  .phase-hint b { color: var(--yellow); }
 
   /* ── Review Screen ── */
-  #review {
-    display: none; min-height: 100vh; min-height: 100dvh;
-    align-items: center; justify-content: center; padding: 14px;
-    background: linear-gradient(160deg, #08080d, #101018, #0a0a12);
+  #review-screen { flex-direction: column; padding: 0; }
+  .review-top {
+    background: var(--card); border-bottom: 1px solid var(--border);
+    padding: 20px 16px; text-align: center;
   }
-  .review-card {
-    background: linear-gradient(180deg, #16161e, #111117);
-    border: 1px solid #28283a; border-radius: 20px;
-    padding: 28px 20px; max-width: 500px; width: 100%; text-align: center;
+  .review-top .rt-label { color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: 3px; }
+  .review-top .rt-time { font-family: var(--mono); font-size: 40px; font-weight: 800; color: #fff; margin: 4px 0; }
+  .review-top .rt-badge {
+    display: inline-block; background: rgba(0,232,123,0.1); border: 1px solid rgba(0,232,123,0.25);
+    border-radius: 6px; padding: 2px 12px; color: var(--accent); font-size: 12px; font-weight: 700;
   }
-  .review-card .done-label { color: #00e87b; font-size: 12px; font-weight: 800; letter-spacing: 3px; margin-bottom: 4px; }
-  .review-card .final-time { font-size: 42px; font-weight: 800; color: #fff; font-family: monospace; margin-bottom: 4px; }
-  .event-badge {
-    display: inline-block; background: rgba(0,232,123,0.1); border: 1px solid rgba(0,232,123,0.3);
-    border-radius: 6px; padding: 2px 12px; color: #00e87b; font-size: 13px; font-weight: 700; margin-bottom: 12px;
+
+  .review-body { flex: 1; overflow-y: auto; padding: 16px; }
+
+  .review-video-wrap { margin-bottom: 16px; }
+  .review-video-wrap video { width: 100%; border-radius: 12px; background: #000; max-height: 240px; }
+
+  .review-table { margin-bottom: 16px; }
+  .rt-hdr { display: flex; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  .rt-hdr span { flex: 1; color: var(--dim); font-size: 11px; font-weight: 700; letter-spacing: 1px; }
+  .rt-row { display: flex; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .rt-row span { flex: 1; font-size: 14px; font-weight: 600; color: var(--text); }
+  .rt-row .mono { font-family: var(--mono); }
+  .rt-row.fast { background: rgba(0,232,123,0.05); }
+  .rt-row.slow { background: rgba(255,68,85,0.04); }
+
+  .stats-grid { display: flex; gap: 6px; margin-bottom: 16px; }
+  .stat-card {
+    flex: 1; background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 6px; text-align: center;
   }
-  #review-video { width: 100%; border-radius: 12px; margin: 14px 0; background: #000; max-height: 260px; }
-  .splits-table { text-align: left; margin-bottom: 16px; }
-  .splits-table .hdr { display: flex; padding: 8px 10px; border-bottom: 1px solid #2a2a35; }
-  .splits-table .hdr span { flex: 1; color: #555; font-size: 11px; font-weight: 700; letter-spacing: 1px; }
-  .split-row { display: flex; padding: 10px 10px; border-bottom: 1px solid #1a1a22; }
-  .split-row span { flex: 1; color: #ccc; font-size: 14px; font-weight: 600; }
-  .split-row.fast { background: rgba(0,232,123,0.06); }
-  .split-row.slow { background: rgba(255,80,80,0.06); }
-  .stats-row { display: flex; gap: 6px; margin-bottom: 16px; }
-  .stat-box { flex: 1; background: #1a1a24; border-radius: 10px; padding: 8px 4px; text-align: center; }
-  .stat-box .sl { color: #555; font-size: 10px; font-weight: 700; letter-spacing: 1px; }
-  .stat-box .sv { font-size: 15px; font-weight: 700; font-family: monospace; margin-top: 2px; }
-  .btn-row { display: flex; gap: 10px; }
-  .dl-btn {
-    flex: 1; display: flex; align-items: center; justify-content: center; padding: 15px;
-    background: linear-gradient(135deg, #00c264, #00e87b);
-    border: none; border-radius: 12px; color: #000; font-size: 14px; font-weight: 800;
-    letter-spacing: 1px; text-decoration: none; cursor: pointer;
-    box-shadow: 0 4px 20px rgba(0,232,123,0.25);
+  .stat-card .sc-label { color: var(--dim); font-size: 10px; font-weight: 700; letter-spacing: 1px; }
+  .stat-card .sc-val { font-family: var(--mono); font-size: 15px; font-weight: 700; margin-top: 3px; }
+
+  .review-actions { display: flex; gap: 10px; padding: 0 0 20px; }
+  .review-actions .ghost-btn {
+    flex: 1; padding: 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    border-radius: 12px; color: #fff; font-size: 14px; font-weight: 700;
   }
-  .ghost-btn {
-    flex: 1; padding: 15px; background: #1a1a24; border: 1px solid #28283a; border-radius: 12px;
-    color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+  .review-actions .accent-btn {
+    flex: 1; padding: 14px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    border: none; border-radius: 12px; color: #000; font-size: 14px; font-weight: 800; letter-spacing: 1px;
   }
+
+  /* ── Export Modal ── */
+  .export-modal {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .export-modal.active { display: flex; }
+  .export-box {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; max-width: 360px; width: 100%; text-align: center;
+  }
+  .export-box h3 { font-size: 16px; font-weight: 800; margin-bottom: 12px; letter-spacing: 1px; }
+  .export-progress-bar {
+    width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px;
+    overflow: hidden; margin: 12px 0;
+  }
+  .export-progress-fill {
+    height: 100%; background: var(--accent); border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+  .export-status { color: var(--dim); font-size: 13px; margin-bottom: 12px; }
+  .export-cancel {
+    background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--dim); padding: 8px 20px; font-size: 13px; font-family: var(--sans); cursor: pointer;
+  }
+
+  /* Export buttons in review */
+  .export-row {
+    display: flex; gap: 8px; margin-bottom: 12px;
+  }
+  .export-btn {
+    flex: 1; padding: 12px 8px; border-radius: 10px; border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04); color: var(--text); font-size: 13px; font-weight: 700;
+    font-family: var(--sans); cursor: pointer; display: flex; align-items: center;
+    justify-content: center; gap: 6px; transition: background 0.15s;
+  }
+  .export-btn:hover { background: rgba(255,255,255,0.08); }
+  .export-btn .eicon { font-size: 16px; }
+
+  /* Animations */
+  @keyframes pulse-green { 0%,100% { box-shadow: 0 0 20px rgba(0,232,123,0.3); } 50% { box-shadow: 0 0 40px rgba(0,232,123,0.5); } }
+  .pulse { animation: pulse-green 1.8s ease-in-out infinite; }
+  @keyframes flash-lap { 0% { background: rgba(59,139,255,0.25); } 100% { background: transparent; } }
+  .flash { animation: flash-lap 0.4s ease-out; }
 </style>
 </head>
 <body>
 
-<!-- ════════ SETUP SCREEN ════════ -->
-<div id="setup">
+<!-- ═══════ SETUP SCREEN ═══════ -->
+<div class="screen centered active" id="setup-screen">
   <div class="card">
-    <div style="font-size:44px;margin-bottom:4px">⏱️</div>
-    <h1>TRACK TIMER</h1>
-    <p class="sub">Record races with live splits burned into video</p>
+    <div class="logo">
+      <div class="logo-icon">⏱️</div>
+      <h1>TRACK TIMER</h1>
+      <p>Upload race video · Mark splits · Analyze laps</p>
+    </div>
 
     <span class="label">EVENT</span>
     <div class="grid2" id="event-grid"></div>
 
-    <span class="label">CAMERA</span>
-    <div class="cam-row">
-      <button class="cam-btn active" data-facing="environment" onclick="selectCam(this)">Rear</button>
-      <button class="cam-btn" data-facing="user" onclick="selectCam(this)">Front</button>
+    <span class="label">RACE VIDEO</span>
+    <div class="upload-zone" id="upload-zone">
+      <div class="uz-icon">🎬</div>
+      <div class="uz-text">Tap to select video or <b>drag &amp; drop</b></div>
+      <input type="file" accept="video/*" id="file-input">
     </div>
 
-    <button class="primary-btn" onclick="prepareCamera()">PREPARE TO RECORD</button>
-    <p class="error-msg" id="setup-error"></p>
+    <button class="primary-btn" id="go-btn" disabled onclick="startTiming()">LOAD VIDEO &amp; TIME</button>
 
     <div class="help">
-      <p><b>1.</b> Tap PREPARE to open camera</p>
-      <p><b>2.</b> Tap START when the gun fires</p>
-      <p><b>3.</b> Tap LAP each time a lap completes</p>
-      <p><b>4.</b> Auto-stops at final lap, or tap STOP</p>
-      <p><b>5.</b> Review &amp; download video with splits baked in</p>
-      <p style="margin-top:10px;color:#555;font-size:12px">💡 Enable <b style="color:#00e87b">STAB</b> on the camera screen to reduce hand shake (uses phone gyroscope, crops in ~15%)</p>
+      <p><b>1.</b> Choose your event &amp; upload race video</p>
+      <p><b>2.</b> Play video, tap <b>START</b> when the gun fires</p>
+      <p><b>3.</b> Tap <b>LAP</b> each time a runner completes a lap</p>
+      <p><b>4.</b> Final lap auto-finishes, or tap <b>STOP</b></p>
+      <p><b>5.</b> Review splits, stats &amp; re-watch with overlay</p>
     </div>
   </div>
 </div>
 
-<!-- ════════ CAMERA SCREEN ════════ -->
-<div id="camera-screen">
-  <video id="live-video" playsinline muted></video>
-  <canvas id="overlay-canvas"></canvas>
+<!-- ═══════ TIMING SCREEN ═══════ -->
+<div class="screen" id="timing-screen">
+  <div class="video-wrap">
+    <video id="race-video" playsinline controls></video>
 
-  <button class="back-btn" id="back-btn" onclick="goBack()">← Back</button>
+    <!-- Timer overlay -->
+    <div class="timer-overlay" id="timer-overlay">
+      <div class="to-row">
+        <span class="to-event" id="to-event"></span>
+        <span class="to-lap" id="to-lap"></span>
+      </div>
+      <div class="to-time" id="to-time" style="color:#fff">00:00.00</div>
+      <div class="to-hint" id="to-hint"></div>
+    </div>
 
-  <!-- Zoom slider -->
-  <div class="zoom-wrap" id="zoom-wrap">
-    <div class="zlevel" id="zoom-level">1.0×</div>
-    <input type="range" id="zoom-slider" min="100" max="400" value="100" step="10"
-           oninput="onZoom(this.value)">
-    <div class="zlabel">ZOOM</div>
+    <!-- Splits overlay -->
+    <div class="splits-overlay" id="splits-overlay" style="display:none"></div>
   </div>
 
-  <!-- Stabilization toggle -->
-  <div class="stab-wrap" id="stab-wrap">
-    <div class="stab-icon">📷</div>
-    <div class="stab-label">STAB</div>
-    <button class="stab-toggle" id="stab-toggle" onclick="toggleStab()"></button>
-    <div class="stab-status off" id="stab-status">OFF</div>
-  </div>
-
-  <div class="ctrl-bar" id="ctrl-bar"></div>
+  <!-- Control panel -->
+  <div class="controls-panel" id="controls-panel"></div>
 </div>
 
-<!-- ════════ REVIEW SCREEN ════════ -->
-<div id="review">
-  <div class="review-card">
-    <div class="done-label">RACE COMPLETE</div>
-    <div class="final-time" id="final-time"></div>
-    <div><span class="event-badge" id="review-event"></span></div>
-    <video id="review-video" controls playsinline></video>
-    <div class="splits-table" id="splits-table"></div>
-    <div class="stats-row" id="stats-row"></div>
-    <div class="btn-row" id="btn-row"></div>
+<!-- ═══════ REVIEW SCREEN ═══════ -->
+<div class="screen" id="review-screen">
+  <div class="review-top">
+    <div class="rt-label">RACE COMPLETE</div>
+    <div class="rt-time" id="rv-time"></div>
+    <span class="rt-badge" id="rv-event"></span>
+  </div>
+  <div class="review-body" id="review-body"></div>
+</div>
+
+<!-- ═══════ EXPORT MODAL ═══════ -->
+<div class="export-modal" id="export-modal">
+  <div class="export-box">
+    <h3 id="export-title">Exporting Video…</h3>
+    <div class="export-progress-bar"><div class="export-progress-fill" id="export-fill" style="width:0%"></div></div>
+    <div class="export-status" id="export-status">Preparing…</div>
+    <button class="export-cancel" id="export-cancel" onclick="cancelExport()">Cancel</button>
   </div>
 </div>
+
+<!-- Hidden canvas for video export -->
+<canvas id="export-canvas" style="display:none"></canvas>
+<video id="export-video" style="display:none" playsinline muted></video>
 
 <script>
-/* ── State ── */
+/* ═══════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════ */
 const EVENTS = { "1600m": 4, "3200m": 8, "800m": 2, "Custom": null };
 let selectedEvent = "1600m";
-let camFacing = "environment";
-let stream = null;
-let recorder = null;
-let chunks = [];
-let startTime = null;
-let elapsed = 0;
-let splits = [];
-let phase = "setup"; // setup | ready | running | stopped
-let drawRAF = null;
-let tickRAF = null;
-let zoomLevel = 1.0; // 1.0 = no zoom, 4.0 = max zoom
+let videoFile = null;
+let videoURL = null;
 
-/* ── Stabilization State ── */
-let stabEnabled = false;
-let stabOffsetX = 0;    // smoothed offset in pixels (canvas coords)
-let stabOffsetY = 0;
-let stabRawX = 0;       // raw accumulated gyro offset
-let stabRawY = 0;
-let stabLastTime = null;
-const STAB_SMOOTHING = 0.08;    // lower = smoother but more lag
-const STAB_BUFFER = 0.15;       // 15% crop buffer for stabilization room
-const STAB_SENSITIVITY = 4.0;   // gyro degrees → pixel multiplier
-const STAB_DECAY = 0.98;        // slowly recenter when still
-let motionListenerActive = false;
+// Timing state
+let phase = "idle"; // idle | timing | done
+let gunVideoTime = null; // video currentTime when user pressed START
+let splits = []; // { lap, split (ms from gun), lapTime (ms), videoTime }
+let timerRAF = null;
+let exportCancelled = false;
 
-/* ── Helpers ── */
+/* ═══════════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════════ */
 function fmt(ms) {
+  if (ms < 0) ms = 0;
   const m = Math.floor(ms / 60000);
   const s = Math.floor((ms % 60000) / 1000);
   const c = Math.floor((ms % 1000) / 10);
   return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${String(c).padStart(2,"0")}`;
 }
 
-/* ── Setup: Event selection ── */
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(el => el.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+/* ═══════════════════════════════════════════
+   SETUP SCREEN
+   ═══════════════════════════════════════════ */
+// Event selection
 const eventGrid = document.getElementById("event-grid");
 Object.keys(EVENTS).forEach(e => {
   const btn = document.createElement("button");
@@ -319,479 +413,977 @@ Object.keys(EVENTS).forEach(e => {
   eventGrid.appendChild(btn);
 });
 
-function selectCam(btn) {
-  camFacing = btn.dataset.facing;
-  document.querySelectorAll(".cam-btn").forEach(b => b.classList.remove("active"));
-  btn.classList.add("active");
-}
+// File upload
+const uploadZone = document.getElementById("upload-zone");
+const fileInput = document.getElementById("file-input");
+const goBtn = document.getElementById("go-btn");
 
-function onZoom(val) {
-  zoomLevel = val / 100;
-  document.getElementById("zoom-level").textContent = zoomLevel.toFixed(1) + "×";
-}
+fileInput.addEventListener("change", (e) => {
+  if (e.target.files.length > 0) setFile(e.target.files[0]);
+});
 
-/* ── Stabilization ── */
-function toggleStab() {
-  stabEnabled = !stabEnabled;
-  const btn = document.getElementById("stab-toggle");
-  const status = document.getElementById("stab-status");
-  btn.classList.toggle("on", stabEnabled);
-  status.textContent = stabEnabled ? "ON" : "OFF";
-  status.className = "stab-status " + (stabEnabled ? "active" : "off");
+uploadZone.addEventListener("dragover", (e) => { e.preventDefault(); uploadZone.classList.add("dragover"); });
+uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("dragover"));
+uploadZone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  uploadZone.classList.remove("dragover");
+  if (e.dataTransfer.files.length > 0) setFile(e.dataTransfer.files[0]);
+});
 
-  if (stabEnabled) {
-    startMotionListener();
-  } else {
-    stabOffsetX = 0;
-    stabOffsetY = 0;
-    stabRawX = 0;
-    stabRawY = 0;
-  }
-}
+function setFile(file) {
+  if (!file.type.startsWith("video/")) { alert("Please select a video file."); return; }
+  videoFile = file;
+  if (videoURL) URL.revokeObjectURL(videoURL);
+  videoURL = URL.createObjectURL(file);
 
-function handleDeviceMotion(e) {
-  if (!stabEnabled) return;
-  const rr = e.rotationRate;
-  if (!rr) return;
-
-  const now = performance.now();
-  if (stabLastTime === null) { stabLastTime = now; return; }
-  const dt = (now - stabLastTime) / 1000; // seconds
-  stabLastTime = now;
-  if (dt > 0.2) return; // skip big gaps
-
-  // rotationRate is in deg/s — integrate to get angular displacement
-  // alpha = z-axis, beta = x-axis (pitch), gamma = y-axis (yaw)
-  // For a phone held upright filming landscape:
-  // gamma (yaw) → horizontal shake
-  // beta (pitch) → vertical shake
-  const gyroX = (rr.gamma || 0) * dt; // degrees of horizontal rotation
-  const gyroY = (rr.beta || 0) * dt;  // degrees of vertical rotation
-
-  // Accumulate raw offset (this is what the phone "moved")
-  stabRawX += gyroX * STAB_SENSITIVITY;
-  stabRawY += gyroY * STAB_SENSITIVITY;
-
-  // Decay toward center to prevent drift
-  stabRawX *= STAB_DECAY;
-  stabRawY *= STAB_DECAY;
-}
-
-async function startMotionListener() {
-  if (motionListenerActive) return;
-
-  // iOS 13+ requires permission
-  if (typeof DeviceMotionEvent !== 'undefined' &&
-      typeof DeviceMotionEvent.requestPermission === 'function') {
-    try {
-      const perm = await DeviceMotionEvent.requestPermission();
-      if (perm !== 'granted') {
-        alert('Motion sensor permission is required for stabilization. Please allow and try again.');
-        stabEnabled = false;
-        document.getElementById("stab-toggle").classList.remove("on");
-        document.getElementById("stab-status").textContent = "OFF";
-        document.getElementById("stab-status").className = "stab-status off";
-        return;
-      }
-    } catch (e) {
-      alert('Could not request motion permission. Stabilization unavailable.');
-      stabEnabled = false;
-      document.getElementById("stab-toggle").classList.remove("on");
-      document.getElementById("stab-status").textContent = "OFF";
-      document.getElementById("stab-status").className = "stab-status off";
-      return;
-    }
-  }
-
-  window.addEventListener('devicemotion', handleDeviceMotion, { passive: true });
-  motionListenerActive = true;
-  stabLastTime = null;
-  stabRawX = 0;
-  stabRawY = 0;
-  stabOffsetX = 0;
-  stabOffsetY = 0;
-}
-
-/* ── Show / hide screens ── */
-function showScreen(id) {
-  ["setup", "camera-screen", "review"].forEach(s => {
-    document.getElementById(s).style.display = "none";
+  const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+  uploadZone.classList.add("has-file");
+  uploadZone.innerHTML = `
+    <div class="file-info">
+      <span style="font-size:24px">🎥</span>
+      <div style="text-align:left">
+        <div class="fi-name">${file.name.length > 28 ? file.name.slice(0,25) + "…" : file.name}</div>
+        <div class="fi-size">${sizeMB} MB</div>
+      </div>
+      <button class="fi-remove" onclick="event.stopPropagation(); removeFile()">✕</button>
+    </div>
+    <input type="file" accept="video/*" id="file-input" style="position:absolute;inset:0;opacity:0;cursor:pointer">
+  `;
+  // Re-bind input
+  document.getElementById("file-input").addEventListener("change", (e) => {
+    if (e.target.files.length > 0) setFile(e.target.files[0]);
   });
-  const el = document.getElementById(id);
-  el.style.display = id === "camera-screen" ? "block" : "flex";
+  goBtn.disabled = false;
 }
 
-/* ── Prepare Camera ── */
-async function prepareCamera() {
-  const errEl = document.getElementById("setup-error");
-  errEl.textContent = "";
-  try {
-    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: camFacing,
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        // Request hardware stabilization if available (Chrome Android)
-        videoStabilization: { ideal: true }
-      },
-      audio: true
-    });
-    const vid = document.getElementById("live-video");
-    vid.srcObject = stream;
-    try { await vid.play(); } catch(_) {}
-
-    phase = "ready";
-    elapsed = 0;
-    splits = [];
-    chunks = [];
-    startTime = null;
-    zoomLevel = 1.0;
-    document.getElementById("zoom-slider").value = 100;
-    document.getElementById("zoom-level").textContent = "1.0×";
-    stabOffsetX = 0; stabOffsetY = 0; stabRawX = 0; stabRawY = 0; stabLastTime = null;
-
-    showScreen("camera-screen");
-    setupCanvas();
-    renderControls();
-    startDrawLoop();
-  } catch(e) {
-    errEl.textContent = "Camera access denied. Please allow camera & microphone in your browser settings.";
-  }
+function removeFile() {
+  videoFile = null;
+  if (videoURL) { URL.revokeObjectURL(videoURL); videoURL = null; }
+  uploadZone.classList.remove("has-file");
+  uploadZone.innerHTML = `
+    <div class="uz-icon">🎬</div>
+    <div class="uz-text">Tap to select video or <b>drag &amp; drop</b></div>
+    <input type="file" accept="video/*" id="file-input" style="position:absolute;inset:0;opacity:0;cursor:pointer">
+  `;
+  document.getElementById("file-input").addEventListener("change", (e) => {
+    if (e.target.files.length > 0) setFile(e.target.files[0]);
+  });
+  goBtn.disabled = true;
 }
 
-/* ── Canvas Setup ── */
-function setupCanvas() {
-  const canvas = document.getElementById("overlay-canvas");
-  canvas.width = 1280;
-  canvas.height = 720;
+/* ═══════════════════════════════════════════
+   TIMING SCREEN
+   ═══════════════════════════════════════════ */
+function startTiming() {
+  if (!videoURL) return;
+
+  phase = "idle";
+  gunVideoTime = null;
+  splits = [];
+
+  const vid = document.getElementById("race-video");
+  vid.src = videoURL;
+  vid.load();
+
+  document.getElementById("to-event").textContent = selectedEvent;
+  document.getElementById("to-time").textContent = "00:00.00";
+  document.getElementById("to-time").style.color = "#fff";
+  document.getElementById("splits-overlay").style.display = "none";
+  document.getElementById("splits-overlay").innerHTML = "";
+
+  showScreen("timing-screen");
+  renderTimingControls();
+  updateLapLabel();
 }
 
-/* ── Draw Loop ── */
-function startDrawLoop() {
-  const canvas = document.getElementById("overlay-canvas");
-  const ctx = canvas.getContext("2d");
-  const vid = document.getElementById("live-video");
-  const w = canvas.width, h = canvas.height;
+function getElapsedMs() {
+  if (gunVideoTime === null) return 0;
+  const vid = document.getElementById("race-video");
+  return Math.max(0, (vid.currentTime - gunVideoTime) * 1000);
+}
 
-  function draw() {
-    const vw = vid.videoWidth || w;
-    const vh = vid.videoHeight || h;
-
-    // Effective zoom: when stabilization is on, we add a buffer crop
-    const stabZoom = stabEnabled ? STAB_BUFFER : 0;
-    const effectiveZoom = zoomLevel * (1 + stabZoom);
-
-    const cropW = vw / effectiveZoom;
-    const cropH = vh / effectiveZoom;
-
-    // Center crop position
-    let sx = (vw - cropW) / 2;
-    let sy = (vh - cropH) / 2;
-
-    // Apply stabilization offset
-    if (stabEnabled) {
-      // Smooth the offset (exponential moving average)
-      stabOffsetX += (stabRawX - stabOffsetX) * STAB_SMOOTHING;
-      stabOffsetY += (stabRawY - stabOffsetY) * STAB_SMOOTHING;
-
-      // Convert pixel offset to source-image coordinates
-      const scaleX = vw / w;
-      const scaleY = vh / h;
-      const maxShiftX = (vw - cropW) / 2 * 0.85; // leave some margin
-      const maxShiftY = (vh - cropH) / 2 * 0.85;
-
-      // Clamp offsets — negate to counter the motion
-      const ox = Math.max(-maxShiftX, Math.min(maxShiftX, -stabOffsetX * scaleX));
-      const oy = Math.max(-maxShiftY, Math.min(maxShiftY, -stabOffsetY * scaleY));
-
-      sx += ox;
-      sy += oy;
+function startTimerLoop() {
+  const timeEl = document.getElementById("to-time");
+  function tick() {
+    if (phase === "timing") {
+      timeEl.textContent = fmt(getElapsedMs());
     }
-
-    // Clamp to valid source region
-    sx = Math.max(0, Math.min(sx, vw - cropW));
-    sy = Math.max(0, Math.min(sy, vh - cropH));
-
-    ctx.drawImage(vid, sx, sy, cropW, cropH, 0, 0, w, h);
-
-    // Top bar
-    ctx.fillStyle = "rgba(0,0,0,0.6)";
-    ctx.fillRect(0, 0, w, 82);
-
-    // Event & lap labels
-    ctx.font = "bold 16px -apple-system, sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "#aaa";
-    ctx.textAlign = "left";
-    ctx.fillText(selectedEvent, 14, 22);
-
-    const totalLaps = EVENTS[selectedEvent];
-    const curLap = splits.length + (phase === "running" ? 1 : 0);
-    const lapTxt = totalLaps ? `Lap ${Math.min(curLap || 1, totalLaps)}/${totalLaps}` : `Lap ${curLap || 1}`;
-    ctx.textAlign = "right";
-    ctx.fillText(lapTxt, w - 14, 22);
-
-    // Timer
-    ctx.font = "bold 54px monospace";
-    ctx.textAlign = "center";
-    ctx.fillStyle = phase === "running" ? "#00FF88" : phase === "stopped" ? "#FF4444" : "#FFFFFF";
-    ctx.fillText(fmt(elapsed), w / 2, 52);
-
-    // Status line
-    if (phase === "ready") {
-      ctx.font = "bold 15px -apple-system, sans-serif";
-      ctx.fillStyle = "#FFAA00";
-      ctx.fillText("TAP START WHEN GUN FIRES", w / 2, 76);
-    } else if (phase === "stopped") {
-      ctx.font = "bold 16px -apple-system, sans-serif";
-      ctx.fillStyle = "#FF4444";
-      ctx.fillText("FINAL", w / 2, 76);
-    }
-
-    // Splits panel
-    if (splits.length > 0) {
-      const shown = splits.slice(-8);
-      const panelH = shown.length * 30 + 32;
-      const panelW = 260;
-      const px = w - panelW - 10, py = 92;
-
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.beginPath();
-      ctx.roundRect(px, py, panelW, panelH, 10);
-      ctx.fill();
-
-      ctx.font = "bold 11px -apple-system, sans-serif";
-      ctx.fillStyle = "#888";
-      ctx.textAlign = "left";
-      ctx.fillText("SPLITS", px + 10, py + 16);
-
-      shown.forEach((s, i) => {
-        const y = py + 34 + i * 30;
-        // Lap number
-        ctx.font = "bold 14px -apple-system, sans-serif";
-        ctx.fillStyle = "#aaa";
-        ctx.textAlign = "left";
-        ctx.fillText(`L${s.lap}`, px + 10, y);
-        // Cumulative split
-        ctx.font = "bold 16px monospace";
-        ctx.fillStyle = "#00FF88";
-        ctx.textAlign = "left";
-        ctx.fillText(fmt(s.split), px + 44, y);
-        // Lap time
-        ctx.font = "13px monospace";
-        ctx.fillStyle = "#888";
-        ctx.textAlign = "right";
-        ctx.fillText(fmt(s.lapTime), px + panelW - 10, y);
-      });
-    }
-
-    drawRAF = requestAnimationFrame(draw);
+    timerRAF = requestAnimationFrame(tick);
   }
-  draw();
+  tick();
 }
 
-function stopDrawLoop() {
-  if (drawRAF) { cancelAnimationFrame(drawRAF); drawRAF = null; }
+function stopTimerLoop() {
+  if (timerRAF) { cancelAnimationFrame(timerRAF); timerRAF = null; }
 }
 
-/* ── Timer tick ── */
-function startTick() {
-  function t() {
-    if (startTime) elapsed = performance.now() - startTime;
-    tickRAF = requestAnimationFrame(t);
-  }
-  t();
-}
-function stopTick() {
-  if (tickRAF) { cancelAnimationFrame(tickRAF); tickRAF = null; }
-}
-
-/* ── Controls ── */
-function renderControls() {
-  const bar = document.getElementById("ctrl-bar");
-  const backBtn = document.getElementById("back-btn");
-  bar.innerHTML = "";
-
+function updateLapLabel() {
   const totalLaps = EVENTS[selectedEvent];
-
-  if (phase === "ready") {
-    backBtn.style.display = "block";
-    const btn = document.createElement("button");
-    btn.className = "go-btn";
-    btn.innerHTML = `<span class="icon">▶</span><span class="txt">START</span>`;
-    btn.onclick = startRace;
-    bar.appendChild(btn);
-  } else if (phase === "running") {
-    backBtn.style.display = "none";
-    const lap = document.createElement("button");
-    lap.className = "lap-btn";
-    lap.innerHTML = `<span class="txt">LAP</span><span class="num">${splits.length + 1}${totalLaps ? "/" + totalLaps : ""}</span>`;
-    lap.onclick = recordLap;
-    bar.appendChild(lap);
-
-    const stop = document.createElement("button");
-    stop.className = "stop-btn";
-    stop.textContent = "STOP";
-    stop.onclick = stopRace;
-    bar.appendChild(stop);
-  } else if (phase === "stopped") {
-    backBtn.style.display = "none";
-    const msg = document.createElement("div");
-    msg.className = "saving-msg";
-    msg.textContent = "Saving video with overlay…";
-    bar.appendChild(msg);
-  }
+  const cur = splits.length + (phase === "timing" ? 1 : 0);
+  const el = document.getElementById("to-lap");
+  el.textContent = totalLaps ? `Lap ${Math.min(cur || 1, totalLaps)}/${totalLaps}` : `Lap ${cur || 1}`;
 }
 
-/* ── Race Actions ── */
-function startRace() {
-  if (phase !== "ready") return;
-
-  // Record from canvas (has the overlay baked in)
-  const canvas = document.getElementById("overlay-canvas");
-  const canvasStream = canvas.captureStream(30);
-  if (stream) {
-    stream.getAudioTracks().forEach(t => canvasStream.addTrack(t));
-  }
-  let options = {};
-  const types = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"];
-  for (const t of types) {
-    if (MediaRecorder.isTypeSupported(t)) { options.mimeType = t; break; }
-  }
-  recorder = new MediaRecorder(canvasStream, options);
-  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-  recorder.start(200);
-
-  startTime = performance.now();
-  elapsed = 0;
-  phase = "running";
-  startTick();
-  renderControls();
+function updateSplitsOverlay() {
+  const el = document.getElementById("splits-overlay");
+  if (splits.length === 0) { el.style.display = "none"; return; }
+  el.style.display = "block";
+  let html = '<div class="so-title">SPLITS</div>';
+  splits.slice(-6).forEach(s => {
+    html += `<div class="so-row">
+      <span class="so-lap">L${s.lap}</span>
+      <span class="so-split">${fmt(s.split)}</span>
+      <span class="so-laptime">${fmt(s.lapTime)}</span>
+    </div>`;
+  });
+  el.innerHTML = html;
 }
 
-function recordLap() {
-  if (phase !== "running") return;
+/* ── Gun / Start ── */
+function pressStart() {
+  const vid = document.getElementById("race-video");
+  // Auto-play video if paused
+  if (vid.paused) vid.play();
+  gunVideoTime = vid.currentTime;
+  phase = "timing";
+
+  document.getElementById("to-time").style.color = "var(--accent)";
+  document.getElementById("to-hint").textContent = "";
+
+  startTimerLoop();
+  renderTimingControls();
+  updateLapLabel();
+}
+
+/* ── Lap ── */
+function pressLap() {
+  if (phase !== "timing") return;
+
+  const elapsed = getElapsedMs();
   const prev = splits.length > 0 ? splits[splits.length - 1].split : 0;
-  splits.push({ lap: splits.length + 1, split: elapsed, lapTime: elapsed - prev });
-  renderControls();
+  const vid = document.getElementById("race-video");
 
+  splits.push({
+    lap: splits.length + 1,
+    split: elapsed,
+    lapTime: elapsed - prev,
+    videoTime: vid.currentTime
+  });
+
+  updateSplitsOverlay();
+  updateLapLabel();
+
+  // Flash the video area
+  const wrap = document.querySelector(".video-wrap");
+  wrap.classList.remove("flash");
+  void wrap.offsetWidth;
+  wrap.classList.add("flash");
+
+  // Auto-stop on final lap
   const totalLaps = EVENTS[selectedEvent];
   if (totalLaps && splits.length >= totalLaps) {
-    stopRace();
-  }
-}
-
-function stopRace() {
-  stopTick();
-  // Auto-add final split if needed
-  const prev = splits.length > 0 ? splits[splits.length - 1].split : 0;
-  if (splits.length === 0 || elapsed - prev > 500) {
-    splits.push({ lap: splits.length + 1, split: elapsed, lapTime: elapsed - prev });
-  }
-  phase = "stopped";
-  renderControls();
-
-  // Hold final frame for 3s then stop recording
-  setTimeout(() => {
-    if (recorder && recorder.state !== "inactive") {
-      recorder.stop();
-      recorder.onstop = () => {
-        stopDrawLoop();
-        if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-        showReview();
-      };
-    } else {
-      stopDrawLoop();
-      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-      showReview();
-    }
-  }, 3000);
-}
-
-function goBack() {
-  stopDrawLoop();
-  stopTick();
-  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-  phase = "setup";
-  showScreen("setup");
-}
-
-/* ── Review ── */
-function showReview() {
-  phase = "review";
-  showScreen("review");
-
-  document.getElementById("final-time").textContent = fmt(elapsed);
-  document.getElementById("review-event").textContent = selectedEvent;
-
-  // Video
-  const vid = document.getElementById("review-video");
-  if (chunks.length > 0) {
-    const mimeType = recorder ? recorder.mimeType : "video/webm";
-    const blob = new Blob(chunks, { type: mimeType });
-    vid.src = URL.createObjectURL(blob);
-    vid.style.display = "block";
+    finishRace();
   } else {
-    vid.style.display = "none";
+    renderTimingControls();
+  }
+}
+
+/* ── Stop ── */
+function pressStop() {
+  finishRace();
+}
+
+function finishRace() {
+  const elapsed = getElapsedMs();
+  // Add final split if not already at a lap boundary
+  const prev = splits.length > 0 ? splits[splits.length - 1].split : 0;
+  if (splits.length === 0 || elapsed - prev > 300) {
+    const vid = document.getElementById("race-video");
+    splits.push({
+      lap: splits.length + 1,
+      split: elapsed,
+      lapTime: elapsed - prev,
+      videoTime: vid.currentTime
+    });
+    updateSplitsOverlay();
   }
 
-  // Splits table
-  const table = document.getElementById("splits-table");
+  phase = "done";
+  stopTimerLoop();
+
+  document.getElementById("to-time").style.color = "var(--red)";
+  document.getElementById("to-time").textContent = fmt(splits.length > 0 ? splits[splits.length - 1].split : elapsed);
+  document.getElementById("to-hint").innerHTML = '<span style="color:var(--red);font-weight:800">FINAL</span>';
+  updateLapLabel();
+
+  // Pause video
+  const vid = document.getElementById("race-video");
+  vid.pause();
+
+  renderTimingControls();
+}
+
+/* ── Render Controls ── */
+function renderTimingControls() {
+  const panel = document.getElementById("controls-panel");
+  const totalLaps = EVENTS[selectedEvent];
+
+  if (phase === "idle") {
+    panel.innerHTML = `
+      <div class="phase-hint">Play the video, then tap <b>START</b> when the gun fires</div>
+      <div class="ctrl-row">
+        <button class="btn-back" onclick="goBackSetup()">← Back</button>
+        <button class="btn-start pulse" onclick="pressStart()">
+          <span class="bi">▶</span><span class="bt">START</span>
+        </button>
+      </div>
+    `;
+  } else if (phase === "timing") {
+    panel.innerHTML = `
+      <div class="phase-hint">Tap <b>LAP</b> each time a runner completes a lap</div>
+      <div class="ctrl-row">
+        <button class="btn-lap" onclick="pressLap()">
+          <span class="bt">LAP</span>
+          <span class="bn">${splits.length + 1}${totalLaps ? "/" + totalLaps : ""}</span>
+        </button>
+        <button class="btn-stop" onclick="pressStop()">STOP</button>
+      </div>
+    `;
+  } else if (phase === "done") {
+    panel.innerHTML = `
+      <div class="ctrl-row">
+        <button class="btn-back" onclick="resetTiming()">↻ Retime</button>
+        <button class="btn-review" onclick="showReview()">VIEW RESULTS →</button>
+      </div>
+    `;
+  }
+}
+
+function goBackSetup() {
+  stopTimerLoop();
+  const vid = document.getElementById("race-video");
+  vid.pause();
+  vid.src = "";
+  showScreen("setup-screen");
+}
+
+function resetTiming() {
+  stopTimerLoop();
+  phase = "idle";
+  gunVideoTime = null;
+  splits = [];
+  const vid = document.getElementById("race-video");
+  vid.currentTime = 0;
+  vid.pause();
+  document.getElementById("to-time").textContent = "00:00.00";
+  document.getElementById("to-time").style.color = "#fff";
+  document.getElementById("to-hint").innerHTML = "";
+  document.getElementById("splits-overlay").style.display = "none";
+  renderTimingControls();
+  updateLapLabel();
+}
+
+/* ═══════════════════════════════════════════
+   REVIEW SCREEN
+   ═══════════════════════════════════════════ */
+function showReview() {
+  const totalTime = splits.length > 0 ? splits[splits.length - 1].split : 0;
+  document.getElementById("rv-time").textContent = fmt(totalTime);
+  document.getElementById("rv-event").textContent = selectedEvent;
+
   let fastest = null, slowest = null;
   if (splits.length > 1) {
     fastest = splits.reduce((a, b) => a.lapTime < b.lapTime ? a : b);
     slowest = splits.reduce((a, b) => a.lapTime > b.lapTime ? a : b);
   }
-  table.innerHTML = `<div class="hdr"><span>LAP</span><span>SPLIT</span><span>LAP TIME</span></div>`;
+
+  const body = document.getElementById("review-body");
+  let html = "";
+
+  // Video
+  html += `<div class="review-video-wrap">
+    <video src="${videoURL}" controls playsinline></video>
+  </div>`;
+
+  // Splits table
+  html += `<div class="review-table">
+    <div class="rt-hdr"><span>LAP</span><span>SPLIT</span><span>LAP TIME</span></div>`;
   splits.forEach(s => {
     const isFast = fastest && s.lap === fastest.lap;
     const isSlow = slowest && s.lap === slowest.lap;
-    const cls = "split-row" + (isFast ? " fast" : "") + (isSlow ? " slow" : "");
-    table.innerHTML += `<div class="${cls}">
+    const cls = "rt-row" + (isFast ? " fast" : "") + (isSlow ? " slow" : "");
+    html += `<div class="${cls}">
       <span>${s.lap}${isFast ? " 🟢" : ""}${isSlow ? " 🔴" : ""}</span>
-      <span style="font-family:monospace">${fmt(s.split)}</span>
-      <span style="font-family:monospace">${fmt(s.lapTime)}</span>
+      <span class="mono">${fmt(s.split)}</span>
+      <span class="mono">${fmt(s.lapTime)}</span>
     </div>`;
   });
+  html += `</div>`;
 
   // Stats
-  const statsRow = document.getElementById("stats-row");
-  statsRow.innerHTML = "";
   if (splits.length > 1) {
-    const avg = elapsed / splits.length;
-    statsRow.innerHTML = `
-      <div class="stat-box"><div class="sl">AVG LAP</div><div class="sv" style="color:#fff">${fmt(avg)}</div></div>
-      <div class="stat-box"><div class="sl">FASTEST</div><div class="sv" style="color:#00e87b">${fastest ? fmt(fastest.lapTime) : "—"}</div></div>
-      <div class="stat-box"><div class="sl">SLOWEST</div><div class="sv" style="color:#ff6b6b">${slowest ? fmt(slowest.lapTime) : "—"}</div></div>
-    `;
+    const avg = totalTime / splits.length;
+    html += `<div class="stats-grid">
+      <div class="stat-card"><div class="sc-label">AVG LAP</div><div class="sc-val" style="color:#fff">${fmt(avg)}</div></div>
+      <div class="stat-card"><div class="sc-label">FASTEST</div><div class="sc-val" style="color:var(--accent)">${fastest ? fmt(fastest.lapTime) : "—"}</div></div>
+      <div class="stat-card"><div class="sc-label">SLOWEST</div><div class="sc-val" style="color:var(--red)">${slowest ? fmt(slowest.lapTime) : "—"}</div></div>
+    </div>`;
+
+    // Pace chart (simple bar chart)
+    const maxLap = Math.max(...splits.map(s => s.lapTime));
+    html += `<span class="label" style="margin-bottom:8px">LAP PACE</span>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px">`;
+    splits.forEach(s => {
+      const pct = (s.lapTime / maxLap * 100);
+      const isFast = fastest && s.lap === fastest.lap;
+      const isSlow = slowest && s.lap === slowest.lap;
+      const color = isFast ? "var(--accent)" : isSlow ? "var(--red)" : "var(--blue)";
+      html += `<div style="display:flex;align-items:center;gap:8px">
+        <span style="color:var(--dim);font-size:12px;min-width:22px;font-weight:700">L${s.lap}</span>
+        <div style="flex:1;height:22px;background:rgba(255,255,255,0.04);border-radius:4px;overflow:hidden;position:relative">
+          <div style="width:${pct}%;height:100%;background:${color};border-radius:4px;opacity:0.7"></div>
+        </div>
+        <span style="font-family:var(--mono);font-size:12px;color:var(--text);min-width:65px;text-align:right">${fmt(s.lapTime)}</span>
+      </div>`;
+    });
+    html += `</div>`;
   }
 
-  // Buttons
-  const btnRow = document.getElementById("btn-row");
-  btnRow.innerHTML = "";
-  if (chunks.length > 0) {
-    const mimeType = recorder ? recorder.mimeType : "video/webm";
-    const blob = new Blob(chunks, { type: mimeType });
-    const ext = mimeType.includes("mp4") ? "mp4" : "webm";
-    const a = document.createElement("a");
-    a.className = "dl-btn";
-    a.href = URL.createObjectURL(blob);
-    a.download = `${selectedEvent}_race_${Date.now()}.${ext}`;
-    a.textContent = "DOWNLOAD VIDEO";
-    btnRow.appendChild(a);
+  // Video timestamps
+  html += `<span class="label" style="margin-bottom:8px">VIDEO TIMESTAMPS</span>
+  <div style="margin-bottom:20px">`;
+  if (gunVideoTime !== null) {
+    const gunMins = Math.floor(gunVideoTime / 60);
+    const gunSecs = (gunVideoTime % 60).toFixed(1);
+    html += `<div style="color:var(--dim);font-size:12px;margin-bottom:4px">
+      Gun/Start at <b style="color:var(--yellow)">${gunMins}:${String(gunSecs).padStart(4,'0')}</b> in video
+    </div>`;
   }
-  const newBtn = document.createElement("button");
-  newBtn.className = "ghost-btn";
-  newBtn.textContent = "NEW RACE";
-  newBtn.onclick = () => {
-    phase = "setup";
-    elapsed = 0;
-    splits = [];
-    chunks = [];
-    showScreen("setup");
+  splits.forEach(s => {
+    const vMins = Math.floor(s.videoTime / 60);
+    const vSecs = (s.videoTime % 60).toFixed(1);
+    html += `<div style="color:var(--dim);font-size:12px;padding:2px 0">
+      Lap ${s.lap} at <span style="color:var(--text)">${vMins}:${String(vSecs).padStart(4,'0')}</span>
+    </div>`;
+  });
+  html += `</div>`;
+
+  // Export buttons
+  html += `<div class="export-row">
+    <button class="export-btn" onclick="exportVideo()"><span class="eicon">🎬</span> Export Video</button>
+    <button class="export-btn" onclick="exportPDF()"><span class="eicon">📄</span> Export PDF</button>
+  </div>`;
+
+  // Actions
+  html += `<div class="review-actions">
+    <button class="ghost-btn" onclick="backToTiming()">↻ Retime</button>
+    <button class="accent-btn" onclick="newRace()">NEW RACE</button>
+  </div>`;
+
+  body.innerHTML = html;
+  showScreen("review-screen");
+}
+
+function backToTiming() {
+  phase = "idle";
+  gunVideoTime = null;
+  splits = [];
+  const vid = document.getElementById("race-video");
+  vid.currentTime = 0;
+  vid.pause();
+  document.getElementById("to-time").textContent = "00:00.00";
+  document.getElementById("to-time").style.color = "#fff";
+  document.getElementById("to-hint").innerHTML = "";
+  document.getElementById("splits-overlay").style.display = "none";
+  renderTimingControls();
+  updateLapLabel();
+  showScreen("timing-screen");
+}
+
+function newRace() {
+  stopTimerLoop();
+  phase = "idle";
+  gunVideoTime = null;
+  splits = [];
+  showScreen("setup-screen");
+}
+
+/* ═══════════════════════════════════════════
+   VIDEO EXPORT — bakes overlay onto video
+   ═══════════════════════════════════════════ */
+function cancelExport() {
+  exportCancelled = true;
+  document.getElementById("export-modal").classList.remove("active");
+}
+
+function showExportModal(title) {
+  exportCancelled = false;
+  document.getElementById("export-title").textContent = title;
+  document.getElementById("export-fill").style.width = "0%";
+  document.getElementById("export-status").textContent = "Preparing…";
+  document.getElementById("export-cancel").style.display = "";
+  document.getElementById("export-modal").classList.add("active");
+}
+
+function updateExportProgress(pct, status) {
+  document.getElementById("export-fill").style.width = pct + "%";
+  document.getElementById("export-status").textContent = status;
+}
+
+async function exportVideo() {
+  showExportModal("Exporting Video…");
+
+  const vid = document.getElementById("export-video");
+  const canvas = document.getElementById("export-canvas");
+  vid.src = videoURL;
+  vid.currentTime = 0;
+  vid.playbackRate = 1;
+
+  await new Promise((res) => { vid.onloadedmetadata = res; vid.load(); });
+  await new Promise((res) => setTimeout(res, 200));
+
+  const vw = vid.videoWidth || 1280;
+  const vh = vid.videoHeight || 720;
+  canvas.width = vw;
+  canvas.height = vh;
+  const ctx = canvas.getContext("2d");
+  const duration = vid.duration;
+  const totalLaps = EVENTS[selectedEvent];
+
+  // Setup recorder
+  const canvasStream = canvas.captureStream(30);
+  let recOpts = {};
+  const types = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"];
+  for (const t of types) {
+    if (MediaRecorder.isTypeSupported(t)) { recOpts.mimeType = t; break; }
+  }
+  const chunks = [];
+  const recorder = new MediaRecorder(canvasStream, recOpts);
+  recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+  recorder.start(200);
+  vid.play();
+
+  // Draw loop
+  function getOverlayElapsed(videoTime) {
+    if (gunVideoTime === null) return -1;
+    return (videoTime - gunVideoTime) * 1000;
+  }
+
+  function getSplitsAtTime(videoTime) {
+    return splits.filter(s => s.videoTime <= videoTime);
+  }
+
+  function drawOverlayFrame() {
+    const w = canvas.width, h = canvas.height;
+    ctx.drawImage(vid, 0, 0, w, h);
+
+    const elapsed = getOverlayElapsed(vid.currentTime);
+    const visibleSplits = getSplitsAtTime(vid.currentTime);
+    const raceOver = visibleSplits.length >= splits.length && splits.length > 0;
+
+    // Only draw overlay after gun time
+    if (elapsed < -2000) return; // 2 sec before gun, no overlay
+
+    // Scale factor for overlay elements relative to video resolution
+    const sf = Math.max(w / 1280, 0.6);
+
+    // Top bar
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(0, 0, w, 82 * sf);
+
+    ctx.textBaseline = "middle";
+
+    // Event label
+    ctx.font = `bold ${16 * sf}px sans-serif`;
+    ctx.fillStyle = "#aaa";
+    ctx.textAlign = "left";
+    ctx.fillText(selectedEvent, 14 * sf, 22 * sf);
+
+    // Lap label
+    const curLap = raceOver ? visibleSplits.length : visibleSplits.length + 1;
+    const lapTxt = totalLaps ? `Lap ${Math.min(curLap, totalLaps)}/${totalLaps}` : `Lap ${curLap}`;
+    ctx.textAlign = "right";
+    ctx.fillText(lapTxt, w - 14 * sf, 22 * sf);
+
+    // Timer
+    const displayTime = raceOver ? splits[splits.length - 1].split : Math.max(0, elapsed);
+    ctx.font = `bold ${54 * sf}px monospace`;
+    ctx.textAlign = "center";
+    if (elapsed < 0) {
+      ctx.fillStyle = "#ffffff";
+    } else if (raceOver) {
+      ctx.fillStyle = "#ff4455";
+    } else {
+      ctx.fillStyle = "#00FF88";
+    }
+    ctx.fillText(elapsed >= 0 ? fmt(displayTime) : "00:00.00", w / 2, 52 * sf);
+
+    // Status
+    if (elapsed < 0) {
+      // Before gun
+    } else if (raceOver) {
+      ctx.font = `bold ${16 * sf}px sans-serif`;
+      ctx.fillStyle = "#ff4455";
+      ctx.fillText("FINAL", w / 2, 76 * sf);
+    }
+
+    // Splits panel
+    if (visibleSplits.length > 0) {
+      const shown = visibleSplits.slice(-8);
+      const panelH = (shown.length * 30 + 32) * sf;
+      const panelW = 260 * sf;
+      const px = w - panelW - 10 * sf, py = 92 * sf;
+
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(px, py, panelW, panelH, 10 * sf);
+      else { ctx.rect(px, py, panelW, panelH); }
+      ctx.fill();
+
+      ctx.font = `bold ${11 * sf}px sans-serif`;
+      ctx.fillStyle = "#888";
+      ctx.textAlign = "left";
+      ctx.fillText("SPLITS", px + 10 * sf, py + 16 * sf);
+
+      shown.forEach((s, i) => {
+        const y = py + (34 + i * 30) * sf;
+        ctx.font = `bold ${14 * sf}px sans-serif`;
+        ctx.fillStyle = "#aaa";
+        ctx.textAlign = "left";
+        ctx.fillText(`L${s.lap}`, px + 10 * sf, y);
+        ctx.font = `bold ${16 * sf}px monospace`;
+        ctx.fillStyle = "#00FF88";
+        ctx.textAlign = "left";
+        ctx.fillText(fmt(s.split), px + 44 * sf, y);
+        ctx.font = `${13 * sf}px monospace`;
+        ctx.fillStyle = "#888";
+        ctx.textAlign = "right";
+        ctx.fillText(fmt(s.lapTime), px + panelW - 10 * sf, y);
+      });
+    }
+  }
+
+  await new Promise((resolve) => {
+    function processFrame() {
+      if (exportCancelled) {
+        vid.pause();
+        recorder.stop();
+        resolve();
+        return;
+      }
+
+      if (vid.ended || vid.currentTime >= duration - 0.1) {
+        drawOverlayFrame();
+        updateExportProgress(100, "Finalizing…");
+        vid.pause();
+        recorder.stop();
+        recorder.onstop = () => resolve();
+        return;
+      }
+
+      drawOverlayFrame();
+      const pct = Math.round((vid.currentTime / duration) * 100);
+      updateExportProgress(pct, `Processing… ${pct}%`);
+      requestAnimationFrame(processFrame);
+    }
+    requestAnimationFrame(processFrame);
+  });
+
+  if (exportCancelled) {
+    document.getElementById("export-modal").classList.remove("active");
+    return;
+  }
+
+  // Build download
+  const mimeType = recorder.mimeType || "video/webm";
+  const blob = new Blob(chunks, { type: mimeType });
+  const ext = mimeType.includes("mp4") ? "mp4" : "webm";
+  const url = URL.createObjectURL(blob);
+
+  document.getElementById("export-cancel").style.display = "none";
+  updateExportProgress(100, "Done!");
+  document.getElementById("export-title").textContent = "Export Complete!";
+
+  // Replace cancel with download link
+  const box = document.querySelector(".export-box");
+  const dlBtn = document.createElement("a");
+  dlBtn.href = url;
+  dlBtn.download = `${selectedEvent}_race_${Date.now()}.${ext}`;
+  dlBtn.textContent = "DOWNLOAD VIDEO";
+  dlBtn.style.cssText = `display:inline-block;padding:12px 28px;background:linear-gradient(135deg,var(--accent2),var(--accent));border-radius:10px;color:#000;font-size:14px;font-weight:800;letter-spacing:1px;text-decoration:none;margin-top:8px`;
+  box.appendChild(dlBtn);
+
+  const closeBtn = document.createElement("button");
+  closeBtn.textContent = "Close";
+  closeBtn.style.cssText = `display:block;margin:10px auto 0;background:none;border:1px solid var(--border);border-radius:8px;color:var(--dim);padding:8px 20px;font-size:13px;cursor:pointer;font-family:var(--sans)`;
+  closeBtn.onclick = () => {
+    document.getElementById("export-modal").classList.remove("active");
+    // Clean up added elements
+    dlBtn.remove();
+    closeBtn.remove();
   };
-  btnRow.appendChild(newBtn);
+  box.appendChild(closeBtn);
+}
+
+/* ═══════════════════════════════════════════
+   PDF EXPORT — pure canvas, zero dependencies
+   ═══════════════════════════════════════════ */
+function exportPDF() {
+  const totalTime = splits.length > 0 ? splits[splits.length - 1].split : 0;
+  let fastest = null, slowest = null;
+  if (splits.length > 1) {
+    fastest = splits.reduce((a, b) => a.lapTime < b.lapTime ? a : b);
+    slowest = splits.reduce((a, b) => a.lapTime > b.lapTime ? a : b);
+  }
+
+  // Create high-res canvas (A4 proportions at 2x)
+  const DPI = 2;
+  const W = 595 * DPI; // A4 width in points * 2
+  const H = 842 * DPI; // A4 height
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  const ml = 50 * DPI, mr = 50 * DPI;
+  const cw = W - ml - mr;
+  let y = 0;
+
+  // ── Background ──
+  ctx.fillStyle = "#0b0b10";
+  ctx.fillRect(0, 0, W, H);
+
+  // ── Header band ──
+  ctx.fillStyle = "#14141c";
+  ctx.fillRect(0, 0, W, 140 * DPI);
+
+  // Accent line
+  ctx.fillStyle = "#00e87b";
+  ctx.fillRect(0, 0, W, 4 * DPI);
+
+  y = 36 * DPI;
+  ctx.font = `bold ${10 * DPI}px sans-serif`;
+  ctx.fillStyle = "#00e87b";
+  ctx.textBaseline = "top";
+  ctx.fillText("TRACK TIMER — RACE REPORT", ml, y);
+
+  y += 22 * DPI;
+  ctx.font = `bold ${32 * DPI}px monospace`;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(fmt(totalTime), ml, y);
+
+  const timeW = ctx.measureText(fmt(totalTime)).width;
+  ctx.font = `bold ${14 * DPI}px sans-serif`;
+  ctx.fillStyle = "#00e87b";
+  ctx.fillText(selectedEvent, ml + timeW + 12 * DPI, y + 14 * DPI);
+
+  // Date right-aligned
+  const now = new Date();
+  ctx.font = `${9 * DPI}px sans-serif`;
+  ctx.fillStyle = "#6a6a80";
+  ctx.textAlign = "right";
+  ctx.fillText(now.toLocaleDateString() + "  " + now.toLocaleTimeString(), W - mr, 36 * DPI);
+  ctx.textAlign = "left";
+
+  y += 42 * DPI;
+  ctx.font = `${9 * DPI}px sans-serif`;
+  ctx.fillStyle = "#6a6a80";
+  ctx.fillText(`${splits.length} laps recorded`, ml, y);
+
+  y = 155 * DPI;
+
+  // ── Stats boxes ──
+  if (splits.length > 1) {
+    const boxW = Math.floor((cw - 20 * DPI) / 3);
+    const boxH = 56 * DPI;
+    const stats = [
+      { label: "AVG LAP", val: fmt(totalTime / splits.length), color: "#ffffff" },
+      { label: "FASTEST", val: fastest ? fmt(fastest.lapTime) : "—", color: "#00e87b" },
+      { label: "SLOWEST", val: slowest ? fmt(slowest.lapTime) : "—", color: "#ff4455" },
+    ];
+    stats.forEach((s, i) => {
+      const bx = ml + i * (boxW + 10 * DPI);
+      ctx.fillStyle = "#1a1a28";
+      roundRect(ctx, bx, y, boxW, boxH, 8 * DPI);
+      ctx.fill();
+
+      ctx.font = `bold ${8 * DPI}px sans-serif`;
+      ctx.fillStyle = "#6a6a80";
+      ctx.textAlign = "center";
+      ctx.fillText(s.label, bx + boxW / 2, y + 16 * DPI);
+
+      ctx.font = `bold ${16 * DPI}px monospace`;
+      ctx.fillStyle = s.color;
+      ctx.fillText(s.val, bx + boxW / 2, y + 38 * DPI);
+      ctx.textAlign = "left";
+    });
+    y += boxH + 20 * DPI;
+  }
+
+  // ── Section: Splits Table ──
+  ctx.font = `bold ${10 * DPI}px sans-serif`;
+  ctx.fillStyle = "#00e87b";
+  ctx.fillText("LAP SPLITS", ml, y);
+  y += 16 * DPI;
+
+  // Table header
+  ctx.fillStyle = "#1a1a28";
+  ctx.fillRect(ml, y, cw, 22 * DPI);
+  ctx.font = `bold ${8 * DPI}px sans-serif`;
+  ctx.fillStyle = "#6a6a80";
+  ctx.fillText("LAP", ml + 10 * DPI, y + 14 * DPI);
+  ctx.fillText("SPLIT", ml + 70 * DPI, y + 14 * DPI);
+  ctx.fillText("LAP TIME", ml + 180 * DPI, y + 14 * DPI);
+  ctx.fillText("VIDEO", ml + 290 * DPI, y + 14 * DPI);
+  y += 24 * DPI;
+
+  splits.forEach((s) => {
+    const isFast = fastest && s.lap === fastest.lap;
+    const isSlow = slowest && s.lap === slowest.lap;
+
+    // Row highlight
+    if (isFast) { ctx.fillStyle = "rgba(0,232,123,0.06)"; ctx.fillRect(ml, y - 2 * DPI, cw, 22 * DPI); }
+    if (isSlow) { ctx.fillStyle = "rgba(255,68,85,0.06)"; ctx.fillRect(ml, y - 2 * DPI, cw, 22 * DPI); }
+
+    // Bottom border
+    ctx.fillStyle = "#1a1a24";
+    ctx.fillRect(ml, y + 18 * DPI, cw, 1);
+
+    ctx.font = `bold ${10 * DPI}px sans-serif`;
+    ctx.fillStyle = "#c8c8d0";
+    ctx.fillText(`${s.lap}${isFast ? "  ●" : ""}${isSlow ? "  ●" : ""}`, ml + 10 * DPI, y + 12 * DPI);
+
+    ctx.font = `bold ${11 * DPI}px monospace`;
+    ctx.fillStyle = "#e8e8f0";
+    ctx.fillText(fmt(s.split), ml + 70 * DPI, y + 12 * DPI);
+
+    ctx.fillStyle = isFast ? "#00e87b" : isSlow ? "#ff4455" : "#b0b0c0";
+    ctx.fillText(fmt(s.lapTime), ml + 180 * DPI, y + 12 * DPI);
+
+    ctx.font = `${9 * DPI}px monospace`;
+    ctx.fillStyle = "#6a6a80";
+    const vMins = Math.floor(s.videoTime / 60);
+    const vSecs = (s.videoTime % 60).toFixed(1);
+    ctx.fillText(`${vMins}:${String(vSecs).padStart(4, '0')}`, ml + 290 * DPI, y + 12 * DPI);
+
+    y += 22 * DPI;
+  });
+
+  y += 14 * DPI;
+
+  // ── Pace Chart ──
+  if (splits.length > 1) {
+    ctx.font = `bold ${10 * DPI}px sans-serif`;
+    ctx.fillStyle = "#00e87b";
+    ctx.fillText("LAP PACE COMPARISON", ml, y);
+    y += 16 * DPI;
+
+    const maxLap = Math.max(...splits.map(s => s.lapTime));
+    const barMaxW = cw - 90 * DPI;
+    const barH = 18 * DPI;
+    const barGap = 6 * DPI;
+
+    splits.forEach((s) => {
+      const isFast = fastest && s.lap === fastest.lap;
+      const isSlow = slowest && s.lap === slowest.lap;
+      const pct = s.lapTime / maxLap;
+      const bw = pct * barMaxW;
+
+      // Lap label
+      ctx.font = `bold ${9 * DPI}px sans-serif`;
+      ctx.fillStyle = "#6a6a80";
+      ctx.fillText(`L${s.lap}`, ml, y + barH / 2 + 3 * DPI);
+
+      // Bar bg
+      ctx.fillStyle = "#1a1a28";
+      roundRect(ctx, ml + 28 * DPI, y, barMaxW, barH, 4 * DPI);
+      ctx.fill();
+
+      // Bar fill
+      ctx.fillStyle = isFast ? "#00c864" : isSlow ? "#dd3344" : "#3b8bff";
+      roundRect(ctx, ml + 28 * DPI, y, Math.max(bw, 4 * DPI), barH, 4 * DPI);
+      ctx.fill();
+
+      // Time label
+      ctx.font = `bold ${9 * DPI}px monospace`;
+      ctx.fillStyle = "#c8c8d0";
+      ctx.fillText(fmt(s.lapTime), ml + 28 * DPI + barMaxW + 8 * DPI, y + barH / 2 + 3 * DPI);
+
+      y += barH + barGap;
+    });
+
+    y += 10 * DPI;
+  }
+
+  // ── Delta Chart ──
+  if (splits.length > 2 && y < H - 120 * DPI) {
+    const avg = totalTime / splits.length;
+    const deltas = splits.map(s => s.lapTime - avg);
+    const maxDelta = Math.max(...deltas.map(d => Math.abs(d)));
+
+    ctx.font = `bold ${10 * DPI}px sans-serif`;
+    ctx.fillStyle = "#00e87b";
+    ctx.fillText("LAP-TO-LAP DELTA (vs average)", ml, y);
+    y += 16 * DPI;
+
+    const chartH = 80 * DPI;
+    const midY = y + chartH / 2;
+    const barW = Math.min((cw / splits.length) - 6 * DPI, 36 * DPI);
+
+    // Zero line
+    ctx.strokeStyle = "#2a2a40";
+    ctx.lineWidth = 1 * DPI;
+    ctx.beginPath();
+    ctx.moveTo(ml, midY);
+    ctx.lineTo(ml + cw, midY);
+    ctx.stroke();
+
+    // Labels
+    ctx.font = `${7 * DPI}px sans-serif`;
+    ctx.fillStyle = "#00c864";
+    ctx.textAlign = "right";
+    ctx.fillText("FASTER ↑", ml - 6 * DPI, midY - 8 * DPI);
+    ctx.fillStyle = "#dd3344";
+    ctx.fillText("SLOWER ↓", ml - 6 * DPI, midY + 14 * DPI);
+    ctx.textAlign = "left";
+
+    splits.forEach((s, i) => {
+      const delta = deltas[i];
+      const isFast = fastest && s.lap === fastest.lap;
+      const isSlow = slowest && s.lap === slowest.lap;
+      const barMax = chartH / 2 - 8 * DPI;
+      const bh = maxDelta > 0 ? (Math.abs(delta) / maxDelta) * barMax : 0;
+      const bx = ml + (cw / splits.length) * i + ((cw / splits.length) - barW) / 2;
+
+      if (delta <= 0) {
+        ctx.fillStyle = isFast ? "#00c864" : "#3b8bff";
+        roundRect(ctx, bx, midY - bh, barW, bh, 3 * DPI);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = isSlow ? "#dd3344" : "#c88030";
+        roundRect(ctx, bx, midY, barW, bh, 3 * DPI);
+        ctx.fill();
+      }
+
+      // Lap label
+      ctx.font = `bold ${8 * DPI}px sans-serif`;
+      ctx.fillStyle = "#6a6a80";
+      ctx.textAlign = "center";
+      ctx.fillText(`L${s.lap}`, bx + barW / 2, y + chartH + 12 * DPI);
+      ctx.textAlign = "left";
+    });
+
+    y += chartH + 24 * DPI;
+  }
+
+  // ── Footer ──
+  ctx.fillStyle = "#2a2a40";
+  ctx.fillRect(ml, H - 36 * DPI, cw, 1);
+  ctx.font = `${8 * DPI}px sans-serif`;
+  ctx.fillStyle = "#4a4a60";
+  ctx.fillText("Generated by Track Timer", ml, H - 22 * DPI);
+  ctx.textAlign = "right";
+  ctx.fillText(now.toISOString().split("T")[0], W - mr, H - 22 * DPI);
+  ctx.textAlign = "left";
+
+  // ── Convert canvas → PDF ──
+  const imgData = canvas.toDataURL("image/jpeg", 0.92);
+  const pdfBytes = buildPDF(W, H, imgData);
+  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${selectedEvent}_race_report_${Date.now()}.pdf`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// Rounded rect helper
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(x, y, w, h, r);
+  } else {
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+}
+
+// Build a minimal valid PDF with a single full-page JPEG image
+function buildPDF(imgW, imgH, jpegDataURL) {
+  // Convert data URL to raw bytes
+  const b64 = jpegDataURL.split(",")[1];
+  const raw = atob(b64);
+  const imgBytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) imgBytes[i] = raw.charCodeAt(i);
+
+  // PDF uses points: A4 = 595.28 x 841.89
+  const pageW = 595.28;
+  const pageH = 841.89;
+
+  const enc = new TextEncoder();
+  const parts = [];
+  const offsets = [];
+  let pos = 0;
+
+  function w(str) { const b = enc.encode(str); parts.push(b); pos += b.length; }
+  function wBytes(b) { parts.push(b); pos += b.length; }
+
+  // Header
+  w("%PDF-1.4\n%\xFF\xFF\xFF\xFF\n");
+
+  // Obj 1: Catalog
+  offsets[1] = pos;
+  w("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+
+  // Obj 2: Pages
+  offsets[2] = pos;
+  w("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+
+  // Obj 3: Page
+  offsets[3] = pos;
+  w(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 4 0 R /Resources << /XObject << /Img 5 0 R >> >> >>\nendobj\n`);
+
+  // Obj 4: Page content stream (draw image full page)
+  const stream = `q ${pageW} 0 0 ${pageH} 0 0 cm /Img Do Q\n`;
+  offsets[4] = pos;
+  w(`4 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}endstream\nendobj\n`);
+
+  // Obj 5: Image XObject
+  offsets[5] = pos;
+  w(`5 0 obj\n<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imgBytes.length} >>\nstream\n`);
+  wBytes(imgBytes);
+  w("\nendstream\nendobj\n");
+
+  // XRef
+  const xrefPos = pos;
+  w("xref\n");
+  w(`0 6\n`);
+  w("0000000000 65535 f \n");
+  for (let i = 1; i <= 5; i++) {
+    w(String(offsets[i]).padStart(10, "0") + " 00000 n \n");
+  }
+
+  // Trailer
+  w("trailer\n<< /Size 6 /Root 1 0 R >>\n");
+  w("startxref\n" + xrefPos + "\n%%EOF\n");
+
+  // Combine
+  let total = 0;
+  parts.forEach(p => total += p.length);
+  const pdf = new Uint8Array(total);
+  let off = 0;
+  parts.forEach(p => { pdf.set(p, off); off += p.length; });
+  return pdf;
 }
 </script>
 </body>
