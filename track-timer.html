@@ -263,6 +263,7 @@ let splits = [];
 let timerRAF = null;
 let exportCancelled = false;
 let currentSpeed = 1;
+let raceNotes = "";
 
 /* ═══════ HELPERS ═══════ */
 function fmt(ms) {
@@ -606,6 +607,12 @@ function showReview() {
     }
   }
 
+  // Notes
+  html += `<span class="label" style="margin-bottom:6px">RACE NOTES</span>
+  <textarea id="race-notes" placeholder="Add notes about this race — conditions, strategy, observations…"
+    style="width:100%;min-height:80px;padding:10px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;color:#fff;font-family:var(--sans);font-size:13px;resize:vertical;outline:none;margin-bottom:14px"
+    oninput="raceNotes=this.value">${raceNotes}</textarea>`;
+
   // Exports
   html += `<div class="export-row">
     <button class="export-btn" onclick="exportVideo()">🎬 Export Video</button>
@@ -621,53 +628,76 @@ function showReview() {
 }
 
 function backToTiming() { resetTiming(); showScreen("timing-screen"); }
-function newRace() { stopTimerLoop(); phase = "idle"; gunVideoTime = null; splits = []; showScreen("setup-screen"); }
+function newRace() { stopTimerLoop(); phase = "idle"; gunVideoTime = null; splits = []; raceNotes = ""; showScreen("setup-screen"); }
 
-/* ═══════ VIDEO EXPORT ═══════ */
+/* ═══════ VIDEO EXPORT — frame-by-frame seek ═══════ */
 function cancelExport() { exportCancelled = true; document.getElementById("export-modal").classList.remove("active"); }
 function showExportModal(t) { exportCancelled=false; document.getElementById("export-title").textContent=t; document.getElementById("export-fill").style.width="0%"; document.getElementById("export-status").textContent="Preparing…"; document.getElementById("export-cancel").style.display=""; document.getElementById("export-modal").classList.add("active"); }
 function updateExportProgress(p,s) { document.getElementById("export-fill").style.width=p+"%"; document.getElementById("export-status").textContent=s; }
 
 async function exportVideo() {
   showExportModal("Exporting Video…");
+
   const vid = document.getElementById("export-video");
   const canvas = document.getElementById("export-canvas");
-  vid.src = videoURL; vid.currentTime = 0; vid.playbackRate = 1;
+  vid.src = videoURL;
+  vid.muted = true;
+  vid.preload = "auto";
   await new Promise(r => { vid.onloadedmetadata = r; vid.load(); });
-  await new Promise(r => setTimeout(r, 200));
+  await new Promise(r => setTimeout(r, 300));
 
-  const vw = vid.videoWidth||1280, vh = vid.videoHeight||720;
+  const vw = vid.videoWidth || 1280, vh = vid.videoHeight || 720;
   canvas.width = vw; canvas.height = vh;
   const ctx = canvas.getContext("2d");
   const duration = vid.duration;
   const totalLaps = EVENTS[selectedEvent];
   const targetPerLap = getTargetLapMs();
 
-  const canvasStream = canvas.captureStream(30);
+  // Use 15fps — good enough for race video, much faster export
+  const EXPORT_FPS = 15;
+  const frameTime = 1000 / EXPORT_FPS;
+  const totalFrames = Math.ceil(duration * EXPORT_FPS);
+
+  // captureStream(0) = only capture when we call requestFrame()
+  const canvasStream = canvas.captureStream(0);
+  const videoTrack = canvasStream.getVideoTracks()[0];
+
   let recOpts = {};
-  for (const t of ["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm","video/mp4"]) { if (MediaRecorder.isTypeSupported(t)) { recOpts.mimeType = t; break; } }
+  for (const t of ["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm","video/mp4"]) {
+    if (MediaRecorder.isTypeSupported(t)) { recOpts.mimeType = t; break; }
+  }
   const chunks = [];
   const recorder = new MediaRecorder(canvasStream, recOpts);
   recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-  recorder.start(200); vid.play();
 
-  function getOE(vt) { return gunVideoTime===null ? -1 : (vt - gunVideoTime)*1000; }
+  // Request Wake Lock to prevent screen sleep
+  let wakeLock = null;
+  try {
+    if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request("screen");
+  } catch(e) { /* not critical */ }
+
+  recorder.start(500);
+  const exportStart = performance.now();
+
+  function getOE(vt) { return gunVideoTime === null ? -1 : (vt - gunVideoTime) * 1000; }
   function getSplitsAt(vt) { return splits.filter(s => s.videoTime <= vt); }
 
-  function drawFrame() {
+  function drawFrameAt(videoTime) {
     const w = canvas.width, h = canvas.height;
     ctx.drawImage(vid, 0, 0, w, h);
-    const elapsed = getOE(vid.currentTime);
-    const vs = getSplitsAt(vid.currentTime);
+    const elapsed = getOE(videoTime);
+    const vs = getSplitsAt(videoTime);
     const raceOver = vs.length >= splits.length && splits.length > 0;
     if (elapsed < -2000) return;
-    const sf = Math.max(w/1280, 0.6);
+    const sf = Math.max(w / 1280, 0.6);
 
-    ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, w, 82*sf);
+    ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, w, 82 * sf);
     ctx.textBaseline = "middle";
-    ctx.font = `bold ${14*sf}px sans-serif`; ctx.fillStyle = "#aaa"; ctx.textAlign = "left"; ctx.fillText(selectedEvent, 14*sf, 18*sf);
-    const curLap = raceOver ? vs.length : vs.length+1;
-    ctx.textAlign = "right"; ctx.fillText(totalLaps ? `Lap ${Math.min(curLap,totalLaps)}/${totalLaps}` : `Lap ${curLap}`, w-14*sf, 18*sf);
+    ctx.font = `bold ${14*sf}px sans-serif`; ctx.fillStyle = "#aaa"; ctx.textAlign = "left";
+    ctx.fillText(selectedEvent, 14*sf, 18*sf);
+    const curLap = raceOver ? vs.length : vs.length + 1;
+    ctx.textAlign = "right";
+    ctx.fillText(totalLaps ? `Lap ${Math.min(curLap,totalLaps)}/${totalLaps}` : `Lap ${curLap}`, w-14*sf, 18*sf);
 
     if (runnerName) { ctx.font = `bold ${14*sf}px sans-serif`; ctx.fillStyle = "#ddd"; ctx.textAlign = "center"; ctx.fillText(runnerName, w/2, 18*sf); }
 
@@ -680,7 +710,7 @@ async function exportVideo() {
     else if (targetPerLap > 0 && elapsed > 0) {
       const lapsDone = vs.length;
       const sinceLastLap = elapsed - (vs.length > 0 ? vs[vs.length-1].split : 0);
-      const d = getPaceDelta(elapsed, lapsDone + sinceLastLap/targetPerLap);
+      const d = getPaceDelta(elapsed, lapsDone + sinceLastLap / targetPerLap);
       if (d !== null) {
         ctx.font = `bold ${13*sf}px sans-serif`;
         ctx.fillStyle = d <= -500 ? "#00e87b" : d >= 500 ? "#ff4455" : "#ffb800";
@@ -692,43 +722,96 @@ async function exportVideo() {
       const shown = vs.slice(-8);
       const panelH = (shown.length*28+30)*sf, panelW = 240*sf;
       const px = w-panelW-10*sf, py = 88*sf;
-      ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(px,py,panelW,panelH,8*sf); else ctx.rect(px,py,panelW,panelH); ctx.fill();
-      ctx.font = `bold ${10*sf}px sans-serif`; ctx.fillStyle = "#888"; ctx.textAlign = "left"; ctx.fillText("SPLITS", px+10*sf, py+14*sf);
+      ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(px,py,panelW,panelH,8*sf); else ctx.rect(px,py,panelW,panelH);
+      ctx.fill();
+      ctx.font = `bold ${10*sf}px sans-serif`; ctx.fillStyle = "#888"; ctx.textAlign = "left";
+      ctx.fillText("SPLITS", px+10*sf, py+14*sf);
       shown.forEach((s,i) => {
-        const y = py+(28+i*28)*sf;
-        ctx.font = `bold ${12*sf}px sans-serif`; ctx.fillStyle = "#aaa"; ctx.textAlign = "left"; ctx.fillText(`L${s.lap}`, px+10*sf, y);
-        ctx.font = `bold ${14*sf}px monospace`; ctx.fillStyle = "#00FF88"; ctx.textAlign = "left"; ctx.fillText(fmt(s.split), px+38*sf, y);
-        ctx.font = `${11*sf}px monospace`; ctx.fillStyle = "#888"; ctx.textAlign = "right"; ctx.fillText(fmt(s.lapTime), px+panelW-10*sf, y);
+        const ry = py + (28+i*28)*sf;
+        ctx.font = `bold ${12*sf}px sans-serif`; ctx.fillStyle = "#aaa"; ctx.textAlign = "left";
+        ctx.fillText(`L${s.lap}`, px+10*sf, ry);
+        ctx.font = `bold ${14*sf}px monospace`; ctx.fillStyle = "#00FF88"; ctx.textAlign = "left";
+        ctx.fillText(fmt(s.split), px+38*sf, ry);
+        ctx.font = `${11*sf}px monospace`; ctx.fillStyle = "#888"; ctx.textAlign = "right";
+        ctx.fillText(fmt(s.lapTime), px+panelW-10*sf, ry);
       });
     }
   }
 
+  // Seek helper with timeout fallback
+  function seekTo(time) {
+    return new Promise(resolve => {
+      const onSeeked = () => { vid.removeEventListener("seeked", onSeeked); resolve(); };
+      vid.addEventListener("seeked", onSeeked);
+      vid.currentTime = Math.min(time, duration - 0.01);
+      // Fallback if seeked never fires
+      setTimeout(resolve, 500);
+    });
+  }
+
+  // Process frames one by one via seeking
+  for (let f = 0; f < totalFrames; f++) {
+    if (exportCancelled) break;
+
+    const targetTime = f / EXPORT_FPS;
+    await seekTo(targetTime);
+    drawFrameAt(targetTime);
+
+    // Push frame to recorder
+    if (videoTrack.requestFrame) videoTrack.requestFrame();
+
+    // Wait frameTime so MediaRecorder assigns correct timing
+    await new Promise(r => setTimeout(r, frameTime));
+
+    // Progress with ETA
+    const pct = Math.round((f / totalFrames) * 100);
+    const elapsed = (performance.now() - exportStart) / 1000;
+    const eta = f > 0 ? Math.round((elapsed / f) * (totalFrames - f)) : 0;
+    const etaMin = Math.floor(eta / 60);
+    const etaSec = eta % 60;
+    updateExportProgress(pct, `Frame ${f}/${totalFrames} · ${pct}% · ~${etaMin}:${String(etaSec).padStart(2,"0")} left`);
+  }
+
+  // Finalize
+  if (!exportCancelled) {
+    updateExportProgress(100, "Finalizing…");
+  }
+
   await new Promise(resolve => {
-    function processFrame() {
-      if (exportCancelled) { vid.pause(); recorder.stop(); resolve(); return; }
-      if (vid.ended || vid.currentTime >= duration-0.1) { drawFrame(); updateExportProgress(100,"Finalizing…"); vid.pause(); recorder.stop(); recorder.onstop=()=>resolve(); return; }
-      drawFrame();
-      updateExportProgress(Math.round(vid.currentTime/duration*100), `Processing… ${Math.round(vid.currentTime/duration*100)}%`);
-      requestAnimationFrame(processFrame);
-    }
-    requestAnimationFrame(processFrame);
+    recorder.onstop = resolve;
+    recorder.stop();
   });
 
-  if (exportCancelled) return;
-  const mime = recorder.mimeType||"video/webm";
-  const blob = new Blob(chunks,{type:mime});
-  const ext = mime.includes("mp4")?"mp4":"webm";
+  // Release wake lock
+  if (wakeLock) { try { await wakeLock.release(); } catch(e) {} }
+
+  if (exportCancelled) {
+    document.getElementById("export-modal").classList.remove("active");
+    return;
+  }
+
+  const mime = recorder.mimeType || "video/webm";
+  const blob = new Blob(chunks, { type: mime });
+  const ext = mime.includes("mp4") ? "mp4" : "webm";
   const url = URL.createObjectURL(blob);
-  document.getElementById("export-cancel").style.display="none";
-  updateExportProgress(100,"Done!");
-  document.getElementById("export-title").textContent="Export Complete!";
+
+  document.getElementById("export-cancel").style.display = "none";
+  updateExportProgress(100, "Done!");
+  document.getElementById("export-title").textContent = "Export Complete!";
+
   const box = document.querySelector(".export-box");
-  const dl = document.createElement("a"); dl.href=url; dl.download=`${runnerName||selectedEvent}_race_${Date.now()}.${ext}`; dl.textContent="DOWNLOAD VIDEO";
-  dl.style.cssText="display:inline-block;padding:11px 24px;background:linear-gradient(135deg,var(--accent2),var(--accent));border-radius:10px;color:#000;font-size:13px;font-weight:800;letter-spacing:1px;text-decoration:none;margin-top:8px";
+  const dl = document.createElement("a");
+  dl.href = url;
+  dl.download = `${runnerName || selectedEvent}_race_${Date.now()}.${ext}`;
+  dl.textContent = "DOWNLOAD VIDEO";
+  dl.style.cssText = "display:inline-block;padding:11px 24px;background:linear-gradient(135deg,var(--accent2),var(--accent));border-radius:10px;color:#000;font-size:13px;font-weight:800;letter-spacing:1px;text-decoration:none;margin-top:8px";
   box.appendChild(dl);
-  const cl = document.createElement("button"); cl.textContent="Close";
-  cl.style.cssText="display:block;margin:8px auto 0;background:none;border:1px solid var(--border);border-radius:8px;color:var(--dim);padding:7px 18px;font-size:12px;cursor:pointer";
-  cl.onclick=()=>{document.getElementById("export-modal").classList.remove("active");dl.remove();cl.remove();};
+
+  const cl = document.createElement("button");
+  cl.textContent = "Close";
+  cl.style.cssText = "display:block;margin:8px auto 0;background:none;border:1px solid var(--border);border-radius:8px;color:var(--dim);padding:7px 18px;font-size:12px;cursor:pointer";
+  cl.onclick = () => { document.getElementById("export-modal").classList.remove("active"); dl.remove(); cl.remove(); };
   box.appendChild(cl);
 }
 
@@ -829,6 +912,26 @@ function exportPDF() {
     });
     if(targetPerLap){ctx.font=`${7*DPI}px sans-serif`;ctx.fillStyle="#ffb800";ctx.fillText(`▎ Target: ${fmt(targetPerLap)}/lap`,ml+24*DPI,y+2*DPI);y+=12*DPI;}
     y+=8*DPI;
+  }
+
+  // Notes
+  if (raceNotes.trim()) {
+    if (y > H - 100*DPI) { /* skip if too close to bottom */ }
+    else {
+      ctx.font=`bold ${9*DPI}px sans-serif`; ctx.fillStyle="#00e87b"; ctx.fillText("NOTES",ml,y); y+=14*DPI;
+      ctx.font=`${9*DPI}px sans-serif`; ctx.fillStyle="#a0a0b0";
+      const words = raceNotes.trim().split(/\s+/);
+      let line = "";
+      const maxW = cw;
+      words.forEach(word => {
+        const test = line + (line ? " " : "") + word;
+        if (ctx.measureText(test).width > maxW && line) {
+          ctx.fillText(line, ml, y); y += 13*DPI; line = word;
+        } else { line = test; }
+      });
+      if (line) { ctx.fillText(line, ml, y); y += 13*DPI; }
+      y += 6*DPI;
+    }
   }
 
   // Footer
