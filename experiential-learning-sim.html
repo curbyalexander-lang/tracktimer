@@ -4,1761 +4,955 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Experiential Learning Planning Simulation</title>
-<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg-primary: #1a1e2e;
-  --bg-secondary: #232840;
-  --bg-card: #2a3050;
-  --bg-card-hover: #313760;
-  --accent-gold: #e8b931;
-  --accent-gold-dim: #c49a20;
-  --accent-teal: #3ec9b0;
-  --accent-coral: #e8735a;
-  --accent-blue: #5b8def;
-  --accent-purple: #9b7bea;
-  --text-primary: #e8e6e1;
-  --text-secondary: #a8a5a0;
-  --text-dim: #706d68;
-  --border: rgba(232, 185, 49, 0.15);
-  --shadow: 0 4px 24px rgba(0,0,0,0.3);
-  --shadow-lg: 0 8px 40px rgba(0,0,0,0.4);
-  --radius: 12px;
-  --radius-sm: 8px;
-}
-
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-  font-family: 'Source Sans 3', sans-serif;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  min-height: 100vh;
-  line-height: 1.6;
-}
-
-.grain-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 9999;
-}
-
-.app-container {
-  max-width: 860px;
-  margin: 0 auto;
-  padding: 20px;
-  min-height: 100vh;
-}
-
-/* Header */
-.sim-header {
-  text-align: center;
-  padding: 50px 20px 40px;
-  position: relative;
-}
-
-.sim-header::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60px;
-  height: 3px;
-  background: var(--accent-gold);
-  border-radius: 2px;
-}
-
-.sim-header h1 {
-  font-family: 'Bitter', serif;
-  font-size: clamp(1.8rem, 4vw, 2.6rem);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 12px;
-  letter-spacing: -0.5px;
-}
-
-.sim-header .subtitle {
-  font-size: 1.05rem;
-  color: var(--text-secondary);
-  font-weight: 300;
-  max-width: 540px;
-  margin: 0 auto;
-}
-
-/* Progress bar */
-.progress-container {
-  margin: 30px 0 10px;
-  position: sticky;
-  top: 10px;
-  z-index: 100;
-  background: var(--bg-primary);
-  padding: 10px 0;
-}
-
-.progress-bar-bg {
-  height: 6px;
-  background: var(--bg-card);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.progress-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent-gold), var(--accent-teal));
-  border-radius: 3px;
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.progress-label {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 6px;
-  font-size: 0.78rem;
-  color: var(--text-dim);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-/* Phase screens */
-.phase-screen {
-  display: none;
-  animation: fadeSlideIn 0.5s ease;
-}
-
-.phase-screen.active {
-  display: block;
-}
-
-@keyframes fadeSlideIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.phase-title {
-  font-family: 'Bitter', serif;
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 30px 0 8px;
-  color: var(--accent-gold);
-}
-
-.phase-narrative {
-  font-size: 1rem;
-  color: var(--text-secondary);
-  margin-bottom: 24px;
-  line-height: 1.7;
-  max-width: 680px;
-}
-
-/* Decision cards */
-.decision-group {
-  margin-bottom: 28px;
-}
-
-.decision-label {
-  font-weight: 600;
-  font-size: 0.88rem;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--text-dim);
-  margin-bottom: 10px;
-}
-
-.decision-options {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.decision-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 20px;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.decision-card::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: transparent;
-  transition: background 0.25s ease;
-}
-
-.decision-card:hover {
-  background: var(--bg-card-hover);
-  border-color: rgba(232, 185, 49, 0.3);
-  transform: translateX(4px);
-}
-
-.decision-card.selected {
-  border-color: var(--accent-gold);
-  background: rgba(232, 185, 49, 0.08);
-}
-
-.decision-card.selected::before {
-  background: var(--accent-gold);
-}
-
-.decision-card .card-title {
-  font-weight: 600;
-  font-size: 1rem;
-  margin-bottom: 4px;
-}
-
-.decision-card .card-desc {
-  font-size: 0.88rem;
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-/* Slider inputs */
-.slider-group {
-  margin-bottom: 28px;
-}
-
-.slider-label-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 8px;
-}
-
-.slider-label {
-  font-weight: 600;
-  font-size: 0.88rem;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--text-dim);
-}
-
-.slider-value {
-  font-size: 0.92rem;
-  color: var(--accent-gold);
-  font-weight: 600;
-}
-
-input[type="range"] {
-  -webkit-appearance: none;
-  width: 100%;
-  height: 6px;
-  background: var(--bg-card);
-  border-radius: 3px;
-  outline: none;
-}
-
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
-  background: var(--accent-gold);
-  border-radius: 50%;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(232, 185, 49, 0.3);
-}
-
-input[type="range"]::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  background: var(--accent-gold);
-  border-radius: 50%;
-  cursor: pointer;
-  border: none;
-}
-
-.slider-endpoints {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: var(--text-dim);
-  margin-top: 4px;
-}
-
-/* Trade-off feedback */
-.tradeoff-panel {
-  background: rgba(62, 201, 176, 0.06);
-  border: 1px solid rgba(62, 201, 176, 0.2);
-  border-radius: var(--radius);
-  padding: 20px 24px;
-  margin: 20px 0 28px;
-  display: none;
-}
-
-.tradeoff-panel.visible {
-  display: block;
-  animation: fadeSlideIn 0.4s ease;
-}
-
-.tradeoff-panel h4 {
-  font-family: 'Bitter', serif;
-  color: var(--accent-teal);
-  font-size: 0.95rem;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.tradeoff-panel p {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  line-height: 1.65;
-}
-
-.tradeoff-icon {
-  font-size: 1.1rem;
-}
-
-/* Warning panel */
-.warning-panel {
-  background: rgba(232, 115, 90, 0.08);
-  border: 1px solid rgba(232, 115, 90, 0.25);
-  border-radius: var(--radius);
-  padding: 20px 24px;
-  margin: 20px 0 28px;
-  display: none;
-}
-
-.warning-panel.visible {
-  display: block;
-  animation: fadeSlideIn 0.4s ease;
-}
-
-.warning-panel h4 {
-  font-family: 'Bitter', serif;
-  color: var(--accent-coral);
-  font-size: 0.95rem;
-  margin-bottom: 8px;
-}
-
-.warning-panel p {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  line-height: 1.65;
-}
-
-/* Buttons */
-.btn-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 30px;
-  padding-bottom: 40px;
-}
-
-.btn {
-  font-family: 'Source Sans 3', sans-serif;
-  font-size: 0.95rem;
-  font-weight: 600;
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 12px 28px;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  letter-spacing: 0.3px;
-}
-
-.btn-primary {
-  background: var(--accent-gold);
-  color: var(--bg-primary);
-}
-
-.btn-primary:hover {
-  background: var(--accent-gold-dim);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(232, 185, 49, 0.25);
-}
-
-.btn-primary:disabled {
-  background: var(--text-dim);
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.btn-secondary {
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
-}
-
-.btn-secondary:hover {
-  border-color: var(--text-dim);
-  color: var(--text-primary);
-}
-
-/* Scenario Event (mid-sim disruption) */
-.scenario-event {
-  background: linear-gradient(135deg, rgba(155, 123, 234, 0.1), rgba(91, 141, 239, 0.08));
-  border: 1px solid rgba(155, 123, 234, 0.3);
-  border-radius: var(--radius);
-  padding: 24px;
-  margin: 20px 0;
-}
-
-.scenario-event h4 {
-  font-family: 'Bitter', serif;
-  color: var(--accent-purple);
-  margin-bottom: 8px;
-  font-size: 1.05rem;
-}
-
-.scenario-event p {
-  color: var(--text-secondary);
-  font-size: 0.92rem;
-  line-height: 1.6;
-}
-
-/* Summary / Reflection */
-.summary-section {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 28px;
-  margin-bottom: 20px;
-}
-
-.summary-section h3 {
-  font-family: 'Bitter', serif;
-  font-size: 1.15rem;
-  color: var(--accent-gold);
-  margin-bottom: 14px;
-}
-
-.summary-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  font-size: 0.92rem;
-}
-
-.summary-row:last-child { border-bottom: none; }
-
-.summary-row .label {
-  color: var(--text-dim);
-  font-weight: 500;
-}
-
-.summary-row .value {
-  color: var(--text-primary);
-  font-weight: 600;
-  text-align: right;
-  max-width: 55%;
-}
-
-/* Score gauges */
-.gauge-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
-  margin: 20px 0;
-}
-
-.gauge-card {
-  background: var(--bg-secondary);
-  border-radius: var(--radius-sm);
-  padding: 20px;
-  text-align: center;
-}
-
-.gauge-ring {
-  width: 90px;
-  height: 90px;
-  margin: 0 auto 10px;
-  position: relative;
-}
-
-.gauge-ring svg {
-  transform: rotate(-90deg);
-  width: 90px;
-  height: 90px;
-}
-
-.gauge-ring circle {
-  fill: none;
-  stroke-width: 6;
-}
-
-.gauge-ring .bg { stroke: var(--bg-card); }
-
-.gauge-ring .fill {
-  stroke-dasharray: 245;
-  stroke-dashoffset: 245;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.gauge-number {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  font-family: 'Bitter', serif;
-  font-size: 1.3rem;
-  font-weight: 700;
-}
-
-.gauge-label {
-  font-size: 0.82rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--text-dim);
-}
-
-/* Reflection text */
-.reflection-box {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 24px;
-  margin: 20px 0;
-}
-
-.reflection-box h4 {
-  font-family: 'Bitter', serif;
-  color: var(--accent-teal);
-  margin-bottom: 10px;
-  font-size: 1rem;
-}
-
-.reflection-box p {
-  color: var(--text-secondary);
-  font-size: 0.92rem;
-  line-height: 1.7;
-  margin-bottom: 10px;
-}
-
-.reflection-box p:last-child { margin-bottom: 0; }
-
-/* Textarea for reflection */
-.reflect-textarea {
-  width: 100%;
-  min-height: 100px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-family: 'Source Sans 3', sans-serif;
-  font-size: 0.92rem;
-  padding: 14px;
-  resize: vertical;
-  line-height: 1.6;
-  margin-top: 10px;
-}
-
-.reflect-textarea:focus {
-  outline: none;
-  border-color: var(--accent-gold);
-}
-
-.reflect-textarea::placeholder {
-  color: var(--text-dim);
-}
-
-/* Kolb badge */
-.kolb-badge {
-  display: inline-block;
-  background: rgba(232, 185, 49, 0.12);
-  border: 1px solid rgba(232, 185, 49, 0.3);
-  border-radius: 20px;
-  padding: 4px 14px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--accent-gold);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  margin-bottom: 16px;
-}
-
-/* Intro screen */
-.intro-features {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
-  margin: 28px 0;
-}
-
-.intro-feature {
-  background: var(--bg-card);
-  border-radius: var(--radius-sm);
-  padding: 18px;
-  border: 1px solid var(--border);
-}
-
-.intro-feature .feat-icon {
-  font-size: 1.5rem;
-  margin-bottom: 8px;
-}
-
-.intro-feature h4 {
-  font-size: 0.92rem;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.intro-feature p {
-  font-size: 0.82rem;
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-/* Multi-select checkboxes */
-.checkbox-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 20px;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.checkbox-card:hover {
-  background: var(--bg-card-hover);
-}
-
-.checkbox-card.checked {
-  border-color: var(--accent-teal);
-  background: rgba(62, 201, 176, 0.06);
-}
-
-.check-box {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--text-dim);
-  border-radius: 4px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.checkbox-card.checked .check-box {
-  background: var(--accent-teal);
-  border-color: var(--accent-teal);
-}
-
-.check-box::after {
-  content: '✓';
-  color: var(--bg-primary);
-  font-weight: 700;
-  font-size: 0.75rem;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.checkbox-card.checked .check-box::after {
-  opacity: 1;
-}
-
-/* Print styles */
-@media print {
-  body { background: #fff; color: #222; }
-  .progress-container, .btn-row, .grain-overlay { display: none; }
-  .summary-section, .reflection-box, .gauge-card { break-inside: avoid; }
-}
-
-@media (max-width: 600px) {
-  .app-container { padding: 12px; }
-  .sim-header { padding: 30px 10px 30px; }
-  .gauge-grid { grid-template-columns: 1fr 1fr; }
-  .btn-row { flex-direction: column; gap: 10px; }
-  .btn-row .btn { width: 100%; text-align: center; }
-}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0f1218;--bg2:#171c26;--bg3:#1e2533;--bg4:#2a3245;
+  --gold:#f0c040;--gold-dim:#c9a02e;--gold-bg:rgba(240,192,64,.07);
+  --teal:#40d9b0;--teal-bg:rgba(64,217,176,.07);
+  --coral:#f07060;--coral-bg:rgba(240,112,96,.07);
+  --blue:#60a0f0;--purple:#a080f0;
+  --t1:#eae8e2;--t2:#a8a4a0;--t3:#686560;
+  --bdr:rgba(240,192,64,.12);
+  --r:12px;--r2:8px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;line-height:1.6;overflow-x:hidden}
+
+/* ---- Layout ---- */
+.app{max-width:880px;margin:0 auto;padding:16px}
+.header{text-align:center;padding:44px 16px 36px;position:relative}
+.header::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:48px;height:3px;background:var(--gold);border-radius:2px}
+.header h1{font-family:'Playfair Display',serif;font-size:clamp(1.7rem,4vw,2.5rem);font-weight:700;letter-spacing:-.3px;margin-bottom:8px}
+.header p{font-size:1rem;color:var(--t2);font-weight:300;max-width:520px;margin:0 auto}
+
+/* ---- Progress ---- */
+.prog-wrap{position:sticky;top:8px;z-index:100;background:var(--bg);padding:8px 0;display:none}
+.prog-bar{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--teal));border-radius:3px;transition:width .6s ease}
+.prog-meta{display:flex;justify-content:space-between;margin-top:5px;font-size:.72rem;color:var(--t3);text-transform:uppercase;letter-spacing:1px;font-weight:600}
+
+/* ---- Phase chrome ---- */
+.phase{display:none;animation:fadeIn .45s ease}.phase.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.badge{display:inline-block;background:var(--gold-bg);border:1px solid rgba(240,192,64,.25);border-radius:20px;padding:3px 13px;font-size:.72rem;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.9px;margin-bottom:14px}
+.ph-title{font-family:'Playfair Display',serif;font-size:1.45rem;font-weight:700;color:var(--gold);margin-bottom:8px}
+.ph-narr{font-size:.95rem;color:var(--t2);margin-bottom:22px;max-width:660px;line-height:1.7}
+
+/* ---- Cards / Options (still used in some places) ---- */
+.opt-label{font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);margin-bottom:8px}
+.card{background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r);padding:14px 18px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent;transition:background .2s}
+.card:hover{background:var(--bg4);transform:translateX(3px)}
+.card.sel{border-color:var(--gold);background:var(--gold-bg)}.card.sel::before{background:var(--gold)}
+.card h4{font-size:.95rem;font-weight:600;margin-bottom:2px}.card p{font-size:.84rem;color:var(--t2);line-height:1.5}
+.opts{display:flex;flex-direction:column;gap:8px;margin-bottom:22px}
+
+/* ---- Buttons ---- */
+.btn-row{display:flex;justify-content:space-between;align-items:center;margin-top:28px;padding-bottom:36px;gap:10px}
+.btn{font-family:'DM Sans',sans-serif;font-size:.92rem;font-weight:600;border:none;border-radius:var(--r2);padding:11px 26px;cursor:pointer;transition:all .2s;letter-spacing:.2px}
+.btn-p{background:var(--gold);color:var(--bg)}.btn-p:hover{background:var(--gold-dim);transform:translateY(-1px);box-shadow:0 4px 14px rgba(240,192,64,.2)}
+.btn-p:disabled{background:var(--t3);cursor:not-allowed;transform:none;box-shadow:none}
+.btn-s{background:transparent;color:var(--t2);border:1px solid var(--bdr)}.btn-s:hover{border-color:var(--t3);color:var(--t1)}
+
+/* ---- Feedback panels ---- */
+.fb{border-radius:var(--r);padding:18px 22px;margin:16px 0 22px;display:none}
+.fb.vis{display:block;animation:fadeIn .35s ease}
+.fb.trade{background:var(--teal-bg);border:1px solid rgba(64,217,176,.2)}
+.fb.trade h4{color:var(--teal)}
+.fb.warn{background:var(--coral-bg);border:1px solid rgba(240,112,96,.2)}
+.fb.warn h4{color:var(--coral)}
+.fb.event{background:linear-gradient(135deg,rgba(160,128,240,.08),rgba(96,160,240,.06));border:1px solid rgba(160,128,240,.25)}
+.fb.event h4{color:var(--purple)}
+.fb h4{font-family:'Playfair Display',serif;font-size:.92rem;margin-bottom:6px}
+.fb p{font-size:.88rem;color:var(--t2);line-height:1.65}
+
+/* ============ INTERACTIVE WIDGETS ============ */
+
+/* -- Drag & drop ranking -- */
+.rank-zone{min-height:48px;border:2px dashed var(--bdr);border-radius:var(--r);padding:8px;transition:border-color .2s}
+.rank-zone.over{border-color:var(--gold)}
+.rank-item{background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r2);padding:12px 16px;cursor:grab;transition:all .2s;display:flex;align-items:center;gap:10px;margin-bottom:6px;user-select:none;touch-action:none}
+.rank-item:active{cursor:grabbing;opacity:.85;transform:scale(.98)}
+.rank-item .grip{color:var(--t3);font-size:1rem;flex-shrink:0}
+.rank-item h4{font-size:.9rem;font-weight:600;margin-bottom:1px}
+.rank-item p{font-size:.8rem;color:var(--t2);line-height:1.4}
+.rank-num{width:24px;height:24px;border-radius:50%;background:var(--gold);color:var(--bg);font-size:.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* -- Budget allocator -- */
+.budget-bar-wrap{margin-bottom:16px}
+.budget-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.budget-header .cat{font-weight:600;font-size:.88rem}
+.budget-header .amt{font-size:.88rem;color:var(--gold);font-weight:600}
+.budget-track{height:10px;background:var(--bg3);border-radius:5px;overflow:hidden;position:relative;cursor:pointer}
+.budget-fill{height:100%;border-radius:5px;transition:width .15s ease}
+.budget-remaining{text-align:right;font-size:.82rem;color:var(--t3);margin-top:6px;font-weight:500}
+.budget-remaining.over{color:var(--coral)}
+.budget-total-bar{height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;margin-top:4px}
+.budget-total-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--gold));border-radius:4px;transition:width .3s ease}
+.budget-total-fill.over{background:linear-gradient(90deg,var(--coral),#f04040)}
+
+/* -- Stakeholder map -- */
+.smap{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;aspect-ratio:1.4;border-radius:var(--r);overflow:hidden;margin:16px 0;max-width:600px}
+.smap-quad{background:var(--bg3);padding:16px;position:relative;min-height:140px;transition:background .2s}
+.smap-quad.over{background:var(--bg4)}
+.smap-label{position:absolute;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--t3)}
+.smap-label.tl{top:8px;left:10px}.smap-label.tr{top:8px;right:10px}.smap-label.bl{bottom:8px;left:10px}.smap-label.br{bottom:8px;right:10px}
+.smap-axis{font-size:.72rem;color:var(--t3);text-align:center;font-weight:500;margin-top:4px;font-style:italic}
+.smap-axis-y{position:absolute;left:-36px;top:50%;transform:rotate(-90deg) translateX(-50%);transform-origin:0 0;white-space:nowrap;font-size:.72rem;color:var(--t3);font-weight:500;font-style:italic}
+.smap-chip{display:inline-flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--bdr);border-radius:16px;padding:4px 10px 4px 8px;font-size:.78rem;font-weight:500;cursor:grab;margin:3px;user-select:none;touch-action:none;transition:all .15s}
+.smap-chip:active{cursor:grabbing;transform:scale(.95)}
+.smap-chip .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.smap-tray{background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--r);padding:12px;margin-bottom:10px;min-height:48px;display:flex;flex-wrap:wrap;gap:4px;align-items:flex-start}
+
+/* -- Risk matrix -- */
+.risk-matrix{display:grid;grid-template-columns:auto repeat(3,1fr);grid-template-rows:auto repeat(3,1fr);gap:2px;margin:16px 0;max-width:520px}
+.rm-corner{background:transparent}
+.rm-head{background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--t3);padding:8px;border-radius:var(--r2)}
+.rm-cell{background:var(--bg3);border-radius:var(--r2);min-height:70px;padding:8px;cursor:pointer;transition:all .2s;display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start}
+.rm-cell:hover{background:var(--bg4)}
+.rm-cell.g{border:1px solid rgba(64,217,176,.15)}.rm-cell.y{border:1px solid rgba(240,192,64,.15)}.rm-cell.r{border:1px solid rgba(240,112,96,.15)}
+.risk-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:.72rem;font-weight:600;cursor:grab;user-select:none;touch-action:none}
+.risk-chip.physical{background:rgba(240,112,96,.15);color:var(--coral)}
+.risk-chip.emotional{background:rgba(160,128,240,.15);color:var(--purple)}
+.risk-chip.logistical{background:rgba(96,160,240,.15);color:var(--blue)}
+.risk-chip.equity{background:rgba(240,192,64,.15);color:var(--gold)}
+.risk-tray{background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--r);padding:10px;margin-bottom:10px;min-height:40px;display:flex;flex-wrap:wrap;gap:4px}
+
+/* -- Timeline builder -- */
+.timeline{position:relative;margin:20px 0;padding-left:32px}
+.tl-line{position:absolute;left:14px;top:0;bottom:0;width:2px;background:var(--bdr)}
+.tl-item{position:relative;margin-bottom:16px;animation:fadeIn .3s ease}
+.tl-dot{position:absolute;left:-25px;top:4px;width:12px;height:12px;border-radius:50%;border:2px solid var(--gold);background:var(--bg)}
+.tl-dot.filled{background:var(--gold)}
+.tl-card{background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r2);padding:12px 16px}
+.tl-card h4{font-size:.88rem;font-weight:600;margin-bottom:4px}
+.tl-input{width:100%;background:var(--bg);border:1px solid var(--bdr);border-radius:6px;color:var(--t1);font-family:'DM Sans',sans-serif;font-size:.88rem;padding:8px 10px;margin-top:6px;resize:none;line-height:1.5}
+.tl-input:focus{outline:none;border-color:var(--gold)}
+.tl-input::placeholder{color:var(--t3)}
+.tl-add{display:flex;align-items:center;gap:6px;color:var(--gold);font-size:.85rem;font-weight:600;cursor:pointer;padding:8px 0;transition:opacity .2s}
+.tl-add:hover{opacity:.7}
+
+/* -- Kolb wheel -- */
+.kolb-wheel{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:4px;max-width:440px;margin:16px auto;aspect-ratio:1}
+.kolb-q{border-radius:var(--r);padding:16px;text-align:center;cursor:pointer;transition:all .25s;border:2px solid transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.kolb-q.active{border-color:var(--gold);transform:scale(1.03)}
+.kolb-q h4{font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.kolb-q p{font-size:.78rem;line-height:1.4;opacity:.8}
+.kolb-q.ce{background:rgba(240,192,64,.08);color:var(--gold)}.kolb-q.ro{background:rgba(64,217,176,.08);color:var(--teal)}
+.kolb-q.ac{background:rgba(96,160,240,.08);color:var(--blue)}.kolb-q.ae{background:rgba(160,128,240,.08);color:var(--purple)}
+.kolb-input{width:100%;background:var(--bg);border:1px solid var(--bdr);border-radius:6px;color:var(--t1);font-family:'DM Sans',sans-serif;font-size:.86rem;padding:10px;margin-top:10px;resize:vertical;min-height:60px;line-height:1.5;display:none}
+.kolb-input.active{display:block;animation:fadeIn .3s ease}
+.kolb-input:focus{outline:none;border-color:var(--gold)}
+.kolb-input::placeholder{color:var(--t3)}
+
+/* -- Summary -- */
+.sum-section{background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r);padding:24px;margin-bottom:18px}
+.sum-section h3{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--gold);margin-bottom:12px}
+.sum-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:.88rem}
+.sum-row:last-child{border:none}.sum-row .lb{color:var(--t3);font-weight:500}.sum-row .vl{color:var(--t1);font-weight:600;text-align:right;max-width:55%}
+.gauge-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:16px 0}
+.gauge{background:var(--bg2);border-radius:var(--r2);padding:18px;text-align:center}
+.gauge svg{transform:rotate(-90deg);width:80px;height:80px}
+.gauge circle{fill:none;stroke-width:6}.gauge .bg{stroke:var(--bg3)}
+.gauge .fl{stroke-dasharray:220;stroke-dashoffset:220;stroke-linecap:round;transition:stroke-dashoffset 1s ease}
+.gauge-n{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;margin-top:-56px;position:relative}
+.gauge-l{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);margin-top:40px}
+.ref-box{background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--r);padding:22px;margin:16px 0}
+.ref-box h4{font-family:'Playfair Display',serif;color:var(--teal);margin-bottom:8px;font-size:.95rem}
+.ref-box p{color:var(--t2);font-size:.88rem;line-height:1.7;margin-bottom:8px}
+.ref-box p:last-child{margin:0}
+textarea.big-ref{width:100%;min-height:110px;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r2);color:var(--t1);font-family:'DM Sans',sans-serif;font-size:.9rem;padding:14px;resize:vertical;line-height:1.6;margin-top:8px}
+textarea.big-ref:focus{outline:none;border-color:var(--gold)}
+textarea.big-ref::placeholder{color:var(--t3)}
+.intro-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:24px 0}
+.intro-card{background:var(--bg3);border-radius:var(--r2);padding:16px;border:1px solid var(--bdr)}
+.intro-card .ic{font-size:1.4rem;margin-bottom:6px}
+.intro-card h4{font-size:.88rem;font-weight:600;margin-bottom:3px}
+.intro-card p{font-size:.78rem;color:var(--t2);line-height:1.4}
+
+/* -- Responsive -- */
+@media(max-width:600px){
+  .app{padding:10px}
+  .smap{grid-template-columns:1fr;grid-template-rows:repeat(4,120px);max-width:100%}
+  .risk-matrix{grid-template-columns:auto repeat(3,1fr);font-size:.7rem}
+  .kolb-wheel{max-width:100%}
+  .btn-row{flex-direction:column}.btn-row .btn{width:100%;text-align:center}
+  .gauge-grid{grid-template-columns:1fr 1fr}
+}
+@media print{.prog-wrap,.btn-row{display:none}body{background:#fff;color:#222}.sum-section,.ref-box,.gauge{break-inside:avoid}}
 </style>
 </head>
 <body>
-
-<div class="grain-overlay"></div>
-
-<div class="app-container" id="app">
-
-  <!-- HEADER -->
-  <div class="sim-header">
-    <h1>Experiential Learning<br>Planning Simulation</h1>
-    <p class="subtitle">Design a meaningful learning experience from concept to implementation, navigating real-world trade-offs along the way.</p>
-  </div>
-
-  <!-- PROGRESS -->
-  <div class="progress-container" id="progressContainer" style="display:none;">
-    <div class="progress-bar-bg">
-      <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
-    </div>
-    <div class="progress-label">
-      <span id="progressPhase">Phase 1</span>
-      <span id="progressPercent">0%</span>
-    </div>
-  </div>
-
-  <!-- SCREENS CONTAINER -->
-  <div id="screensContainer"></div>
-
+<div class="app" id="app">
+  <div class="header"><h1>Experiential Learning<br>Planning Simulation</h1><p>Design a real learning experience — not by clicking through forms, but by building, allocating, mapping, and reflecting at each step.</p></div>
+  <div class="prog-wrap" id="progWrap"><div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div><div class="prog-meta"><span id="progPhase">—</span><span id="progPct">0%</span></div></div>
+  <div id="screens"></div>
 </div>
-
 <script>
-// ========== SIMULATION ENGINE ==========
+// ===================== ENGINE =====================
+const S={phase:0,d:{},tradeoffs:[],sc:{feasibility:50,depth:50,equity:50,safety:50,reflection:50}};
+const PHASES=['intro','learners','experience','budget','stakeholders','risk','disruption','reflection','summary'];
+const PHASE_NAMES=['Welcome','Learners','Experience','Budget','Stakeholders','Risk','Disruption','Reflection','Summary'];
 
-const state = {
-  currentPhase: 0,
-  decisions: {},
-  tradeoffs: [],
-  scores: { feasibility: 50, depth: 50, equity: 50, safety: 50, reflection: 50 }
+function go(n){S.phase=n;render();window.scrollTo({top:0,behavior:'smooth'})}
+function next(){go(S.phase+1)}
+function prev(){go(S.phase-1)}
+
+function render(){
+  const c=document.getElementById('screens');
+  c.innerHTML=builders[S.phase]();
+  const pw=document.getElementById('progWrap');
+  pw.style.display=S.phase>0?'block':'none';
+  const pct=Math.round(S.phase/(PHASES.length-1)*100);
+  document.getElementById('progFill').style.width=pct+'%';
+  document.getElementById('progPct').textContent=pct+'%';
+  document.getElementById('progPhase').textContent=PHASE_NAMES[S.phase]||'';
+  if(builders[S.phase+'_init'])builders[S.phase+'_init']();
+}
+
+// ===================== BUILDERS =====================
+const builders={};
+
+// ---------- 0: INTRO ----------
+builders[0]=()=>`<div class="phase active">
+  <div class="badge">Concrete Experience → Reflective Observation</div>
+  <div class="ph-title">Welcome, Planner</div>
+  <div class="ph-narr">You are about to design an experiential learning activity from the ground up. This is not a form — you will actively build your plan through hands-on interactive tools at every phase.</div>
+  <div class="intro-grid">
+    <div class="intro-card"><div class="ic">🎯</div><h4>Rank Priorities</h4><p>Drag and drop to rank what matters most for your learners.</p></div>
+    <div class="intro-card"><div class="ic">💰</div><h4>Allocate Budget</h4><p>Distribute limited funds across competing needs using interactive sliders.</p></div>
+    <div class="intro-card"><div class="ic">🗺️</div><h4>Map Stakeholders</h4><p>Place stakeholders on an influence-interest grid by dragging chips.</p></div>
+    <div class="intro-card"><div class="ic">⚠️</div><h4>Build a Risk Matrix</h4><p>Assess risks by placing them on a likelihood × impact grid.</p></div>
+    <div class="intro-card"><div class="ic">🌀</div><h4>Survive a Disruption</h4><p>An unexpected event will force you to adapt your plan in real time.</p></div>
+    <div class="intro-card"><div class="ic">🔄</div><h4>Design Reflection via Kolb</h4><p>Map your reflection plan directly onto Kolb's experiential cycle.</p></div>
+  </div>
+  <div class="btn-row"><div></div><button class="btn btn-p" onclick="next()">Begin Planning →</button></div>
+</div>`;
+
+// ---------- 1: LEARNERS ----------
+builders[1]=()=>{
+  const settingOpts=[
+    {v:'k12',t:'K–12 School',d:'Institutional support, schedules, administrative approval.'},
+    {v:'community',t:'Community / Youth Org',d:'More flexibility, fewer institutional resources.'},
+    {v:'informal',t:'Informal / Independent',d:'Homeschool co-op, camp, museum — maximum freedom.'}
+  ];
+  const ageOpts=[
+    {v:'elementary',t:'Elementary (5–10)',d:'Concrete, sensory-rich, high supervision.'},
+    {v:'middle',t:'Middle School (11–14)',d:'Growing abstraction, peer influence, need for autonomy.'},
+    {v:'high',t:'High School (15–18)',d:'Complex experiences, authentic engagement.'},
+    {v:'college',t:'College (18–24)',d:'Self-directed, handles ambiguity, professional contexts.'},
+    {v:'adult',t:'Adult (25+)',d:'Rich prior experience, relevance-driven, competing responsibilities.'}
+  ];
+  // Priority ranking items
+  const priorities=[
+    {id:'safety',label:'Physical & Emotional Safety',icon:'🛡️'},
+    {id:'depth',label:'Depth of Learning',icon:'📚'},
+    {id:'access',label:'Equity & Access for All',icon:'♿'},
+    {id:'engage',label:'Engagement & Fun',icon:'🎯'},
+    {id:'feasibility',label:'Logistical Feasibility',icon:'⚙️'},
+    {id:'transfer',label:'Transfer to Real Life',icon:'🔗'}
+  ];
+  return `<div class="phase active">
+    <div class="badge">Phase 1 of 7</div>
+    <div class="ph-title">Who Are Your Learners?</div>
+    <div class="ph-narr">Start by defining your context, then <strong>rank your planning priorities</strong> by dragging them into your preferred order. What matters most will shape every decision that follows.</div>
+    <div class="opt-label">Setting</div>
+    <div class="opts">${settingOpts.map(o=>`<div class="card" onclick="sel(this,'setting','${o.v}')" data-g="setting"><h4>${o.t}</h4><p>${o.d}</p></div>`).join('')}</div>
+    <div class="opt-label">Age Group</div>
+    <div class="opts">${ageOpts.map(o=>`<div class="card" onclick="sel(this,'ageGroup','${o.v}')" data-g="ageGroup"><h4>${o.t}</h4><p>${o.d}</p></div>`).join('')}</div>
+    <div class="opt-label" style="margin-top:8px">Group Size: <span id="gsVal" style="color:var(--gold)">${S.d.groupSize||20}</span> learners</div>
+    <input type="range" min="6" max="60" value="${S.d.groupSize||20}" style="width:100%;accent-color:var(--gold);margin:6px 0 18px" oninput="S.d.groupSize=+this.value;document.getElementById('gsVal').textContent=this.value">
+    <div class="opt-label">Drag to Rank Your Planning Priorities (#1 = most important)</div>
+    <div id="rankZone" class="rank-zone">${priorities.map((p,i)=>`<div class="rank-item" draggable="true" data-id="${p.id}"><span class="rank-num">${i+1}</span><span class="grip">⠿</span><div><h4>${p.icon} ${p.label}</h4></div></div>`).join('')}</div>
+    <div id="fb1" class="fb trade"></div>
+    <div class="btn-row"><button class="btn btn-s" onclick="prev()">← Back</button><button class="btn btn-p" id="nx1" onclick="submit1()" disabled>Continue →</button></div>
+  </div>`;
+};
+builders['1_init']=()=>initRankDrag('rankZone');
+
+// ---------- 2: EXPERIENCE TYPE + TIMELINE ----------
+builders[2]=()=>{
+  const types=[
+    {v:'discovery',t:'Discovery',d:'Field trips, nature exploration, museum visits, guided investigations.',icon:'🔍'},
+    {v:'outdoor',t:'Outdoor Challenge',d:'Hiking, camping, ropes courses, orienteering.',icon:'⛰️'},
+    {v:'apprenticeship',t:'Apprenticeship / Citizen Science',d:'Internships, mentorships, citizen science, service learning.',icon:'🔬'},
+    {v:'immersive',t:'Immersive',d:'Study abroad, cultural exchange, extended residency.',icon:'🌍'}
+  ];
+  const durations=[
+    {v:'half-day',t:'Half Day (2–4 hrs)',d:'Single session. Accessible but limited depth.'},
+    {v:'full-day',t:'Full Day (6–8 hrs)',d:'Immersive single day. Meals and transport needed.'},
+    {v:'multi-day',t:'Multi-Day (2–5 days)',d:'Deep engagement. Lodging and sustained planning.'},
+    {v:'extended',t:'Extended (1 week+)',d:'Maximum transformation. Major logistics.'}
+  ];
+  return `<div class="phase active">
+    <div class="badge">Phase 2 of 7</div>
+    <div class="ph-title">Design the Experience</div>
+    <div class="ph-narr">Choose your experience type and duration, then <strong>build a timeline</strong> by adding the key moments of your activity in sequence. What will learners actually do, and when?</div>
+    <div class="opt-label">Experience Type</div>
+    <div class="opts">${types.map(o=>`<div class="card" onclick="sel(this,'expType','${o.v}')" data-g="expType"><h4>${o.icon} ${o.t}</h4><p>${o.d}</p></div>`).join('')}</div>
+    <div class="opt-label">Duration</div>
+    <div class="opts">${durations.map(o=>`<div class="card" onclick="sel(this,'duration','${o.v}')" data-g="duration"><h4>${o.t}</h4><p>${o.d}</p></div>`).join('')}</div>
+    <div class="opt-label" style="margin-top:8px">Build Your Activity Timeline</div>
+    <p style="font-size:.84rem;color:var(--t2);margin-bottom:10px">Add at least 3 key moments. What happens first? What is the core activity? How does it end?</p>
+    <div class="timeline" id="timeline"><div class="tl-line"></div>
+      <div class="tl-item"><div class="tl-dot filled"></div><div class="tl-card"><h4>Arrival & Opening</h4><textarea class="tl-input" placeholder="How do learners arrive? What sets the tone? (e.g., gathering circle, brief orientation, icebreaker)" rows="2" oninput="checkTL()"></textarea></div></div>
+      <div class="tl-item"><div class="tl-dot"></div><div class="tl-card"><h4>Core Experience</h4><textarea class="tl-input" placeholder="What is the central activity? Describe what learners DO." rows="2" oninput="checkTL()"></textarea></div></div>
+      <div class="tl-item"><div class="tl-dot"></div><div class="tl-card"><h4>Closing & Transition</h4><textarea class="tl-input" placeholder="How does the experience end? What bridges back to normal life?" rows="2" oninput="checkTL()"></textarea></div></div>
+    </div>
+    <div class="tl-add" onclick="addTLItem()">+ Add another moment</div>
+    <div id="fb2" class="fb trade"></div>
+    <div class="btn-row"><button class="btn btn-s" onclick="prev()">← Back</button><button class="btn btn-p" id="nx2" onclick="submit2()" disabled>Continue →</button></div>
+  </div>`;
 };
 
-const phases = [
-  // 0: INTRO
-  {
-    id: 'intro',
-    render: () => `
-      <div class="phase-screen active" id="screen-intro">
-        <div class="kolb-badge">Concrete Experience → Reflective Observation</div>
-        <div class="phase-title">Welcome, Planner</div>
-        <div class="phase-narrative">
-          You are about to design an experiential learning activity for a group of young people. Over the next several phases, you will make decisions about who your learners are, what type of experience to create, how to manage logistics and partnerships, how to handle risk, and how to build in meaningful reflection. Along the way, you will encounter realistic trade-offs and at least one unexpected disruption that will require you to adapt your plan.
-        </div>
-        <div class="intro-features">
-          <div class="intro-feature">
-            <div class="feat-icon">🧭</div>
-            <h4>7 Planning Phases</h4>
-            <p>Move through the full arc of planning, from learner context to reflection design.</p>
-          </div>
-          <div class="intro-feature">
-            <div class="feat-icon">⚖️</div>
-            <h4>Real Trade-Offs</h4>
-            <p>Every decision carries consequences. Budget, safety, equity, and depth interact.</p>
-          </div>
-          <div class="intro-feature">
-            <div class="feat-icon">🌀</div>
-            <h4>Disruption Event</h4>
-            <p>An unexpected scenario will force you to adapt your plan mid-stream.</p>
-          </div>
-          <div class="intro-feature">
-            <div class="feat-icon">📝</div>
-            <h4>Reflection Summary</h4>
-            <p>Review your plan, see your planning profile, and reflect on your decisions.</p>
-          </div>
-        </div>
-        <div class="btn-row">
-          <div></div>
-          <button class="btn btn-primary" onclick="nextPhase()">Begin Planning →</button>
-        </div>
+// ---------- 3: BUDGET ALLOCATION ----------
+builders[3]=()=>{
+  const bLevels=[
+    {v:'minimal',t:'Minimal ($0–$100)',total:100},
+    {v:'moderate',t:'Moderate ($100–$500)',total:500},
+    {v:'substantial',t:'Substantial ($500–$2K)',total:2000},
+    {v:'major',t:'Major ($2K+)',total:5000}
+  ];
+  const cats=[
+    {id:'transport',label:'Transportation',color:'var(--blue)',pct:0},
+    {id:'site',label:'Site / Entry Fees',color:'var(--teal)',pct:0},
+    {id:'materials',label:'Materials & Equipment',color:'var(--gold)',pct:0},
+    {id:'food',label:'Food & Lodging',color:'var(--purple)',pct:0},
+    {id:'staffing',label:'Staffing & Chaperones',color:'var(--coral)',pct:0},
+    {id:'contingency',label:'Contingency Reserve',color:'#8a8a8a',pct:0}
+  ];
+  return `<div class="phase active">
+    <div class="badge">Phase 3 of 7</div>
+    <div class="ph-title">Allocate Your Budget</div>
+    <div class="ph-narr">First select your budget level. Then <strong>distribute every dollar</strong> across categories by adjusting the sliders. You have exactly 100% to allocate — no more, no less. Where you put money reveals what you value.</div>
+    <div class="opt-label">Budget Level</div>
+    <div class="opts">${bLevels.map(o=>`<div class="card" onclick="selBudget(this,'${o.v}',${o.total})" data-g="budget"><h4>${o.t}</h4></div>`).join('')}</div>
+    <div id="budgetSliders" style="margin-top:16px;display:none">
+      <div class="opt-label">Allocate 100% of Your Budget</div>
+      ${cats.map(c=>`<div class="budget-bar-wrap">
+        <div class="budget-header"><span class="cat">${c.label}</span><span class="amt" id="ba_${c.id}">0%</span></div>
+        <div class="budget-track" id="bt_${c.id}" data-cat="${c.id}" style="cursor:pointer" onmousedown="startBudgetDrag(event,'${c.id}')" ontouchstart="startBudgetDrag(event,'${c.id}')"><div class="budget-fill" id="bf_${c.id}" style="width:0%;background:${c.color}"></div></div>
+      </div>`).join('')}
+      <div class="budget-total-bar"><div class="budget-total-fill" id="budgetTotalFill" style="width:0%"></div></div>
+      <div class="budget-remaining" id="budgetRemaining">100% remaining</div>
+    </div>
+    <div id="fb3" class="fb trade"></div>
+    <div id="fw3" class="fb warn"></div>
+    <div class="btn-row"><button class="btn btn-s" onclick="prev()">← Back</button><button class="btn btn-p" id="nx3" onclick="submit3()" disabled>Continue →</button></div>
+  </div>`;
+};
+
+// ---------- 4: STAKEHOLDER MAP ----------
+builders[4]=()=>{
+  const chips=[
+    {id:'admin',label:'Administration',color:'var(--coral)'},
+    {id:'families',label:'Families / Guardians',color:'var(--gold)'},
+    {id:'partner',label:'Community Partner',color:'var(--teal)'},
+    {id:'learners',label:'Learners Themselves',color:'var(--blue)'},
+    {id:'colleagues',label:'Colleagues / Co-facilitators',color:'var(--purple)'},
+    {id:'funders',label:'Funders / Sponsors',color:'#8a8a8a'}
+  ];
+  return `<div class="phase active">
+    <div class="badge">Phase 4 of 7</div>
+    <div class="ph-title">Map Your Stakeholders</div>
+    <div class="ph-narr"><strong>Drag each stakeholder</strong> onto the grid based on their level of influence over your plan and their level of interest in the experience. Who has veto power? Who is enthusiastic but has no authority? This map drives your communication strategy.</div>
+    <div class="opt-label">Stakeholder Chips — Drag onto the Grid</div>
+    <div class="smap-tray" id="smapTray">${chips.map(c=>`<div class="smap-chip" draggable="true" data-sid="${c.id}" ontouchstart="touchDragStart(event)" ontouchmove="touchDragMove(event)" ontouchend="touchDragEnd(event)"><div class="dot" style="background:${c.color}"></div>${c.label}</div>`).join('')}</div>
+    <div style="position:relative;max-width:600px">
+      <div class="smap" id="smapGrid">
+        <div class="smap-quad" data-q="hi-hi"><div class="smap-label tl">High Influence / High Interest</div><div style="font-size:.7rem;color:var(--t3);position:absolute;bottom:6px;right:8px">Manage closely</div></div>
+        <div class="smap-quad" data-q="hi-lo"><div class="smap-label tr">High Influence / Low Interest</div><div style="font-size:.7rem;color:var(--t3);position:absolute;bottom:6px;left:8px">Keep satisfied</div></div>
+        <div class="smap-quad" data-q="lo-hi"><div class="smap-label bl">Low Influence / High Interest</div><div style="font-size:.7rem;color:var(--t3);position:absolute;top:6px;right:8px">Keep informed</div></div>
+        <div class="smap-quad" data-q="lo-lo"><div class="smap-label br">Low Influence / Low Interest</div><div style="font-size:.7rem;color:var(--t3);position:absolute;top:6px;left:8px">Monitor</div></div>
       </div>
-    `
-  },
+    </div>
+    <div class="smap-axis">← Low Interest &nbsp;&nbsp;|&nbsp;&nbsp; High Interest →</div>
+    <div id="fb4" class="fb trade"></div>
+    <div class="btn-row"><button class="btn btn-s" onclick="prev()">← Back</button><button class="btn btn-p" id="nx4" onclick="submit4()" disabled>Continue →</button></div>
+  </div>`;
+};
+builders['4_init']=()=>initStakeholderDrag();
 
-  // 1: LEARNER CONTEXT
-  {
-    id: 'learner-context',
-    render: () => `
-      <div class="phase-screen active">
-        <div class="kolb-badge">Phase 1 of 7</div>
-        <div class="phase-title">Who Are Your Learners?</div>
-        <div class="phase-narrative">
-          Before choosing the type of experience, ground yourself in the learners. Who are they, what do they bring with them, and what contextual factors will shape your planning?
-        </div>
+// ---------- 5: RISK MATRIX ----------
+builders[5]=()=>{
+  const risks=[
+    {id:'weather',label:'Weather',cat:'logistical'},
+    {id:'injury',label:'Injury',cat:'physical'},
+    {id:'transport-fail',label:'Transport Failure',cat:'logistical'},
+    {id:'homesick',label:'Homesickness / Anxiety',cat:'emotional'},
+    {id:'exclusion',label:'Learner Exclusion',cat:'equity'},
+    {id:'partner-cancel',label:'Partner Cancellation',cat:'logistical'},
+    {id:'conflict',label:'Interpersonal Conflict',cat:'emotional'},
+    {id:'cost-barrier',label:'Hidden Cost Barriers',cat:'equity'}
+  ];
+  return `<div class="phase active">
+    <div class="badge">Phase 5 of 7</div>
+    <div class="ph-title">Build Your Risk Matrix</div>
+    <div class="ph-narr"><strong>Drag each risk</strong> into the cell that matches its likelihood and potential impact. This forces you to think carefully about what could go wrong and how seriously. Place at least 5 risks to continue.</div>
+    <div class="opt-label">Risk Chips — Drag onto the Matrix</div>
+    <div class="risk-tray" id="riskTray">${risks.map(r=>`<div class="risk-chip ${r.cat}" draggable="true" data-rid="${r.id}" ontouchstart="touchDragStart(event)" ontouchmove="touchDragMove(event)" ontouchend="touchDragEnd(event)">${r.label}</div>`).join('')}</div>
+    <div class="risk-matrix" id="riskMatrix">
+      <div class="rm-corner"></div><div class="rm-head">Low Likelihood</div><div class="rm-head">Medium</div><div class="rm-head">High Likelihood</div>
+      <div class="rm-head" style="writing-mode:vertical-lr;transform:rotate(180deg)">High Impact</div>
+      <div class="rm-cell y" data-r="hi-lo"></div><div class="rm-cell r" data-r="hi-med"></div><div class="rm-cell r" data-r="hi-hi"></div>
+      <div class="rm-head" style="writing-mode:vertical-lr;transform:rotate(180deg)">Med Impact</div>
+      <div class="rm-cell g" data-r="med-lo"></div><div class="rm-cell y" data-r="med-med"></div><div class="rm-cell r" data-r="med-hi"></div>
+      <div class="rm-head" style="writing-mode:vertical-lr;transform:rotate(180deg)">Low Impact</div>
+      <div class="rm-cell g" data-r="lo-lo"></div><div class="rm-cell g" data-r="lo-med"></div><div class="rm-cell y" data-r="lo-hi"></div>
+    </div>
+    <div class="opt-label" style="margin-top:16px">For your top-rated risk, write your mitigation plan:</div>
+    <textarea class="tl-input" id="mitigationPlan" placeholder="What specific steps will you take to prevent or respond to your highest-rated risk?" rows="3" oninput="checkRisk()"></textarea>
+    <div id="fb5" class="fb trade"></div>
+    <div id="fw5" class="fb warn"></div>
+    <div class="btn-row"><button class="btn btn-s" onclick="prev()">← Back</button><button class="btn btn-p" id="nx5" onclick="submit5()" disabled>Continue →</button></div>
+  </div>`;
+};
+builders['5_init']=()=>initRiskDrag();
 
-        <div class="decision-group">
-          <div class="decision-label">Setting</div>
-          <div class="decision-options">
-            ${makeRadio('setting', [
-              { value:'k12', title:'K–12 School', desc:'You are planning within a school setting with institutional support, schedules, and administrative approval processes.' },
-              { value:'community', title:'Community or Youth Organization', desc:'You are working with a community group, Scout troop, faith organization, or after-school program with more flexibility but fewer institutional resources.' },
-              { value:'informal', title:'Informal / Independent', desc:'You are designing for a homeschool co-op, museum program, summer camp, or other non-institutional context.' }
-            ])}
-          </div>
-        </div>
+// ---------- 6: DISRUPTION ----------
+builders[6]=()=>{
+  const dis=generateDisruption();
+  S.d.disruption=dis;
+  return `<div class="phase active">
+    <div class="badge">Phase 6 of 7</div>
+    <div class="ph-title">Disruption Event</div>
+    <div class="ph-narr">Everything was going smoothly — until it wasn't. Read the scenario, choose your response, then <strong>write your adaptation plan</strong> explaining exactly how you would execute it.</div>
+    <div class="fb event vis"><h4>⚡ ${dis.title}</h4><p>${dis.narrative}</p></div>
+    <div class="opt-label">Your Response</div>
+    <div class="opts">${dis.options.map(o=>`<div class="card" onclick="sel(this,'disruptionResponse','${o.value}')" data-g="disruptionResponse"><h4>${o.title}</h4><p>${o.desc}</p></div>`).join('')}</div>
+    <div class="opt-label" style="margin-top:8px">Write Your Adaptation Plan</div>
+    <p style="font-size:.84rem;color:var(--t2);margin-bottom:8px">Don't just pick an option — explain how you would actually execute it. Who do you call? What do you tell the learners? What changes and what stays the same?</p>
+    <textarea class="tl-input" id="adaptPlan" placeholder="Describe your step-by-step response to this disruption..." rows="4" oninput="checkP6()"></textarea>
+    <div id="fb6" class="fb trade"></div>
+    <div class="btn-row"><button class="btn btn-s" onclick="prev()">← Back</button><button class="btn btn-p" id="nx6" onclick="submit6()" disabled>Continue →</button></div>
+  </div>`;
+};
 
-        <div class="decision-group">
-          <div class="decision-label">Age Group</div>
-          <div class="decision-options">
-            ${makeRadio('ageGroup', [
-              { value:'elementary', title:'Elementary (Ages 5–10)', desc:'Shorter attention spans, need for concrete and sensory-rich experiences, high adult supervision requirements.' },
-              { value:'middle', title:'Middle School (Ages 11–14)', desc:'Increasing capacity for abstraction, strong peer influence, growing need for autonomy and choice.' },
-              { value:'high', title:'High School (Ages 15–18)', desc:'Can handle longer, more complex experiences; ready for authentic professional and community engagement.' }
-            ])}
-          </div>
-        </div>
+// ---------- 7: REFLECTION via KOLB ----------
+builders[7]=()=>`<div class="phase active">
+  <div class="badge">Phase 7 of 7</div>
+  <div class="ph-title">Design Reflection Through Kolb's Cycle</div>
+  <div class="ph-narr">Experience alone is not enough. <strong>Click each quadrant</strong> of Kolb's cycle below and describe how your activity addresses that stage. What will learners experience, observe, conceptualize, and experiment with?</div>
+  <div class="kolb-wheel">
+    <div class="kolb-q ce" onclick="toggleKolb(this,'ce')"><h4>Concrete Experience</h4><p>What do learners DO?<br>The direct encounter.</p></div>
+    <div class="kolb-q ro" onclick="toggleKolb(this,'ro')"><h4>Reflective Observation</h4><p>What do learners NOTICE?<br>Pausing to process.</p></div>
+    <div class="kolb-q ae" onclick="toggleKolb(this,'ae')"><h4>Active Experimentation</h4><p>What do learners TRY NEXT?<br>Applying new understanding.</p></div>
+    <div class="kolb-q ac" onclick="toggleKolb(this,'ac')"><h4>Abstract Conceptualization</h4><p>What do learners CONCLUDE?<br>Making meaning.</p></div>
+  </div>
+  <div id="kolbInputs">
+    <textarea class="kolb-input" id="ki_ce" placeholder="Describe the concrete experience — what will learners physically do, see, touch, or encounter?" rows="3" oninput="checkP7()"></textarea>
+    <textarea class="kolb-input" id="ki_ro" placeholder="How will learners reflect? Journaling, debrief circles, partner discussions, quiet observation time?" rows="3" oninput="checkP7()"></textarea>
+    <textarea class="kolb-input" id="ki_ac" placeholder="How will learners form conclusions? What questions will you ask to push toward meaning-making?" rows="3" oninput="checkP7()"></textarea>
+    <textarea class="kolb-input" id="ki_ae" placeholder="How will learners apply what they learned? What do they do differently next time? What action do they take?" rows="3" oninput="checkP7()"></textarea>
+  </div>
+  <div class="opt-label" style="margin-top:20px">What modalities will you use for reflection? (select all)</div>
+  <div class="opts" id="refModes">
+    <div class="card" onclick="togMulti(this,'reflectMode','discussion')" data-g="reflectMode"><h4>💬 Guided Discussion / Debrief</h4><p>Structured conversation with intentional prompts.</p></div>
+    <div class="card" onclick="togMulti(this,'reflectMode','journal')" data-g="reflectMode"><h4>📓 Written Journal</h4><p>Individual writing with guiding questions.</p></div>
+    <div class="card" onclick="togMulti(this,'reflectMode','creative')" data-g="reflectMode"><h4>🎨 Creative Expression</h4><p>Digital story, art, skit, podcast, or creative product.</p></div>
+    <div class="card" onclick="togMulti(this,'reflectMode','presentation')" data-g="reflectMode"><h4>🎤 Presentation / Teaching Others</h4><p>Learners synthesize and share with an audience.</p></div>
+  </div>
+  <div id="fb7" class="fb trade"></div>
+  <div class="btn-row"><button class="btn btn-s" onclick="prev()">← Back</button><button class="btn btn-p" id="nx7" onclick="submit7()" disabled>View Your Plan →</button></div>
+</div>`;
 
-        <div class="slider-group">
-          <div class="slider-label-row">
-            <span class="slider-label">Group Size</span>
-            <span class="slider-value" id="groupSizeVal">20 learners</span>
-          </div>
-          <input type="range" min="6" max="60" value="20" id="groupSize" oninput="updateSlider('groupSize', this.value, ' learners')">
-          <div class="slider-endpoints"><span>6</span><span>60</span></div>
-        </div>
+// ---------- 8: SUMMARY ----------
+builders[8]=()=>buildSummary();
 
-        <div class="slider-group">
-          <div class="slider-label-row">
-            <span class="slider-label">Diversity of Needs</span>
-            <span class="slider-value" id="diversityVal">Moderate</span>
-          </div>
-          <input type="range" min="1" max="5" value="3" id="diversity" oninput="updateDiversity(this.value)">
-          <div class="slider-endpoints"><span>Homogeneous</span><span>Highly Diverse</span></div>
-        </div>
+// ===================== INTERACTION LOGIC =====================
 
-        <div id="tradeoff-learner" class="tradeoff-panel"></div>
+// -- Generic select --
+function sel(el,key,val){
+  document.querySelectorAll(`[data-g="${key}"]`).forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  S.d[key]=val;
+  checkReady();
+}
 
-        <div class="btn-row">
-          <button class="btn btn-secondary" onclick="prevPhase()">← Back</button>
-          <button class="btn btn-primary" id="btn-next-1" onclick="submitPhase1()" disabled>Continue →</button>
-        </div>
-      </div>
-    `
-  },
+// -- Multi-select toggle --
+function togMulti(el,key,val){
+  if(!S.d[key])S.d[key]=[];
+  el.classList.toggle('sel');
+  const i=S.d[key].indexOf(val);
+  if(i>-1)S.d[key].splice(i,1);else S.d[key].push(val);
+  checkReady();
+}
 
-  // 2: EXPERIENCE TYPE
-  {
-    id: 'experience-type',
-    render: () => `
-      <div class="phase-screen active">
-        <div class="kolb-badge">Phase 2 of 7</div>
-        <div class="phase-title">Choose the Experience Type</div>
-        <div class="phase-narrative">
-          Experiential learning takes many forms. The type you choose shapes everything that follows — logistics, partnerships, risk, reflection, and the kind of learning that becomes possible. Consider what is most appropriate given your learners.
-        </div>
-
-        <div class="decision-group">
-          <div class="decision-label">Primary Experience Category</div>
-          <div class="decision-options">
-            ${makeRadio('expType', [
-              { value:'discovery', title:'Discovery Experience', desc:'Field trips, nature exploration, museum visits, guided investigations — learners encounter new environments and phenomena directly.' },
-              { value:'outdoor', title:'Outdoor Challenge', desc:'Hiking, camping, ropes courses, orienteering — learners face physical and interpersonal challenges in natural settings.' },
-              { value:'apprenticeship', title:'Apprenticeship / Citizen Science', desc:'Internships, mentorships, citizen science projects, service learning — learners work alongside experts or contribute to real-world efforts.' },
-              { value:'immersive', title:'Immersive Experience', desc:'Study abroad, cultural exchange, extended residency — learners are fully embedded in an unfamiliar context for a sustained period.' }
-            ])}
-          </div>
-        </div>
-
-        <div class="decision-group">
-          <div class="decision-label">Duration</div>
-          <div class="decision-options">
-            ${makeRadio('duration', [
-              { value:'half-day', title:'Half Day (2–4 hours)', desc:'Fits within a school day or single meeting. Limited depth but highly accessible.' },
-              { value:'full-day', title:'Full Day (6–8 hours)', desc:'Allows for immersion but requires transportation, meals, and sustained engagement planning.' },
-              { value:'multi-day', title:'Multi-Day (2–5 days)', desc:'Deep engagement possible. Significant logistics around lodging, meals, supervision overnight.' },
-              { value:'extended', title:'Extended (1 week+)', desc:'Maximum depth and transformation potential. Major logistical, financial, and emotional preparation required.' }
-            ])}
-          </div>
-        </div>
-
-        <div id="tradeoff-exptype" class="tradeoff-panel"></div>
-
-        <div class="btn-row">
-          <button class="btn btn-secondary" onclick="prevPhase()">← Back</button>
-          <button class="btn btn-primary" id="btn-next-2" onclick="submitPhase2()" disabled>Continue →</button>
-        </div>
-      </div>
-    `
-  },
-
-  // 3: LOGISTICS & BUDGET
-  {
-    id: 'logistics',
-    render: () => `
-      <div class="phase-screen active">
-        <div class="kolb-badge">Phase 3 of 7</div>
-        <div class="phase-title">Logistics & Budget</div>
-        <div class="phase-narrative">
-          Great ideas live or die in the logistics. Think about how much this will cost, how you will get there, and what practical constraints shape your plan. Every dollar and minute is a real resource.
-        </div>
-
-        <div class="decision-group">
-          <div class="decision-label">Budget Level</div>
-          <div class="decision-options">
-            ${makeRadio('budget', [
-              { value:'minimal', title:'Minimal ($0–$100 total)', desc:'Walking distance, no entry fees, pack your own supplies. Maximum creativity with minimum resources.' },
-              { value:'moderate', title:'Moderate ($100–$500 total)', desc:'Bus transportation, modest entry fees, some materials. Typical for a school field trip.' },
-              { value:'substantial', title:'Substantial ($500–$2,000 total)', desc:'Charter transportation, specialized equipment or entry, partial meals. Requires fundraising or institutional support.' },
-              { value:'major', title:'Major ($2,000+ total)', desc:'Travel, lodging, professional partnerships, specialized gear. Requires grants, sponsorships, or significant institutional backing.' }
-            ])}
-          </div>
-        </div>
-
-        <div class="decision-group">
-          <div class="decision-label">Transportation</div>
-          <div class="decision-options">
-            ${makeRadio('transport', [
-              { value:'walk', title:'Walking / On-Site', desc:'No transportation needed. Experience happens at or near the home location.' },
-              { value:'local', title:'Local Transit (< 30 min)', desc:'School bus, public transit, or parent carpool within the local area.' },
-              { value:'regional', title:'Regional Travel (30 min – 2 hours)', desc:'Charter bus or organized caravan. Requires planned departure/return times.' },
-              { value:'distant', title:'Distant Travel (flight or 2+ hours)', desc:'Air travel or long-distance ground transportation. Passports or travel documents may be needed.' }
-            ])}
-          </div>
-        </div>
-
-        <div class="slider-group">
-          <div class="slider-label-row">
-            <span class="slider-label">Adult-to-Learner Ratio</span>
-            <span class="slider-value" id="ratioVal">1:8</span>
-          </div>
-          <input type="range" min="1" max="5" value="3" id="ratio" oninput="updateRatio(this.value)">
-          <div class="slider-endpoints"><span>1:4 (intensive)</span><span>1:15 (lean)</span></div>
-        </div>
-
-        <div id="tradeoff-logistics" class="tradeoff-panel"></div>
-        <div id="warning-logistics" class="warning-panel"></div>
-
-        <div class="btn-row">
-          <button class="btn btn-secondary" onclick="prevPhase()">← Back</button>
-          <button class="btn btn-primary" id="btn-next-3" onclick="submitPhase3()" disabled>Continue →</button>
-        </div>
-      </div>
-    `
-  },
-
-  // 4: PARTNERSHIPS & STAKEHOLDERS
-  {
-    id: 'partnerships',
-    render: () => `
-      <div class="phase-screen active">
-        <div class="kolb-badge">Phase 4 of 7</div>
-        <div class="phase-title">Partnerships & Stakeholders</div>
-        <div class="phase-narrative">
-          Experiential learning rarely happens in isolation. Who are your partners, what do families need to know, and how will you communicate the purpose and value of this experience?
-        </div>
-
-        <div class="decision-group">
-          <div class="decision-label">Community Partner Involvement (select all that apply)</div>
-          <div class="decision-options">
-            ${makeCheckbox('partners', [
-              { value:'site-host', title:'Site Host', desc:'A location partner provides the physical space (park, museum, lab, workplace).' },
-              { value:'expert-mentor', title:'Expert / Mentor', desc:'A professional or community expert works directly with learners during the experience.' },
-              { value:'co-designer', title:'Co-Designer', desc:'The partner helps design the learning experience alongside you, shaping objectives and activities.' },
-              { value:'none', title:'No External Partner', desc:'You are designing and facilitating entirely with your own team and resources.' }
-            ])}
-          </div>
-        </div>
-
-        <div class="decision-group">
-          <div class="decision-label">Family / Guardian Communication</div>
-          <div class="decision-options">
-            ${makeRadio('familyComm', [
-              { value:'permission-only', title:'Permission Slip Only', desc:'Standard permission form with basic information about the activity.' },
-              { value:'info-session', title:'Information Session + Permission', desc:'A pre-experience meeting (in-person or virtual) to explain the activity, answer questions, and build buy-in.' },
-              { value:'family-involved', title:'Family Involvement', desc:'Families are invited to participate, volunteer, or attend a culminating event connected to the experience.' }
-            ])}
-          </div>
-        </div>
-
-        <div class="decision-group">
-          <div class="decision-label">Administrative / Organizational Buy-In</div>
-          <div class="decision-options">
-            ${makeRadio('adminBuyin', [
-              { value:'pre-approved', title:'Pre-Approved or Routine', desc:'This type of activity is already normal in your setting. Minimal new approvals needed.' },
-              { value:'needs-pitch', title:'Needs a Pitch', desc:'You need to make a case to administration or leadership. They are open but need convincing.' },
-              { value:'uphill', title:'Uphill Battle', desc:'Leadership is skeptical of experiential learning or this type of activity. Significant advocacy required.' }
-            ])}
-          </div>
-        </div>
-
-        <div id="tradeoff-partners" class="tradeoff-panel"></div>
-
-        <div class="btn-row">
-          <button class="btn btn-secondary" onclick="prevPhase()">← Back</button>
-          <button class="btn btn-primary" id="btn-next-4" onclick="submitPhase4()" disabled>Continue →</button>
-        </div>
-      </div>
-    `
-  },
-
-  // 5: SAFETY, EQUITY, ACCESS
-  {
-    id: 'safety-equity',
-    render: () => `
-      <div class="phase-screen active">
-        <div class="kolb-badge">Phase 5 of 7</div>
-        <div class="phase-title">Safety, Equity & Access</div>
-        <div class="phase-narrative">
-          A well-designed experience must be safe and genuinely accessible to every learner in the group. Think about who might be excluded, what risks exist, and how you will plan for the unexpected.
-        </div>
-
-        <div class="decision-group">
-          <div class="decision-label">Physical Risk Level</div>
-          <div class="decision-options">
-            ${makeRadio('riskLevel', [
-              { value:'low', title:'Low', desc:'Indoor or controlled environment. Minimal physical risk (e.g., museum, lab, classroom-based simulation).' },
-              { value:'moderate', title:'Moderate', desc:'Outdoor activity with manageable risks — weather, terrain, physical exertion (e.g., nature hike, garden work).' },
-              { value:'high', title:'High', desc:'Significant physical challenge — ropes course, water activities, backcountry travel. Requires first aid readiness and safety protocols.' }
-            ])}
-          </div>
-        </div>
-
-        <div class="decision-group">
-          <div class="decision-label">Equity & Access Strategies (select all you will implement)</div>
-          <div class="decision-options">
-            ${makeCheckbox('equity', [
-              { value:'cost-barrier', title:'Eliminate Cost Barriers', desc:'Subsidize or eliminate all costs so no learner is excluded for financial reasons.' },
-              { value:'accommodations', title:'Accommodations & Universal Design', desc:'Proactively design for mobility, sensory, cognitive, and language diversity — not as add-ons but as part of the core plan.' },
-              { value:'cultural-sensitivity', title:'Cultural Sensitivity Review', desc:'Review the experience site and activities for cultural assumptions, sensitivities, or exclusionary norms.' },
-              { value:'alt-participation', title:'Alternative Participation Paths', desc:'Create meaningful alternative ways to participate for learners who cannot attend in person.' }
-            ])}
-          </div>
-        </div>
-
-        <div class="decision-group">
-          <div class="decision-label">Contingency Planning</div>
-          <div class="decision-options">
-            ${makeRadio('contingency', [
-              { value:'minimal', title:'Minimal — We will figure it out', desc:'You trust your team to improvise. No formal backup plan.' },
-              { value:'backup-plan', title:'Backup Plan', desc:'You have identified one alternative activity or rain date if the primary plan falls through.' },
-              { value:'full-contingency', title:'Full Contingency Framework', desc:'You have mapped multiple failure points (weather, partner cancellation, transportation breakdown, medical emergency) with specific responses for each.' }
-            ])}
-          </div>
-        </div>
-
-        <div id="tradeoff-safety" class="tradeoff-panel"></div>
-        <div id="warning-safety" class="warning-panel"></div>
-
-        <div class="btn-row">
-          <button class="btn btn-secondary" onclick="prevPhase()">← Back</button>
-          <button class="btn btn-primary" id="btn-next-5" onclick="submitPhase5()" disabled>Continue →</button>
-        </div>
-      </div>
-    `
-  },
-
-  // 6: DISRUPTION EVENT + FACILITATION & PEDAGOGY
-  {
-    id: 'disruption-pedagogy',
-    render: () => {
-      const disruption = generateDisruption();
-      state.decisions.disruption = disruption;
-      return `
-      <div class="phase-screen active">
-        <div class="kolb-badge">Phase 6 of 7</div>
-        <div class="phase-title">Disruption & Facilitation Design</div>
-
-        <div class="scenario-event">
-          <h4>⚡ Unexpected Disruption</h4>
-          <p>${disruption.narrative}</p>
-        </div>
-
-        <div class="decision-group">
-          <div class="decision-label">How do you respond to this disruption?</div>
-          <div class="decision-options">
-            ${makeRadio('disruptionResponse', disruption.options)}
-          </div>
-        </div>
-
-        <div class="phase-narrative" style="margin-top:30px;">Now, regardless of the disruption, finalize how you will facilitate the learning itself.</div>
-
-        <div class="decision-group">
-          <div class="decision-label">Degree of Student Agency</div>
-          <div class="decision-options">
-            ${makeRadio('agency', [
-              { value:'guided', title:'Guided / Structured', desc:'You control the sequence, tasks, and timing. Learners follow a planned pathway with clear instructions.' },
-              { value:'scaffolded', title:'Scaffolded Choice', desc:'You provide a framework and options, but learners make key decisions about how they engage within that structure.' },
-              { value:'open', title:'Open Inquiry / Learner-Driven', desc:'Learners define their own questions, choose their methods, and drive the experience. You facilitate and support.' }
-            ])}
-          </div>
-        </div>
-
-        <div class="decision-group">
-          <div class="decision-label">Your Role During the Experience</div>
-          <div class="decision-options">
-            ${makeRadio('facilitatorRole', [
-              { value:'director', title:'Director', desc:'You lead from the front — giving instructions, managing transitions, and maintaining the schedule.' },
-              { value:'facilitator', title:'Facilitator', desc:'You circulate, ask questions, prompt thinking, and intervene when needed, but learners drive the activity.' },
-              { value:'co-learner', title:'Co-Learner / Participant', desc:'You experience the activity alongside learners, modeling curiosity and vulnerability. Another adult manages logistics.' }
-            ])}
-          </div>
-        </div>
-
-        <div id="tradeoff-disruption" class="tradeoff-panel"></div>
-
-        <div class="btn-row">
-          <button class="btn btn-secondary" onclick="prevPhase()">← Back</button>
-          <button class="btn btn-primary" id="btn-next-6" onclick="submitPhase6()" disabled>Continue →</button>
-        </div>
-      </div>
-    `}
-  },
-
-  // 7: REFLECTION DESIGN
-  {
-    id: 'reflection',
-    render: () => `
-      <div class="phase-screen active">
-        <div class="kolb-badge">Phase 7 of 7</div>
-        <div class="phase-title">Designing Reflection</div>
-        <div class="phase-narrative">
-          Experience alone is not enough. Dewey reminds us that we do not learn from experience — we learn from reflecting on experience. How will you help learners make meaning from what they have done?
-        </div>
-
-        <div class="decision-group">
-          <div class="decision-label">When does reflection happen?</div>
-          <div class="decision-options">
-            ${makeRadio('reflectTiming', [
-              { value:'during', title:'Embedded Throughout', desc:'Reflection is woven into the experience — pause-and-process moments, journaling breaks, partner check-ins during the activity.' },
-              { value:'after', title:'Post-Experience Debrief', desc:'A structured reflection session happens after the experience is over — back in the classroom or meeting space.' },
-              { value:'both', title:'Both During and After', desc:'You build in real-time processing moments AND a deeper post-experience reflection session.' }
-            ])}
-          </div>
-        </div>
-
-        <div class="decision-group">
-          <div class="decision-label">Reflection Modality (select all you will use)</div>
-          <div class="decision-options">
-            ${makeCheckbox('reflectMode', [
-              { value:'discussion', title:'Guided Discussion / Debrief Circle', desc:'Structured conversation with intentional prompts. Effective for processing emotions and building shared meaning.' },
-              { value:'journal', title:'Written Journal / Reflection Log', desc:'Individual writing with guiding questions. Supports introverted learners and creates a personal record.' },
-              { value:'creative', title:'Creative Expression', desc:'Digital story, artwork, skit, podcast, or other creative product that captures learning. (Think StoryMotion-style.)' },
-              { value:'presentation', title:'Presentation or Teaching Others', desc:'Learners synthesize and share what they learned with an audience — peers, families, or community partners.' }
-            ])}
-          </div>
-        </div>
-
-        <div class="decision-group">
-          <div class="decision-label">Depth of Reflection</div>
-          <div class="decision-options">
-            ${makeRadio('reflectDepth', [
-              { value:'descriptive', title:'Descriptive — What happened?', desc:'Learners describe the experience. Appropriate for younger learners or first-time experiential activities.' },
-              { value:'analytical', title:'Analytical — So what?', desc:'Learners connect the experience to prior knowledge, identify patterns, and analyze what they observed.' },
-              { value:'transformative', title:'Transformative — Now what?', desc:'Learners examine how the experience changed their thinking or perspective and plan how to act on new understanding. Connects to Mezirow\'s transformative learning.' }
-            ])}
-          </div>
-        </div>
-
-        <div id="tradeoff-reflection" class="tradeoff-panel"></div>
-
-        <div class="btn-row">
-          <button class="btn btn-secondary" onclick="prevPhase()">← Back</button>
-          <button class="btn btn-primary" id="btn-next-7" onclick="submitPhase7()" disabled>View Your Plan →</button>
-        </div>
-      </div>
-    `
-  },
-
-  // 8: SUMMARY & REFLECTION
-  {
-    id: 'summary',
-    render: () => renderSummary()
+// -- Phase readiness --
+function checkReady(){
+  const p=S.phase;
+  let ok=false;
+  switch(p){
+    case 1:ok=S.d.setting&&S.d.ageGroup&&S.d.priorities&&S.d.priorities.length>=6;break;
+    case 2:ok=S.d.expType&&S.d.duration&&checkTLReady();break;
+    case 3:ok=S.d.budget&&checkBudgetReady();break;
+    case 4:ok=countPlacedStakeholders()>=4;break;
+    case 5:ok=countPlacedRisks()>=5&&document.getElementById('mitigationPlan')?.value.trim().length>15;break;
+    case 6:ok=S.d.disruptionResponse&&(document.getElementById('adaptPlan')?.value.trim().length>20);break;
+    case 7:ok=checkKolbReady()&&S.d.reflectMode&&S.d.reflectMode.length>0;break;
+    default:ok=true;
   }
-];
-
-// ========== HELPERS ==========
-
-function makeRadio(name, options) {
-  return options.map(o => `
-    <div class="decision-card" onclick="selectRadio('${name}', '${o.value}', this)" data-group="${name}" data-value="${o.value}">
-      <div class="card-title">${o.title}</div>
-      <div class="card-desc">${o.desc}</div>
-    </div>
-  `).join('');
+  const btn=document.getElementById('nx'+p);
+  if(btn)btn.disabled=!ok;
 }
 
-function makeCheckbox(name, options) {
-  return options.map(o => `
-    <div class="checkbox-card" onclick="toggleCheck('${name}', '${o.value}', this)" data-group="${name}" data-value="${o.value}">
-      <div class="check-box"></div>
-      <div>
-        <div class="card-title">${o.title}</div>
-        <div class="card-desc">${o.desc}</div>
-      </div>
-    </div>
-  `).join('');
-}
-
-function selectRadio(name, value, el) {
-  document.querySelectorAll(`[data-group="${name}"]`).forEach(c => c.classList.remove('selected'));
-  el.classList.add('selected');
-  state.decisions[name] = value;
-  checkPhaseReady();
-}
-
-function toggleCheck(name, value, el) {
-  el.classList.toggle('checked');
-  if (!state.decisions[name]) state.decisions[name] = [];
-  const arr = state.decisions[name];
-  const idx = arr.indexOf(value);
-  if (idx > -1) arr.splice(idx, 1);
-  else arr.push(value);
-
-  // "none" is exclusive for partners
-  if (name === 'partners') {
-    if (value === 'none' && arr.includes('none')) {
-      state.decisions[name] = ['none'];
-      document.querySelectorAll(`[data-group="partners"]`).forEach(c => {
-        if (c.dataset.value !== 'none') c.classList.remove('checked');
-      });
-    } else if (value !== 'none' && arr.includes('none')) {
-      state.decisions[name] = arr.filter(v => v !== 'none');
-      document.querySelectorAll(`[data-group="partners"][data-value="none"]`).forEach(c => c.classList.remove('checked'));
+// -- Drag & Drop Ranking --
+function initRankDrag(zoneId){
+  const zone=document.getElementById(zoneId);
+  if(!zone)return;
+  let dragEl=null;
+  zone.addEventListener('dragstart',e=>{
+    dragEl=e.target.closest('.rank-item');
+    if(dragEl)e.dataTransfer.effectAllowed='move';
+  });
+  zone.addEventListener('dragover',e=>{
+    e.preventDefault();
+    const target=e.target.closest('.rank-item');
+    if(target&&target!==dragEl){
+      const rect=target.getBoundingClientRect();
+      const mid=rect.top+rect.height/2;
+      if(e.clientY<mid)zone.insertBefore(dragEl,target);
+      else zone.insertBefore(dragEl,target.nextSibling);
     }
-  }
-  checkPhaseReady();
+  });
+  zone.addEventListener('dragend',()=>{updateRankNums(zoneId);dragEl=null});
+  // Touch support
+  let touchEl=null,touchClone=null,lastOver=null;
+  zone.addEventListener('touchstart',e=>{
+    touchEl=e.target.closest('.rank-item');
+    if(!touchEl)return;
+    touchEl.style.opacity='.5';
+  },{passive:true});
+  zone.addEventListener('touchmove',e=>{
+    if(!touchEl)return;
+    e.preventDefault();
+    const t=e.touches[0];
+    const over=document.elementFromPoint(t.clientX,t.clientY)?.closest('.rank-item');
+    if(over&&over!==touchEl){
+      const rect=over.getBoundingClientRect();
+      const mid=rect.top+rect.height/2;
+      if(t.clientY<mid)zone.insertBefore(touchEl,over);
+      else zone.insertBefore(touchEl,over.nextSibling);
+    }
+  },{passive:false});
+  zone.addEventListener('touchend',()=>{
+    if(touchEl)touchEl.style.opacity='1';
+    touchEl=null;
+    updateRankNums(zoneId);
+  });
+}
+function updateRankNums(zoneId){
+  const items=document.querySelectorAll(`#${zoneId} .rank-item`);
+  S.d.priorities=[];
+  items.forEach((it,i)=>{
+    it.querySelector('.rank-num').textContent=i+1;
+    S.d.priorities.push(it.dataset.id);
+  });
+  checkReady();
 }
 
-function updateSlider(id, val, suffix) {
-  document.getElementById(id + 'Val').textContent = val + suffix;
-  state.decisions[id] = parseInt(val);
+// -- Timeline --
+function addTLItem(){
+  const tl=document.getElementById('timeline');
+  const n=tl.querySelectorAll('.tl-item').length+1;
+  const div=document.createElement('div');
+  div.className='tl-item';
+  div.innerHTML=`<div class="tl-dot"></div><div class="tl-card"><h4>Moment ${n}</h4><textarea class="tl-input" placeholder="What happens at this point in the experience?" rows="2" oninput="checkTL()"></textarea></div>`;
+  tl.appendChild(div);
+}
+function checkTL(){checkReady()}
+function checkTLReady(){
+  const inputs=document.querySelectorAll('#timeline .tl-input');
+  let filled=0;
+  inputs.forEach(i=>{if(i.value.trim().length>5)filled++});
+  return filled>=3;
 }
 
-function updateDiversity(val) {
-  const labels = ['Very Low', 'Low', 'Moderate', 'High', 'Very High'];
-  document.getElementById('diversityVal').textContent = labels[val - 1];
-  state.decisions.diversity = parseInt(val);
+// -- Budget --
+let budgetDragging=null;
+const budgetAlloc={transport:0,site:0,materials:0,food:0,staffing:0,contingency:0};
+function selBudget(el,val,total){
+  sel(el,'budget',val);
+  S.d.budgetTotal=total;
+  document.getElementById('budgetSliders').style.display='block';
+  Object.keys(budgetAlloc).forEach(k=>budgetAlloc[k]=0);
+  updateBudgetUI();
 }
-
-function updateRatio(val) {
-  const ratios = ['1:4', '1:6', '1:8', '1:10', '1:15'];
-  document.getElementById('ratioVal').textContent = ratios[val - 1];
-  state.decisions.ratio = parseInt(val);
-}
-
-function checkPhaseReady() {
-  const p = state.currentPhase;
-  let ready = false;
-  switch(p) {
-    case 1: ready = state.decisions.setting && state.decisions.ageGroup; break;
-    case 2: ready = state.decisions.expType && state.decisions.duration; break;
-    case 3: ready = state.decisions.budget && state.decisions.transport; break;
-    case 4: ready = state.decisions.familyComm && state.decisions.adminBuyin && (state.decisions.partners && state.decisions.partners.length > 0); break;
-    case 5: ready = state.decisions.riskLevel && state.decisions.contingency && (state.decisions.equity && state.decisions.equity.length > 0); break;
-    case 6: ready = state.decisions.disruptionResponse && state.decisions.agency && state.decisions.facilitatorRole; break;
-    case 7: ready = state.decisions.reflectTiming && state.decisions.reflectDepth && (state.decisions.reflectMode && state.decisions.reflectMode.length > 0); break;
-    default: ready = true;
-  }
-  const btn = document.getElementById(`btn-next-${p}`);
-  if (btn) btn.disabled = !ready;
-}
-
-function updateProgress() {
-  const pct = Math.round((state.currentPhase / (phases.length - 1)) * 100);
-  document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('progressPercent').textContent = pct + '%';
-  const names = ['Start', 'Learners', 'Experience', 'Logistics', 'Partners', 'Safety & Equity', 'Disruption & Facilitation', 'Reflection', 'Summary'];
-  document.getElementById('progressPhase').textContent = names[state.currentPhase] || '';
-}
-
-function renderCurrentPhase() {
-  const container = document.getElementById('screensContainer');
-  container.innerHTML = phases[state.currentPhase].render();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  updateProgress();
-  if (state.currentPhase > 0) document.getElementById('progressContainer').style.display = 'block';
-
-  // Restore slider defaults
-  if (state.currentPhase === 1) {
-    state.decisions.groupSize = state.decisions.groupSize || 20;
-    state.decisions.diversity = state.decisions.diversity || 3;
-  }
-  if (state.currentPhase === 3) {
-    state.decisions.ratio = state.decisions.ratio || 3;
-  }
-}
-
-function nextPhase() {
-  state.currentPhase++;
-  renderCurrentPhase();
-}
-
-function prevPhase() {
-  if (state.currentPhase > 0) {
-    state.currentPhase--;
-    renderCurrentPhase();
-  }
-}
-
-function showTradeoff(panelId, title, text) {
-  const panel = document.getElementById(panelId);
-  if (!panel) return;
-  panel.innerHTML = `<h4><span class="tradeoff-icon">⚖️</span> Trade-Off: ${title}</h4><p>${text}</p>`;
-  panel.classList.add('visible');
-}
-
-function showWarning(panelId, title, text) {
-  const panel = document.getElementById(panelId);
-  if (!panel) return;
-  panel.innerHTML = `<h4>⚠ ${title}</h4><p>${text}</p>`;
-  panel.classList.add('visible');
-}
-
-// ========== PHASE SUBMISSIONS ==========
-
-function submitPhase1() {
-  const { setting, ageGroup, groupSize, diversity } = state.decisions;
-  let tradeoff = '';
-  if (groupSize > 30 && diversity >= 4) {
-    tradeoff = 'Large groups with high diversity demand significantly more planning for differentiation and accommodations. You may need to increase your adult-to-learner ratio or narrow the scope of the experience to make it manageable.';
-    state.scores.feasibility -= 8;
-    state.scores.equity += 5;
-  } else if (ageGroup === 'elementary' && setting === 'informal') {
-    tradeoff = 'Elementary-age learners in informal settings can be wonderfully flexible, but without institutional structures, you bear full responsibility for safety protocols, medical information, and emergency procedures.';
-    state.scores.safety -= 5;
-  } else if (groupSize > 40) {
-    tradeoff = 'Groups over 40 create logistical complexity that can overshadow the learning. Consider whether splitting into cohorts with staggered experiences might serve learners better.';
-    state.scores.feasibility -= 10;
-  } else {
-    tradeoff = 'Your learner context is manageable. Keep this profile in mind as you choose your experience type — the best experiential learning matches the developmental needs of the specific learners in front of you.';
-  }
-  showTradeoff('tradeoff-learner', 'Learner Context', tradeoff);
-  state.tradeoffs.push({ phase: 'Learner Context', text: tradeoff });
-  nextPhase();
-}
-
-function submitPhase2() {
-  const { expType, duration, ageGroup } = state.decisions;
-  let tradeoff = '';
-
-  if (expType === 'immersive' && duration === 'half-day') {
-    tradeoff = 'An immersive experience in a half-day is a contradiction. Immersion requires sustained time in an unfamiliar context. Consider extending the duration or choosing a discovery experience instead. Your plan\'s depth score will reflect this tension.';
-    state.scores.depth -= 15;
-    state.scores.feasibility += 5;
-  } else if (expType === 'outdoor' && ageGroup === 'elementary' && duration === 'multi-day') {
-    tradeoff = 'Multi-day outdoor challenges with elementary learners are powerful but demand exceptional supervision, emotional readiness support, and parent/guardian trust. Your safety planning will need to be especially thorough.';
-    state.scores.depth += 10;
-    state.scores.safety -= 10;
-  } else if (expType === 'apprenticeship') {
-    tradeoff = 'Apprenticeship models depend heavily on the quality and reliability of your community partner. The learning ceiling is high, but so is your dependence on someone outside your direct control.';
-    state.scores.depth += 8;
-    state.scores.feasibility -= 5;
-  } else if (expType === 'discovery' && duration === 'extended') {
-    tradeoff = 'Extended discovery experiences are unusual. Most discovery activities are shorter. If you are planning a week-long investigation, consider whether this is really becoming an apprenticeship or immersive model — and plan accordingly.';
-    state.scores.depth += 5;
-  } else if (expType === 'immersive' && duration === 'extended') {
-    tradeoff = 'This is the gold standard of experiential learning — deep, sustained immersion. The planning burden is enormous, but the potential for transformative learning (Mezirow) is at its highest. Every other planning decision must be made with exceptional care.';
-    state.scores.depth += 15;
-    state.scores.feasibility -= 12;
-    state.scores.safety -= 5;
-  } else {
-    tradeoff = 'Your experience type and duration are well-matched. The key now is ensuring the logistics and partnerships support the depth of engagement you are designing for.';
-    state.scores.depth += 5;
-  }
-  showTradeoff('tradeoff-exptype', 'Experience Design', tradeoff);
-  state.tradeoffs.push({ phase: 'Experience Type', text: tradeoff });
-  nextPhase();
-}
-
-function submitPhase3() {
-  const { budget, transport, ratio, expType, groupSize, duration } = state.decisions;
-  let tradeoff = '';
-  let warning = '';
-
-  if (budget === 'minimal' && transport === 'regional') {
-    tradeoff = 'You have a minimal budget but regional transportation needs. Transportation is often the single largest expense. You will need to secure donated bus service, organize a volunteer carpool, or find grant funding for transport alone.';
-    state.scores.feasibility -= 10;
-  } else if (budget === 'major' && expType === 'discovery') {
-    tradeoff = 'You are allocating major funding to a discovery experience. That is a significant investment — make sure the experience justifies it. Could a moderate budget achieve similar learning outcomes, freeing resources for reflection activities or follow-up experiences?';
-    state.scores.feasibility += 5;
-  } else if (budget === 'minimal' && duration === 'extended') {
-    tradeoff = 'Extended experiences on a minimal budget require extraordinary creativity — donated lodging, volunteer-cooked meals, borrowed equipment. It is possible, but your planning time will multiply.';
-    state.scores.feasibility -= 12;
-  } else {
-    tradeoff = 'Your budget and transportation choices are aligned with your experience type. Solid logistical planning is what separates a good idea from a good experience.';
-  }
-
-  const ratioNum = [4, 6, 8, 10, 15][ratio - 1];
-  if (ratioNum > 10 && groupSize > 25 && (expType === 'outdoor' || expType === 'immersive')) {
-    warning = `A 1:${ratioNum} ratio with ${groupSize} learners in an ${expType} experience may not provide adequate supervision for safety. Consider recruiting additional volunteers or reducing group size.`;
-    state.scores.safety -= 10;
-  }
-
-  showTradeoff('tradeoff-logistics', 'Logistics', tradeoff);
-  if (warning) showWarning('warning-logistics', 'Supervision Concern', warning);
-  state.tradeoffs.push({ phase: 'Logistics', text: tradeoff + (warning ? ' ' + warning : '') });
-  nextPhase();
-}
-
-function submitPhase4() {
-  const { partners, familyComm, adminBuyin, expType } = state.decisions;
-  let tradeoff = '';
-
-  if (partners.includes('co-designer') && adminBuyin === 'uphill') {
-    tradeoff = 'You are co-designing with a community partner but facing institutional resistance. This is a powerful combination — your partner\'s credibility and enthusiasm can help you make the case to leadership. Consider having the partner present alongside you.';
-    state.scores.depth += 5;
-  } else if (partners.includes('none') && expType === 'apprenticeship') {
-    tradeoff = 'An apprenticeship without an external partner is unusual. Apprenticeship models depend on learners working alongside people who do this work professionally. Reconsider whether a discovery or outdoor challenge might better fit your solo facilitation plan.';
-    state.scores.depth -= 10;
-  } else if (familyComm === 'family-involved') {
-    tradeoff = 'Family involvement deepens the experience and builds community support. It also adds coordination complexity — you are now planning for two audiences. Make sure the family role is meaningful, not performative.';
-    state.scores.equity += 8;
-    state.scores.feasibility -= 5;
-  } else if (familyComm === 'permission-only' && (expType === 'immersive' || expType === 'outdoor')) {
-    tradeoff = 'A permission slip alone may not be sufficient for this type of experience. Families who do not understand the purpose and safety plan may resist — or worse, pull learners out at the last minute. An information session builds trust and reduces attrition.';
-    state.scores.safety -= 5;
-    state.scores.equity -= 5;
-  } else {
-    tradeoff = 'Your partnership and communication plan is appropriate for the experience. Strong stakeholder relationships create a foundation that absorbs disruptions more gracefully.';
-    state.scores.feasibility += 3;
-  }
-
-  showTradeoff('tradeoff-partners', 'Partnerships', tradeoff);
-  state.tradeoffs.push({ phase: 'Partnerships', text: tradeoff });
-  nextPhase();
-}
-
-function submitPhase5() {
-  const { riskLevel, equity, contingency, expType, ageGroup, ratio } = state.decisions;
-  let tradeoff = '';
-  let warning = '';
-
-  const equityCount = equity.length;
-  if (equityCount >= 3) {
-    state.scores.equity += 15;
-    tradeoff = 'You are investing heavily in equity and access. This is admirable and important — but each strategy requires planning time and potentially budget. Make sure your equity intentions translate into concrete, actionable steps rather than aspirational statements.';
-  } else if (equityCount === 1) {
-    tradeoff = 'You have selected only one equity strategy. Consider whether other barriers exist that you have not addressed. The learners most likely to be excluded are often the ones who benefit most from experiential learning.';
-    state.scores.equity -= 5;
-  } else {
-    tradeoff = 'Your equity strategies are reasonable. Keep pressure-testing them as you finalize the plan — access barriers often hide in details.';
-    state.scores.equity += 5;
-  }
-
-  if (riskLevel === 'high' && contingency === 'minimal') {
-    warning = 'You have a high-risk activity with no formal contingency plan. This is a significant concern. What happens if a learner is injured? What happens if weather makes the activity unsafe? Without a plan, you are relying entirely on improvisation in moments that demand clarity.';
-    state.scores.safety -= 15;
-  } else if (riskLevel === 'high' && contingency === 'full-contingency') {
-    state.scores.safety += 10;
-  }
-
-  if (contingency === 'minimal' && expType === 'immersive') {
-    warning = (warning ? warning + ' ' : '') + 'Immersive experiences have so many potential failure points that improvisation is not a strategy — it is a gamble.';
-    state.scores.safety -= 8;
-  }
-
-  showTradeoff('tradeoff-safety', 'Safety & Equity', tradeoff);
-  if (warning) showWarning('warning-safety', 'Safety Concern', warning);
-  state.tradeoffs.push({ phase: 'Safety & Equity', text: tradeoff + (warning ? ' ' + warning : '') });
-  nextPhase();
-}
-
-function submitPhase6() {
-  const { disruptionResponse, agency, facilitatorRole, expType, ageGroup } = state.decisions;
-  let tradeoff = '';
-
-  // Score disruption response
-  const disruption = state.decisions.disruption;
-  const responseScores = disruption.scoring[disruptionResponse];
-  if (responseScores) {
-    Object.entries(responseScores).forEach(([key, val]) => {
-      state.scores[key] = Math.max(0, Math.min(100, state.scores[key] + val));
-    });
-  }
-
-  if (agency === 'open' && ageGroup === 'elementary') {
-    tradeoff = 'Open inquiry with elementary learners is ambitious. Young learners thrive with choice within structure. Consider scaffolded choice instead — give them agency within guardrails. Dewey\'s interaction principle suggests the environment must be designed to meet the learner where they are.';
-    state.scores.depth -= 5;
-  } else if (facilitatorRole === 'co-learner' && agency === 'guided') {
-    tradeoff = 'You want to be a co-learner while also maintaining a guided structure. These can coexist, but there is tension — someone has to manage the logistics while you are in the experience. Make sure another adult is handling transitions and time.';
-    state.scores.feasibility -= 3;
-  } else if (agency === 'scaffolded' && facilitatorRole === 'facilitator') {
-    tradeoff = 'Scaffolded choice with facilitator guidance is a sweet spot in experiential learning. Learners have agency, and you are positioned to deepen their thinking in real-time. This is Vygotsky\'s zone of proximal development in action.';
-    state.scores.depth += 8;
-    state.scores.reflection += 5;
-  } else {
-    tradeoff = 'Your facilitation design reflects clear intentionality. Remember that the facilitator\'s role is not fixed — even within a single experience, you may need to shift between directing, facilitating, and participating based on what the moment requires.';
-    state.scores.depth += 3;
-  }
-
-  showTradeoff('tradeoff-disruption', 'Facilitation', tradeoff);
-  state.tradeoffs.push({ phase: 'Facilitation', text: tradeoff });
-  nextPhase();
-}
-
-function submitPhase7() {
-  const { reflectTiming, reflectMode, reflectDepth, duration } = state.decisions;
-  let tradeoff = '';
-
-  if (reflectTiming === 'after' && duration === 'extended') {
-    tradeoff = 'Saving all reflection for the end of an extended experience is a missed opportunity. Days of experience without processing can lead to surface-level recall rather than deep learning. Kolb\'s cycle is iterative — reflection should spiral throughout.';
-    state.scores.reflection -= 10;
-  } else if (reflectTiming === 'both') {
-    state.scores.reflection += 10;
-    tradeoff = 'Embedding reflection throughout AND holding a post-experience debrief maximizes the learning cycle. You are honoring both Kolb\'s iterative model and Dewey\'s insistence that reflection is where experience becomes education.';
-  }
-
-  if (reflectDepth === 'transformative' && reflectMode.length >= 3) {
-    state.scores.reflection += 12;
-    tradeoff += ' You are designing for transformative learning with multiple modalities — this is sophisticated reflection design. Make sure you give learners enough time and safety to genuinely examine their assumptions.';
-  } else if (reflectDepth === 'descriptive') {
-    tradeoff += ' Descriptive reflection is a starting point, not an endpoint. Even young learners can move toward "So what?" with good prompting. Consider building in at least one analytical question.';
-    state.scores.reflection -= 5;
-  }
-
-  if (reflectMode && reflectMode.includes('creative')) {
-    state.scores.reflection += 5;
-  }
-
-  showTradeoff('tradeoff-reflection', 'Reflection Design', tradeoff);
-  state.tradeoffs.push({ phase: 'Reflection', text: tradeoff });
-  nextPhase();
-}
-
-// ========== DISRUPTION GENERATOR ==========
-
-function generateDisruption() {
-  const { expType, duration, budget, setting, partners } = state.decisions;
-  const disruptions = [];
-
-  if (expType === 'outdoor' || expType === 'discovery') {
-    disruptions.push({
-      narrative: 'Two days before your planned experience, a severe weather advisory is issued for the area. Rain and thunderstorms are expected throughout your scheduled time. Your partner site remains available, but outdoor activities will be unsafe.',
-      options: [
-        { value: 'postpone', title: 'Postpone to Next Available Date', desc: 'Delay the entire experience to wait for good weather. This preserves the original plan but disrupts schedules and may lose momentum.' },
-        { value: 'modify', title: 'Modify to Indoor Alternative', desc: 'Adapt the experience to work indoors or under shelter. Learners still go — the activities change.' },
-        { value: 'hybrid', title: 'Split: Virtual Prep Now, In-Person Later', desc: 'Use the scheduled day for virtual preparation and relationship-building, then do the field experience on a makeup day.' }
-      ],
-      scoring: {
-        postpone: { feasibility: -5, depth: 3, safety: 8 },
-        modify: { feasibility: 5, depth: -3, safety: 5, reflection: 3 },
-        hybrid: { feasibility: -3, depth: 5, reflection: 5 }
-      }
-    });
-  }
-
-  if (partners && !partners.includes('none')) {
-    disruptions.push({
-      narrative: 'Your primary community partner contact has just informed you — 48 hours before the experience — that they have a scheduling conflict and cannot be present. A colleague they recommended is available but has never worked with young people before and does not know your learning objectives.',
-      options: [
-        { value: 'substitute', title: 'Accept the Substitute', desc: 'Work with the new contact. Brief them quickly on objectives and learner needs. Accept that the interaction may be less refined.' },
-        { value: 'self-facilitate', title: 'Facilitate Without a Partner', desc: 'Drop the partner component and lead the experience yourself. You lose expert authenticity but gain full control.' },
-        { value: 'reschedule', title: 'Reschedule for Original Partner', desc: 'Push back the date to have your established partner. Preserves relationship quality but disrupts logistics.' }
-      ],
-      scoring: {
-        substitute: { feasibility: 5, depth: -5, safety: -3 },
-        'self-facilitate': { feasibility: 3, depth: -8, safety: 5 },
-        reschedule: { feasibility: -8, depth: 5, reflection: 3 }
-      }
-    });
-  }
-
-  if (budget === 'minimal' || budget === 'moderate') {
-    disruptions.push({
-      narrative: 'A week before the experience, you learn that three families have not returned permission forms and two have indicated their children cannot participate due to cost concerns — even though the activity is described as free. You suspect there are hidden costs (appropriate clothing, packed lunch, sunscreen) that create barriers.',
-      options: [
-        { value: 'fund-solve', title: 'Remove All Hidden Costs', desc: 'Use emergency funds, donations, or your own money to provide everything needed. Every learner participates identically.' },
-        { value: 'personal-outreach', title: 'Personal Family Outreach', desc: 'Call each family individually, learn their specific concerns, and problem-solve one by one. More time-intensive but relationship-building.' },
-        { value: 'alt-path', title: 'Create Alternative Participation', desc: 'Design a meaningful parallel experience for learners who cannot attend in person — not busy work, but genuine learning connected to the same objectives.' }
-      ],
-      scoring: {
-        'fund-solve': { equity: 12, feasibility: -5, safety: 3 },
-        'personal-outreach': { equity: 10, depth: 3, feasibility: -3, reflection: 3 },
-        'alt-path': { equity: 5, depth: -3, feasibility: 5, reflection: 5 }
-      }
-    });
-  }
-
-  if (expType === 'immersive') {
-    disruptions.push({
-      narrative: 'During the immersive experience, one learner becomes emotionally overwhelmed — they are homesick, anxious, and beginning to withdraw from the group. Other learners are noticing and it is affecting group dynamics. The learner says they want to go home.',
-      options: [
-        { value: 'one-on-one', title: 'Individual Support & Processing', desc: 'Sit with the learner privately. Listen, validate, and co-create a plan for the rest of the experience. Another adult covers the group.' },
-        { value: 'group-address', title: 'Address It With the Group', desc: 'Use this as a learning moment. Facilitate a group discussion about challenge, discomfort, and supporting each other. With the learner\'s permission.' },
-        { value: 'send-home', title: 'Arrange Early Departure', desc: 'Respect the learner\'s stated wish. Arrange safe transportation home and provide a reflection activity to complete independently.' }
-      ],
-      scoring: {
-        'one-on-one': { safety: 8, depth: 3, equity: 5, reflection: 5 },
-        'group-address': { depth: 8, reflection: 8, safety: -3, equity: 3 },
-        'send-home': { safety: 5, feasibility: 5, depth: -8, equity: -3 }
-      }
-    });
-  }
-
-  // Default fallback
-  if (disruptions.length === 0) {
-    disruptions.push({
-      narrative: 'On the morning of the experience, the transportation you arranged falls through. The bus company double-booked and has no vehicles available. Your experience site is 25 minutes away by car. You have 30 learners and the experience starts in two hours.',
-      options: [
-        { value: 'scramble-rides', title: 'Emergency Carpool', desc: 'Call every parent, colleague, and volunteer you know. Organize an emergency carpool. Some learners may arrive late.' },
-        { value: 'relocate', title: 'Relocate the Experience', desc: 'Find a walkable alternative location and adapt the activities. The site changes but the learning objectives stay.' },
-        { value: 'postpone', title: 'Cancel and Reschedule', desc: 'Call it off. Use the day for preparation activities and reschedule the experience with confirmed transportation.' }
-      ],
-      scoring: {
-        'scramble-rides': { feasibility: -8, depth: 0, safety: -5 },
-        relocate: { feasibility: 3, depth: -5, reflection: 5, safety: 3 },
-        postpone: { feasibility: -3, depth: 3, safety: 8 }
-      }
-    });
-  }
-
-  // Pick a random disruption
-  return disruptions[Math.floor(Math.random() * disruptions.length)];
-}
-
-// ========== SUMMARY RENDER ==========
-
-function renderSummary() {
-  const d = state.decisions;
-  const s = state.scores;
-
-  // Clamp scores
-  Object.keys(s).forEach(k => { s[k] = Math.max(5, Math.min(100, s[k])); });
-
-  const labels = {
-    setting: { 'k12': 'K–12 School', community: 'Community / Youth Org', informal: 'Informal / Independent' },
-    ageGroup: { elementary: 'Elementary (5–10)', middle: 'Middle School (11–14)', high: 'High School (15–18)' },
-    expType: { discovery: 'Discovery Experience', outdoor: 'Outdoor Challenge', apprenticeship: 'Apprenticeship / Citizen Science', immersive: 'Immersive Experience' },
-    duration: { 'half-day': 'Half Day', 'full-day': 'Full Day', 'multi-day': 'Multi-Day', extended: 'Extended (1 week+)' },
-    budget: { minimal: 'Minimal ($0–100)', moderate: 'Moderate ($100–500)', substantial: 'Substantial ($500–2K)', major: 'Major ($2K+)' },
-    transport: { walk: 'Walking / On-Site', local: 'Local Transit', regional: 'Regional Travel', distant: 'Distant Travel' },
-    agency: { guided: 'Guided / Structured', scaffolded: 'Scaffolded Choice', open: 'Open Inquiry' },
-    facilitatorRole: { director: 'Director', facilitator: 'Facilitator', 'co-learner': 'Co-Learner' },
-    familyComm: { 'permission-only': 'Permission Slip Only', 'info-session': 'Info Session + Permission', 'family-involved': 'Family Involvement' },
-    adminBuyin: { 'pre-approved': 'Pre-Approved', 'needs-pitch': 'Needs a Pitch', uphill: 'Uphill Battle' },
-    riskLevel: { low: 'Low', moderate: 'Moderate', high: 'High' },
-    contingency: { minimal: 'Minimal', 'backup-plan': 'Backup Plan', 'full-contingency': 'Full Contingency Framework' },
-    reflectTiming: { during: 'Embedded Throughout', after: 'Post-Experience', both: 'Both During & After' },
-    reflectDepth: { descriptive: 'Descriptive (What happened?)', analytical: 'Analytical (So what?)', transformative: 'Transformative (Now what?)' }
+function startBudgetDrag(e,cat){
+  e.preventDefault();
+  budgetDragging=cat;
+  const move=ev=>{
+    const t=ev.touches?ev.touches[0]:ev;
+    const track=document.getElementById('bt_'+cat);
+    const rect=track.getBoundingClientRect();
+    let pct=Math.round(((t.clientX-rect.left)/rect.width)*100);
+    pct=Math.max(0,Math.min(100,pct));
+    // Check total
+    const others=Object.entries(budgetAlloc).reduce((s,[k,v])=>k===cat?s:s+v,0);
+    if(others+pct>100)pct=100-others;
+    budgetAlloc[cat]=pct;
+    updateBudgetUI();
   };
-
-  const l = (key) => labels[key]?.[d[key]] || d[key] || '—';
-  const ratioLabels = ['1:4', '1:6', '1:8', '1:10', '1:15'];
-  const partnerLabels = { 'site-host': 'Site Host', 'expert-mentor': 'Expert/Mentor', 'co-designer': 'Co-Designer', none: 'No External Partner' };
-  const equityLabels = { 'cost-barrier': 'Eliminate Cost Barriers', accommodations: 'Accommodations & UDL', 'cultural-sensitivity': 'Cultural Sensitivity Review', 'alt-participation': 'Alternative Participation' };
-  const reflectModeLabels = { discussion: 'Discussion/Debrief', journal: 'Written Journal', creative: 'Creative Expression', presentation: 'Presentation' };
-
-  const gaugeColor = (val) => val >= 65 ? 'var(--accent-teal)' : val >= 40 ? 'var(--accent-gold)' : 'var(--accent-coral)';
-
-  // Generate Kolb connection
-  let kolbText = '';
-  if (d.reflectTiming === 'both' && d.reflectDepth === 'transformative') {
-    kolbText = 'Your plan engages the full Kolb cycle: concrete experience through the activity itself, reflective observation through embedded processing, abstract conceptualization through analytical and transformative questioning, and active experimentation through learners applying new understanding. This is sophisticated experiential design.';
-  } else if (d.reflectTiming === 'after' && d.reflectDepth === 'descriptive') {
-    kolbText = 'Your plan emphasizes concrete experience and basic reflective observation. Consider how you might push learners further into abstract conceptualization — connecting what they experienced to broader ideas — and active experimentation — trying out new approaches based on what they learned.';
-  } else {
-    kolbText = 'Your plan moves learners through concrete experience into reflection. Strengthening the connections between reflection, conceptualization, and future action will complete the Kolb cycle and deepen learning transfer.';
-  }
-
-  // Generate Dewey connection
-  let deweyText = '';
-  if (d.agency === 'open' || d.agency === 'scaffolded') {
-    deweyText = 'Dewey argued that genuine learning requires both continuity (building on prior experience) and interaction (active engagement with the environment and other people). Your choice to give learners agency in the experience honors the interaction principle — they are not passive receivers but active meaning-makers.';
-  } else {
-    deweyText = 'Dewey\'s principles of continuity and interaction remind us that learning is most powerful when it connects to learners\' prior experience and involves genuine interaction with the world. Consider whether your guided structure still allows for authentic encounters with the unexpected — that is often where the deepest learning happens.';
-  }
-
-  return `
-    <div class="phase-screen active">
-      <div class="kolb-badge">Your Planning Profile</div>
-      <div class="phase-title">Experience Plan Summary</div>
-      <div class="phase-narrative">Here is the experiential learning activity you designed, along with a profile of your planning trade-offs. Review the scores, reflect on your decisions, and consider what you might change.</div>
-
-      <div class="summary-section">
-        <h3>Your Decisions</h3>
-        <div class="summary-row"><span class="label">Setting</span><span class="value">${l('setting')}</span></div>
-        <div class="summary-row"><span class="label">Age Group</span><span class="value">${l('ageGroup')}</span></div>
-        <div class="summary-row"><span class="label">Group Size</span><span class="value">${d.groupSize || 20} learners</span></div>
-        <div class="summary-row"><span class="label">Experience Type</span><span class="value">${l('expType')}</span></div>
-        <div class="summary-row"><span class="label">Duration</span><span class="value">${l('duration')}</span></div>
-        <div class="summary-row"><span class="label">Budget</span><span class="value">${l('budget')}</span></div>
-        <div class="summary-row"><span class="label">Transportation</span><span class="value">${l('transport')}</span></div>
-        <div class="summary-row"><span class="label">Adult:Learner Ratio</span><span class="value">${ratioLabels[(d.ratio || 3) - 1]}</span></div>
-        <div class="summary-row"><span class="label">Partners</span><span class="value">${(d.partners || []).map(p => partnerLabels[p]).join(', ')}</span></div>
-        <div class="summary-row"><span class="label">Family Communication</span><span class="value">${l('familyComm')}</span></div>
-        <div class="summary-row"><span class="label">Admin Buy-In</span><span class="value">${l('adminBuyin')}</span></div>
-        <div class="summary-row"><span class="label">Risk Level</span><span class="value">${l('riskLevel')}</span></div>
-        <div class="summary-row"><span class="label">Equity Strategies</span><span class="value">${(d.equity || []).map(e => equityLabels[e]).join(', ')}</span></div>
-        <div class="summary-row"><span class="label">Contingency</span><span class="value">${l('contingency')}</span></div>
-        <div class="summary-row"><span class="label">Student Agency</span><span class="value">${l('agency')}</span></div>
-        <div class="summary-row"><span class="label">Your Role</span><span class="value">${l('facilitatorRole')}</span></div>
-        <div class="summary-row"><span class="label">Reflection Timing</span><span class="value">${l('reflectTiming')}</span></div>
-        <div class="summary-row"><span class="label">Reflection Modes</span><span class="value">${(d.reflectMode || []).map(r => reflectModeLabels[r]).join(', ')}</span></div>
-        <div class="summary-row"><span class="label">Reflection Depth</span><span class="value">${l('reflectDepth')}</span></div>
-      </div>
-
-      <div class="summary-section">
-        <h3>Planning Profile Scores</h3>
-        <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:16px;">These scores reflect the cumulative trade-offs of your decisions. No plan scores perfectly in every dimension — the goal is intentional balance.</p>
-        <div class="gauge-grid">
-          ${renderGauge('Feasibility', s.feasibility, gaugeColor(s.feasibility))}
-          ${renderGauge('Depth', s.depth, gaugeColor(s.depth))}
-          ${renderGauge('Equity', s.equity, gaugeColor(s.equity))}
-          ${renderGauge('Safety', s.safety, gaugeColor(s.safety))}
-          ${renderGauge('Reflection', s.reflection, gaugeColor(s.reflection))}
-        </div>
-      </div>
-
-      <div class="summary-section">
-        <h3>Trade-Offs You Navigated</h3>
-        ${state.tradeoffs.map(t => `
-          <div style="margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid rgba(255,255,255,0.04);">
-            <div style="font-weight:600; color:var(--accent-gold); font-size:0.85rem; margin-bottom:4px;">${t.phase}</div>
-            <div style="font-size:0.88rem; color:var(--text-secondary); line-height:1.6;">${t.text}</div>
-          </div>
-        `).join('')}
-      </div>
-
-      <div class="reflection-box">
-        <h4>Connecting to Theory: Kolb's Experiential Learning Cycle</h4>
-        <p>${kolbText}</p>
-      </div>
-
-      <div class="reflection-box">
-        <h4>Connecting to Theory: Dewey's Continuity & Interaction</h4>
-        <p>${deweyText}</p>
-      </div>
-
-      <div class="summary-section">
-        <h3>Your Reflection</h3>
-        <p style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:6px;">Take a moment to reflect on your planning process. What did you learn about designing experiential learning? What trade-offs surprised you? What would you do differently?</p>
-        <textarea class="reflect-textarea" placeholder="Write your reflection here..."></textarea>
-        <p style="font-size:0.9rem; color:var(--text-secondary); margin-top:16px;">Consider these prompts:</p>
-        <p style="font-size:0.88rem; color:var(--text-dim); line-height:1.7;">
-          • Which decision was hardest to make, and why?<br>
-          • Where did you feel tension between what you wanted to do and what was feasible?<br>
-          • How did the disruption event change your thinking about contingency planning?<br>
-          • If you could redesign one aspect of your plan, what would it be?<br>
-          • How does this planning process connect to your own experiences as a learner?
-        </p>
-      </div>
-
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="location.reload()">↺ Start Over</button>
-        <button class="btn btn-primary" onclick="window.print()">Print Summary</button>
-      </div>
-    </div>
-  `;
+  const up=()=>{document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up);document.removeEventListener('touchmove',move);document.removeEventListener('touchend',up);budgetDragging=null;checkReady()};
+  document.addEventListener('mousemove',move);
+  document.addEventListener('mouseup',up);
+  document.addEventListener('touchmove',move,{passive:false});
+  document.addEventListener('touchend',up);
+}
+function updateBudgetUI(){
+  const total=Object.values(budgetAlloc).reduce((a,b)=>a+b,0);
+  Object.entries(budgetAlloc).forEach(([k,v])=>{
+    document.getElementById('bf_'+k).style.width=v+'%';
+    document.getElementById('ba_'+k).textContent=v+'%';
+  });
+  const rem=100-total;
+  const el=document.getElementById('budgetRemaining');
+  el.textContent=rem===0?'✓ Fully allocated':`${rem}% remaining`;
+  el.className='budget-remaining'+(rem<0?' over':'');
+  const tf=document.getElementById('budgetTotalFill');
+  tf.style.width=total+'%';
+  tf.className='budget-total-fill'+(total>100?' over':'');
+  S.d.budgetAlloc={...budgetAlloc};
+}
+function checkBudgetReady(){
+  const total=Object.values(budgetAlloc).reduce((a,b)=>a+b,0);
+  return total>=90&&total<=100;
 }
 
-function renderGauge(label, value, color) {
-  const offset = 245 - (245 * value / 100);
-  return `
-    <div class="gauge-card">
-      <div class="gauge-ring">
-        <svg viewBox="0 0 90 90">
-          <circle class="bg" cx="45" cy="45" r="39"/>
-          <circle class="fill" cx="45" cy="45" r="39" stroke="${color}" style="stroke-dashoffset:${offset}" id="gauge-${label}"/>
-        </svg>
-        <div class="gauge-number" style="color:${color}">${value}</div>
-      </div>
-      <div class="gauge-label">${label}</div>
-    </div>
-  `;
-}
-
-// ========== INIT ==========
-renderCurrentPhase();
-
-// Animate gauges when summary appears
-const observer = new MutationObserver(() => {
-  document.querySelectorAll('.gauge-ring .fill').forEach(el => {
-    const target = el.style.strokeDashoffset;
-    el.style.strokeDashoffset = '245';
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        el.style.strokeDashoffset = target;
-      });
+// -- Stakeholder Map --
+function initStakeholderDrag(){
+  const quads=document.querySelectorAll('.smap-quad');
+  const tray=document.getElementById('smapTray');
+  quads.forEach(q=>{
+    q.addEventListener('dragover',e=>{e.preventDefault();q.classList.add('over')});
+    q.addEventListener('dragleave',()=>q.classList.remove('over'));
+    q.addEventListener('drop',e=>{
+      e.preventDefault();q.classList.remove('over');
+      const sid=e.dataTransfer.getData('text/plain');
+      const chip=document.querySelector(`.smap-chip[data-sid="${sid}"]`);
+      if(chip)q.appendChild(chip);
+      checkReady();
     });
   });
-});
-observer.observe(document.getElementById('screensContainer'), { childList: true, subtree: true });
+  tray.addEventListener('dragover',e=>e.preventDefault());
+  tray.addEventListener('drop',e=>{
+    e.preventDefault();
+    const sid=e.dataTransfer.getData('text/plain');
+    const chip=document.querySelector(`.smap-chip[data-sid="${sid}"]`);
+    if(chip)tray.appendChild(chip);
+    checkReady();
+  });
+  document.querySelectorAll('.smap-chip').forEach(chip=>{
+    chip.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',chip.dataset.sid)});
+  });
+}
+function countPlacedStakeholders(){
+  let n=0;
+  document.querySelectorAll('.smap-quad').forEach(q=>{n+=q.querySelectorAll('.smap-chip').length});
+  return n;
+}
+
+// -- Risk Matrix --
+function initRiskDrag(){
+  const cells=document.querySelectorAll('.rm-cell');
+  const tray=document.getElementById('riskTray');
+  cells.forEach(c=>{
+    c.addEventListener('dragover',e=>{e.preventDefault();c.style.background='var(--bg4)'});
+    c.addEventListener('dragleave',()=>c.style.background='');
+    c.addEventListener('drop',e=>{
+      e.preventDefault();c.style.background='';
+      const rid=e.dataTransfer.getData('text/plain');
+      const chip=document.querySelector(`.risk-chip[data-rid="${rid}"]`);
+      if(chip)c.appendChild(chip);
+      checkReady();
+    });
+  });
+  tray.addEventListener('dragover',e=>e.preventDefault());
+  tray.addEventListener('drop',e=>{
+    e.preventDefault();
+    const rid=e.dataTransfer.getData('text/plain');
+    const chip=document.querySelector(`.risk-chip[data-rid="${rid}"]`);
+    if(chip)tray.appendChild(chip);
+    checkReady();
+  });
+  document.querySelectorAll('.risk-chip').forEach(chip=>{
+    chip.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',chip.dataset.rid)});
+  });
+}
+function countPlacedRisks(){
+  let n=0;
+  document.querySelectorAll('.rm-cell').forEach(c=>{n+=c.querySelectorAll('.risk-chip').length});
+  return n;
+}
+function checkRisk(){checkReady()}
+
+// -- Touch drag fallback for stakeholder & risk --
+let touchDragEl=null,touchGhost=null;
+function touchDragStart(e){
+  touchDragEl=e.target.closest('.smap-chip,.risk-chip');
+  if(!touchDragEl)return;
+  touchDragEl.style.opacity='.4';
+  touchGhost=touchDragEl.cloneNode(true);
+  touchGhost.style.position='fixed';touchGhost.style.pointerEvents='none';touchGhost.style.zIndex='9999';touchGhost.style.opacity='.8';
+  document.body.appendChild(touchGhost);
+  const t=e.touches[0];
+  touchGhost.style.left=(t.clientX-40)+'px';touchGhost.style.top=(t.clientY-15)+'px';
+}
+function touchDragMove(e){
+  if(!touchDragEl)return;
+  e.preventDefault();
+  const t=e.touches[0];
+  if(touchGhost){touchGhost.style.left=(t.clientX-40)+'px';touchGhost.style.top=(t.clientY-15)+'px'}
+}
+function touchDragEnd(e){
+  if(!touchDragEl)return;
+  touchDragEl.style.opacity='1';
+  if(touchGhost){touchGhost.remove();touchGhost=null}
+  const t=e.changedTouches[0];
+  const dropTarget=document.elementFromPoint(t.clientX,t.clientY);
+  const zone=dropTarget?.closest('.smap-quad,.rm-cell,.smap-tray,.risk-tray');
+  if(zone)zone.appendChild(touchDragEl);
+  touchDragEl=null;
+  checkReady();
+}
+
+// -- Kolb Wheel --
+function toggleKolb(el,stage){
+  el.classList.toggle('active');
+  const inp=document.getElementById('ki_'+stage);
+  inp.classList.toggle('active');
+  if(inp.classList.contains('active'))inp.focus();
+  checkReady();
+}
+function checkKolbReady(){
+  const stages=['ce','ro','ac','ae'];
+  let filled=0;
+  stages.forEach(s=>{
+    const v=document.getElementById('ki_'+s)?.value.trim();
+    if(v&&v.length>10)filled++;
+  });
+  return filled>=3;
+}
+function checkP6(){checkReady()}
+function checkP7(){checkReady()}
+
+// ===================== SUBMISSIONS =====================
+
+function submit1(){
+  const{setting,ageGroup,groupSize,priorities}=S.d;
+  const top=priorities[0];
+  let t='';
+  if(top==='safety')t='You ranked safety as your top priority. This will serve you well in risk planning, but watch that it does not cause you to avoid experiences with genuine challenge. Growth often requires managed discomfort.';
+  else if(top==='depth')t='Depth of learning is your top priority. This means you need to protect time for reflection and resist the temptation to pack the schedule. Fewer activities, deeply processed, beats a full itinerary.';
+  else if(top==='access')t='Leading with equity is powerful. Every subsequent decision should be stress-tested: does this choice include or exclude? Who is most likely to be left out?';
+  else if(top==='engage')t='Engagement is your top priority — but remember, engagement is a means, not an end. Fun without reflection is recreation. Build in processing that converts excitement into learning.';
+  else if(top==='feasibility')t='You are being pragmatic by prioritizing feasibility. That is realistic, but watch for the risk of playing it too safe. The most feasible plan is not always the most transformative.';
+  else t='You prioritized real-world transfer. That means your reflection design must explicitly ask: "What will you do differently because of this experience?" Hold yourself to that standard.';
+  if(groupSize>40)t+=' With '+groupSize+' learners, every logistical decision is amplified. Consider cohort models.';
+  if(ageGroup==='adult'&&setting==='k12')t+=' Adult learners in a K–12 setting is unusual — make sure the experience is designed for adults, not adapted from a children\'s program.';
+  showFb('fb1','trade','Priority Trade-Off',t);
+  S.tradeoffs.push({phase:'Learner Context',text:t});
+  next();
+}
+
+function submit2(){
+  const{expType,duration}=S.d;
+  // Collect timeline entries
+  const tls=[];document.querySelectorAll('#timeline .tl-input').forEach(i=>{if(i.value.trim())tls.push(i.value.trim())});
+  S.d.timeline=tls;
+  let t='';
+  if(expType==='immersive'&&duration==='half-day'){t='An immersive experience in a half day is a contradiction. Immersion requires sustained time. Your depth score will reflect this tension.';S.sc.depth-=15;S.sc.feasibility+=5}
+  else if(expType==='apprenticeship'){t='Apprenticeship depends on your community partner\'s reliability. Your timeline should include partner check-in points. The learning ceiling is high, but so is your dependency on someone you don\'t fully control.';S.sc.depth+=8;S.sc.feasibility-=5}
+  else if(expType==='immersive'&&duration==='extended'){t='This is the gold standard — deep, sustained immersion. The planning burden is enormous but the potential for transformative learning (Mezirow) is at its highest.';S.sc.depth+=15;S.sc.feasibility-=12}
+  else{t='Your experience type and duration align well. Your timeline shows intentional sequencing — make sure each moment has a clear purpose, not just a scheduled time.';S.sc.depth+=5}
+  if(tls.length>=5){t+=' Your detailed timeline shows strong sequential thinking. Consider which moments need the most facilitation energy.';S.sc.depth+=3}
+  showFb('fb2','trade','Experience Design',t);
+  S.tradeoffs.push({phase:'Experience Design',text:t});
+  next();
+}
+
+function submit3(){
+  const{budget,budgetAlloc}=S.d;
+  let t='';
+  if(budgetAlloc.contingency<5){t='You allocated almost nothing to contingency reserves. When something goes wrong — and it will — you will have no financial cushion. Even 5–10% can save your plan.';S.sc.safety-=8}
+  else if(budgetAlloc.contingency>=15){t='A healthy contingency reserve shows experienced planning. You are prepared for the unexpected.';S.sc.safety+=5}
+  if(budgetAlloc.transport>40){t+=' Transportation is consuming a huge share of your budget. Is there a closer site that would free up funds for the experience itself?';S.sc.feasibility-=5}
+  if(budgetAlloc.materials<5&&(S.d.expType==='outdoor'||S.d.expType==='discovery')){t+=' Very little allocated to materials for a '+S.d.expType+' experience. Make sure learners have what they need to engage meaningfully.'}
+  if(budgetAlloc.food===0&&(S.d.duration==='full-day'||S.d.duration==='multi-day'||S.d.duration==='extended')){
+    t+=' You allocated nothing to food for a '+S.d.duration+' experience. Hungry learners do not learn. Even if families pack food, someone will forget.';S.sc.equity-=5;
+    showFb('fw3','warn','Equity Concern','Zero food budget on a full-day or longer experience creates a hidden cost barrier. Some families may not be able to send adequate food.');
+  }
+  if(!t)t='Your budget allocation reflects clear priorities. Every dollar tells a story about what you value.';
+  showFb('fb3','trade','Budget Trade-Off',t);
+  S.tradeoffs.push({phase:'Budget',text:t});
+  next();
+}
+
+function submit4(){
+  // Read stakeholder placements
+  const map={};
+  document.querySelectorAll('.smap-quad').forEach(q=>{
+    q.querySelectorAll('.smap-chip').forEach(c=>{map[c.dataset.sid]=q.dataset.q});
+  });
+  S.d.stakeholderMap=map;
+  let t='';
+  if(map.families==='lo-lo'||map.families==='hi-lo'){t='You placed families in a low-interest quadrant. Be careful — families who feel uninformed or uninvited may resist the experience or pull learners out. Even if their interest seems low, proactive communication builds trust.';S.sc.equity-=5}
+  if(map.learners==='lo-lo'||map.learners==='hi-lo'){t+=' You placed learners themselves in a low-interest position. If learners are not genuinely interested, the experience becomes compliance, not learning. How will you build their investment before the experience?';S.sc.depth-=5}
+  if(map.admin==='hi-hi'){t+=' You identified administration as high-influence and high-interest. That is a powerful ally — leverage their enthusiasm to secure resources and institutional support.';S.sc.feasibility+=5}
+  if(map.partner==='hi-hi'){t+=' Your community partner is high-influence and high-interest — an ideal collaborator. Protect this relationship. Clear communication about expectations, roles, and learner needs prevents misalignment.';S.sc.depth+=5}
+  if(!t)t='Your stakeholder map shows thoughtful analysis of who has influence and interest. Use this map to prioritize your communication plan — spend the most energy on the high-influence stakeholders.';
+  showFb('fb4','trade','Stakeholder Analysis',t);
+  S.tradeoffs.push({phase:'Stakeholders',text:t});
+  next();
+}
+
+function submit5(){
+  // Read risk placements
+  const riskMap={};
+  document.querySelectorAll('.rm-cell').forEach(c=>{
+    c.querySelectorAll('.risk-chip').forEach(r=>{riskMap[r.dataset.rid]=c.dataset.r});
+  });
+  S.d.riskMap=riskMap;
+  S.d.mitigationPlan=document.getElementById('mitigationPlan')?.value.trim()||'';
+  let t='';
+  const highRisks=Object.entries(riskMap).filter(([_,v])=>v.includes('hi-hi')||v.includes('hi-med')||v.includes('med-hi'));
+  if(highRisks.length>=3){t='You identified '+highRisks.length+' high-severity risks. That is a lot of red on your matrix. Consider whether the experience design itself can be modified to reduce risk, rather than relying entirely on mitigation.';S.sc.safety-=8}
+  else if(highRisks.length===0){
+    t='No high-severity risks? Either this is a very low-risk experience, or you may be underestimating potential problems. Experienced planners know that overconfidence is itself a risk.';S.sc.safety-=5;
+    showFb('fw5','warn','Risk Awareness','Consider whether you have genuinely assessed worst-case scenarios. What would happen if your highest-likelihood risk actually occurred during the experience?');
+  }
+  else{t='Your risk assessment shows balanced judgment — you identified real dangers without catastrophizing. Your mitigation plan for the top risk is the kind of specific, actionable preparation that separates good planning from great planning.';S.sc.safety+=8}
+  if(S.d.mitigationPlan.length>80)S.sc.safety+=5;
+  showFb('fb5','trade','Risk Assessment',t);
+  S.tradeoffs.push({phase:'Risk Assessment',text:t});
+  next();
+}
+
+function submit6(){
+  S.d.adaptPlan=document.getElementById('adaptPlan')?.value.trim()||'';
+  const dis=S.d.disruption;
+  const rs=dis.scoring[S.d.disruptionResponse];
+  if(rs)Object.entries(rs).forEach(([k,v])=>{S.sc[k]=Math.max(0,Math.min(100,S.sc[k]+v))});
+  let t='';
+  if(S.d.adaptPlan.length>120){t='Your adaptation plan is detailed and specific — that is exactly what is needed in a crisis. Vague intentions collapse under pressure; concrete steps hold up.';S.sc.feasibility+=5;S.sc.reflection+=3}
+  else{t='Your adaptation plan could be more specific. In a real disruption, the facilitator who has rehearsed specific steps responds faster and with more confidence than the one who plans to "figure it out."';S.sc.feasibility-=3}
+  showFb('fb6','trade','Disruption Response',t);
+  S.tradeoffs.push({phase:'Disruption',text:t});
+  next();
+}
+
+function submit7(){
+  const stages=['ce','ro','ac','ae'];
+  S.d.kolb={};
+  stages.forEach(s=>{S.d.kolb[s]=document.getElementById('ki_'+s)?.value.trim()||''});
+  let filledCount=stages.filter(s=>S.d.kolb[s].length>10).length;
+  let t='';
+  if(filledCount===4){t='You addressed all four stages of Kolb\'s cycle. This is sophisticated experiential design — the full loop from experience through reflection, conceptualization, and experimentation maximizes learning transfer.';S.sc.reflection+=15;S.sc.depth+=5}
+  else if(filledCount===3){t='You addressed three of four Kolb stages. Consider which stage you skipped — that gap represents a missed opportunity in the learning cycle.';S.sc.reflection+=8}
+  else{t='Fewer than three Kolb stages filled suggests the reflection design needs more development. Experience without structured reflection risks remaining at the surface.';S.sc.reflection-=5}
+  if(S.d.reflectMode?.includes('creative')){S.sc.reflection+=5;t+=' Including creative expression as a reflection mode gives learners with diverse strengths a way to demonstrate understanding beyond writing or speaking.'}
+  showFb('fb7','trade','Reflection Design',t);
+  S.tradeoffs.push({phase:'Reflection',text:t});
+  next();
+}
+
+// ===================== DISRUPTION GENERATOR =====================
+function generateDisruption(){
+  const{expType,duration,budget}=S.d;
+  const pool=[];
+  if(expType==='outdoor'||expType==='discovery')pool.push({title:'Severe Weather Advisory',narrative:'Two days before your experience, a severe weather advisory is issued. Rain and thunderstorms are expected. Outdoor activities will be unsafe, but your partner site remains available indoors.',options:[
+    {value:'postpone',title:'Postpone Entirely',desc:'Wait for good weather. Preserves the plan but disrupts schedules.'},
+    {value:'modify',title:'Adapt to Indoor Alternative',desc:'Redesign activities for an indoor or sheltered setting. Learners still go.'},
+    {value:'hybrid',title:'Virtual Prep Now, Field Later',desc:'Use the day for preparation and relationship-building, field experience on a makeup day.'}
+  ],scoring:{postpone:{feasibility:-5,depth:3,safety:8},modify:{feasibility:5,depth:-3,safety:5,reflection:3},hybrid:{feasibility:-3,depth:5,reflection:5}}});
+  pool.push({title:'Partner Contact Lost',narrative:'48 hours before the experience, your primary community partner contact cancels. A colleague they recommended is available but has never worked with young people and does not know your objectives.',options:[
+    {value:'substitute',title:'Accept the Substitute',desc:'Brief them quickly. Accept the interaction may be less polished.'},
+    {value:'self-facilitate',title:'Go Without a Partner',desc:'Lead it yourself. Lose expert authenticity but gain full control.'},
+    {value:'reschedule',title:'Reschedule for Original Partner',desc:'Push back the date. Preserves quality but disrupts everything else.'}
+  ],scoring:{substitute:{feasibility:5,depth:-5,safety:-3},'self-facilitate':{feasibility:3,depth:-8,safety:5},reschedule:{feasibility:-8,depth:5,reflection:3}}});
+  if(budget==='minimal'||budget==='moderate')pool.push({title:'Hidden Cost Barriers',narrative:'A week before the experience, three families have not returned permission forms and two say their children cannot participate due to cost — even though the activity is free. You suspect hidden costs (gear, lunch, sunscreen) create barriers.',options:[
+    {value:'fund-solve',title:'Remove All Hidden Costs',desc:'Provide everything needed. Every learner participates identically.'},
+    {value:'outreach',title:'Personal Family Outreach',desc:'Call each family. Learn their concerns and solve one by one.'},
+    {value:'alt-path',title:'Create Parallel Participation',desc:'Design a meaningful alternative for those who cannot attend in person.'}
+  ],scoring:{'fund-solve':{equity:12,feasibility:-5,safety:3},outreach:{equity:10,depth:3,feasibility:-3,reflection:3},'alt-path':{equity:5,depth:-3,feasibility:5,reflection:5}}});
+  if(expType==='immersive')pool.push({title:'Learner in Emotional Crisis',narrative:'During the immersive experience, one learner becomes emotionally overwhelmed — homesick, anxious, withdrawing. Other learners notice. The learner says they want to go home.',options:[
+    {value:'support',title:'Individual Support & Processing',desc:'Sit with the learner privately. Listen, validate, co-create a plan. Another adult covers the group.'},
+    {value:'group',title:'Facilitated Group Discussion',desc:'With the learner\'s permission, use this as a learning moment about challenge, discomfort, and support.'},
+    {value:'send-home',title:'Arrange Early Departure',desc:'Respect their wish. Arrange safe transport home and provide an independent reflection activity.'}
+  ],scoring:{support:{safety:8,depth:3,equity:5,reflection:5},group:{depth:8,reflection:8,safety:-3,equity:3},'send-home':{safety:5,feasibility:5,depth:-8,equity:-3}}});
+  // Default
+  if(pool.length===0)pool.push({title:'Transportation Falls Through',narrative:'Morning of the experience. The bus company double-booked. No vehicles. Your site is 25 minutes away. You have 30 learners and 2 hours.',options:[
+    {value:'carpool',title:'Emergency Carpool',desc:'Call every contact. Organize rides. Some will arrive late.'},
+    {value:'relocate',title:'Relocate the Experience',desc:'Find a walkable alternative. Site changes, objectives stay.'},
+    {value:'cancel',title:'Cancel and Reschedule',desc:'Call it off. Use the day for prep. Reschedule with confirmed transport.'}
+  ],scoring:{carpool:{feasibility:-8,safety:-5},relocate:{feasibility:3,depth:-5,reflection:5,safety:3},cancel:{feasibility:-3,depth:3,safety:8}}});
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+// ===================== FEEDBACK =====================
+function showFb(id,type,title,text){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.className='fb '+type+' vis';
+  const icon=type==='trade'?'⚖️':type==='warn'?'⚠':'⚡';
+  el.innerHTML=`<h4>${icon} ${title}</h4><p>${text}</p>`;
+}
+
+// ===================== SUMMARY =====================
+function buildSummary(){
+  const d=S.d,s=S.sc;
+  Object.keys(s).forEach(k=>{s[k]=Math.max(5,Math.min(100,s[k]))});
+  const L={setting:{k12:'K–12 School',community:'Community / Youth Org',informal:'Informal / Independent'},ageGroup:{elementary:'Elementary (5–10)',middle:'Middle School (11–14)',high:'High School (15–18)',college:'College (18–24)',adult:'Adult (25+)'},expType:{discovery:'Discovery',outdoor:'Outdoor Challenge',apprenticeship:'Apprenticeship / Citizen Science',immersive:'Immersive'},duration:{'half-day':'Half Day','full-day':'Full Day','multi-day':'Multi-Day',extended:'Extended (1 week+)'},budget:{minimal:'Minimal ($0–100)',moderate:'Moderate ($100–500)',substantial:'Substantial ($500–2K)',major:'Major ($2K+)'}};
+  const l=(k)=>L[k]?.[d[k]]||d[k]||'—';
+  const gc=v=>v>=65?'var(--teal)':v>=40?'var(--gold)':'var(--coral)';
+  const mkGauge=(label,val)=>{const off=220-(220*val/100);return`<div class="gauge"><svg viewBox="0 0 80 80"><circle class="bg" cx="40" cy="40" r="35"/><circle class="fl" cx="40" cy="40" r="35" stroke="${gc(val)}" style="stroke-dashoffset:${off}" /></svg><div class="gauge-n" style="color:${gc(val)}">${val}</div><div class="gauge-l">${label}</div></div>`};
+  // Kolb summary
+  let kolbHtml='';
+  if(d.kolb){
+    const labels={ce:'Concrete Experience',ro:'Reflective Observation',ac:'Abstract Conceptualization',ae:'Active Experimentation'};
+    kolbHtml=Object.entries(d.kolb).filter(([_,v])=>v).map(([k,v])=>`<p><strong style="color:var(--gold)">${labels[k]}:</strong> ${v}</p>`).join('');
+  }
+  // Priorities
+  const priLabels={safety:'Safety',depth:'Depth of Learning',access:'Equity & Access',engage:'Engagement',feasibility:'Feasibility',transfer:'Real-Life Transfer'};
+  return `<div class="phase active">
+    <div class="badge">Your Planning Profile</div>
+    <div class="ph-title">Experience Plan Summary</div>
+    <div class="ph-narr">Here is the experiential learning activity you built, the trade-offs you navigated, and your planning profile. Review, reflect, and consider what you would change.</div>
+    <div class="sum-section"><h3>Your Decisions</h3>
+      <div class="sum-row"><span class="lb">Setting</span><span class="vl">${l('setting')}</span></div>
+      <div class="sum-row"><span class="lb">Age Group</span><span class="vl">${l('ageGroup')}</span></div>
+      <div class="sum-row"><span class="lb">Group Size</span><span class="vl">${d.groupSize||20} learners</span></div>
+      <div class="sum-row"><span class="lb">Top Priority</span><span class="vl">${priLabels[d.priorities?.[0]]||'—'}</span></div>
+      <div class="sum-row"><span class="lb">Experience Type</span><span class="vl">${l('expType')}</span></div>
+      <div class="sum-row"><span class="lb">Duration</span><span class="vl">${l('duration')}</span></div>
+      <div class="sum-row"><span class="lb">Budget</span><span class="vl">${l('budget')}</span></div>
+      <div class="sum-row"><span class="lb">Budget Allocation</span><span class="vl">${d.budgetAlloc?Object.entries(d.budgetAlloc).filter(([_,v])=>v>0).map(([k,v])=>`${k}: ${v}%`).join(', '):'—'}</span></div>
+      <div class="sum-row"><span class="lb">Reflection Modes</span><span class="vl">${(d.reflectMode||[]).join(', ')||'—'}</span></div>
+    </div>
+    ${d.timeline?`<div class="sum-section"><h3>Your Activity Timeline</h3>${d.timeline.map((t,i)=>`<div style="margin-bottom:10px;padding-left:16px;border-left:2px solid var(--gold)"><div style="font-size:.78rem;color:var(--t3);font-weight:600;text-transform:uppercase;margin-bottom:2px">Moment ${i+1}</div><div style="font-size:.88rem;color:var(--t2);line-height:1.6">${t}</div></div>`).join('')}</div>`:''}
+    <div class="sum-section"><h3>Planning Profile Scores</h3>
+      <p style="font-size:.85rem;color:var(--t2);margin-bottom:14px">These reflect cumulative trade-offs. No plan scores perfectly everywhere — the goal is intentional balance.</p>
+      <div class="gauge-grid">${mkGauge('Feasibility',s.feasibility)}${mkGauge('Depth',s.depth)}${mkGauge('Equity',s.equity)}${mkGauge('Safety',s.safety)}${mkGauge('Reflection',s.reflection)}</div>
+    </div>
+    <div class="sum-section"><h3>Trade-Offs You Navigated</h3>${S.tradeoffs.map(t=>`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.04)"><div style="font-weight:600;color:var(--gold);font-size:.82rem;margin-bottom:3px">${t.phase}</div><div style="font-size:.85rem;color:var(--t2);line-height:1.6">${t.text}</div></div>`).join('')}</div>
+    ${kolbHtml?`<div class="ref-box"><h4>Your Kolb Cycle Design</h4>${kolbHtml}</div>`:''}
+    ${d.adaptPlan?`<div class="ref-box"><h4>Your Disruption Adaptation Plan</h4><p>${d.adaptPlan}</p></div>`:''}
+    ${d.mitigationPlan?`<div class="ref-box"><h4>Your Risk Mitigation Plan</h4><p>${d.mitigationPlan}</p></div>`:''}
+    <div class="sum-section"><h3>Final Reflection</h3>
+      <p style="font-size:.88rem;color:var(--t2);margin-bottom:6px">Take a moment to reflect on your planning process.</p>
+      <textarea class="big-ref" placeholder="What did you learn about designing experiential learning? Which trade-off surprised you most? What would you do differently?"></textarea>
+      <p style="font-size:.84rem;color:var(--t3);margin-top:12px;line-height:1.7">Consider: Which decision was hardest? Where did you feel tension between what you wanted and what was feasible? How did the disruption change your thinking? How does this connect to your own experiences as a learner?</p>
+    </div>
+    <div class="btn-row"><button class="btn btn-s" onclick="location.reload()">↺ Start Over</button><button class="btn btn-p" onclick="window.print()">Print Summary</button></div>
+  </div>`;
+}
+
+// ===================== INIT =====================
+render();
+// Animate gauges
+const obs=new MutationObserver(()=>{document.querySelectorAll('.gauge .fl').forEach(el=>{const t=el.style.strokeDashoffset;el.style.strokeDashoffset='220';requestAnimationFrame(()=>requestAnimationFrame(()=>{el.style.strokeDashoffset=t}))})});
+obs.observe(document.getElementById('screens'),{childList:true,subtree:true});
 </script>
 </body>
 </html>
