@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Plate Tectonics — WebXR Baseline</title>
+<style>
+  :root {
+    --bg-deep: #0a0e14;
+    --bg-mid: #131a23;
+    --accent: #e8c07a;
+    --accent-dim: #8a7553;
+    --text: #e6e9ec;
+    --text-dim: #8a939c;
+    --rule: rgba(232, 192, 122, 0.25);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-deep);
+    color: var(--text);
+    font-family: 'Iowan Old Style', 'Palatino', 'Georgia', serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; }
+
+  /* HUD overlay - hidden once XR session begins */
+  #hud {
+    position: fixed;
+    top: 24px;
+    left: 24px;
+    max-width: 360px;
+    padding: 20px 22px;
+    background: rgba(19, 26, 35, 0.78);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    pointer-events: auto;
+    z-index: 10;
+  }
+  #hud .eyebrow {
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  #hud h1 {
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    margin-bottom: 14px;
+  }
+  #hud h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  #hud p {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+  #hud .controls {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+  #hud .controls strong { color: var(--accent); font-weight: 500; }
+
+  /* Status badge */
+  #status {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    padding: 8px 14px;
+    background: rgba(19, 26, 35, 0.78);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    z-index: 10;
+  }
+  #status .dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-right: 8px;
+    vertical-align: middle;
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  /* Override Three.js's VRButton styling to match aesthetic */
+  body > button {
+    font-family: 'IBM Plex Mono', 'Courier New', monospace !important;
+    font-size: 11px !important;
+    letter-spacing: 0.2em !important;
+    background: rgba(232, 192, 122, 0.08) !important;
+    border: 1px solid var(--accent) !important;
+    color: var(--accent) !important;
+    border-radius: 2px !important;
+    padding: 12px 24px !important;
+  }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<div id="hud">
+  <div class="eyebrow">Module 01 · Baseline</div>
+  <h1>Plate <em>Tectonics</em><br/>Sandbox</h1>
+  <p>A WebXR scratchpad for building geological intuition. Currently a build verification — three plates, grab to move. Geology to come.</p>
+  <div class="controls">
+    <div><strong>VR</strong> &nbsp;trigger to grab plate</div>
+    <div><strong>Desktop</strong> &nbsp;click + drag plates</div>
+    <div><strong>Camera</strong> &nbsp;right-drag · scroll</div>
+  </div>
+</div>
+
+<div id="status"><span class="dot"></span><span id="status-text">Initializing…</span></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { VRButton } from 'three/addons/webxr/VRButton.js';
+import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ---------- Status helper ----------
+const statusEl = document.getElementById('status-text');
+const setStatus = (msg) => { statusEl.textContent = msg; };
+
+// ---------- Renderer ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x0a0e14, 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.xr.enabled = true;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.getElementById('app').appendChild(renderer.domElement);
+
+// ---------- Scene ----------
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0e14);
+scene.fog = new THREE.Fog(0x0a0e14, 4, 12);
+
+// ---------- Camera ----------
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.05, 100);
+// Desktop default: stand-and-look-at-table position
+camera.position.set(0, 1.55, 1.0);
+
+// ---------- Lighting ----------
+const hemi = new THREE.HemisphereLight(0x6a7280, 0x1a1410, 0.55);
+scene.add(hemi);
+
+const key = new THREE.DirectionalLight(0xfff2d8, 1.1);
+key.position.set(2.5, 4, 1.5);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = -3;
+key.shadow.camera.right = 3;
+key.shadow.camera.top = 3;
+key.shadow.camera.bottom = -3;
+key.shadow.bias = -0.0005;
+scene.add(key);
+
+const rim = new THREE.DirectionalLight(0x88a4d4, 0.35);
+rim.position.set(-3, 2, -2);
+scene.add(rim);
+
+// ---------- Floor grid (orientation reference) ----------
+const grid = new THREE.GridHelper(10, 20, 0x2a3340, 0x1a2230);
+grid.material.opacity = 0.6;
+grid.material.transparent = true;
+scene.add(grid);
+
+// ---------- "Table" / mantle surface ----------
+// A subtle disk at workspace height. Plates float just above this.
+const TABLE_Y = 1.0;
+const tableGeo = new THREE.CircleGeometry(1.2, 64);
+const tableMat = new THREE.MeshStandardMaterial({
+  color: 0x161c24,
+  roughness: 0.85,
+  metalness: 0.05,
+});
+const table = new THREE.Mesh(tableGeo, tableMat);
+table.rotation.x = -Math.PI / 2;
+table.position.y = TABLE_Y;
+table.receiveShadow = true;
+scene.add(table);
+
+// Subtle ring around table to define workspace
+const ringGeo = new THREE.RingGeometry(1.18, 1.22, 64);
+const ringMat = new THREE.MeshBasicMaterial({ color: 0xe8c07a, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+const ring = new THREE.Mesh(ringGeo, ringMat);
+ring.rotation.x = -Math.PI / 2;
+ring.position.y = TABLE_Y + 0.001;
+scene.add(ring);
+
+// ---------- Plate factory ----------
+// Holding all the plate-construction logic in one helper makes it easy
+// to add geological properties (density, age, type, motion vector) later.
+const plates = [];
+const PLATE_THICKNESS = 0.04;
+
+function createPlate({ name, size = [0.4, 0.4], position, color, type = 'continental' }) {
+  const [w, d] = size;
+  const geo = new THREE.BoxGeometry(w, PLATE_THICKNESS, d);
+  const mat = new THREE.MeshStandardMaterial({
+    color,
+    roughness: type === 'continental' ? 0.95 : 0.6,
+    metalness: type === 'continental' ? 0.0 : 0.15,
+    emissive: 0x000000,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(position[0], TABLE_Y + PLATE_THICKNESS / 2 + 0.005, position[2]);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  // Stash metadata on the object for later geological logic
+  mesh.userData = { name, type, isPlate: true, baseColor: new THREE.Color(color) };
+  scene.add(mesh);
+  plates.push(mesh);
+  return mesh;
+}
+
+// Three placeholder plates — names are arbitrary until you give me the
+// actual geological setup you want.
+createPlate({
+  name: 'Plate A',
+  size: [0.5, 0.5],
+  position: [-0.45, 0, 0.1],
+  color: 0xa8825a,
+  type: 'continental',
+});
+createPlate({
+  name: 'Plate B',
+  size: [0.55, 0.4],
+  position: [0.25, 0, -0.15],
+  color: 0xc9a878,
+  type: 'continental',
+});
+createPlate({
+  name: 'Plate C',
+  size: [0.45, 0.5],
+  position: [0.05, 0, 0.35],
+  color: 0x4d6878,
+  type: 'oceanic',
+});
+
+// ---------- In-VR instruction panel ----------
+// HUD <div> disappears in immersive mode, so put a 3D panel in the scene.
+function makeInstructionPanel() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024; canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#131a23'; ctx.fillRect(0, 0, 1024, 512);
+  ctx.strokeStyle = 'rgba(232,192,122,0.3)'; ctx.lineWidth = 3;
+  ctx.strokeRect(8, 8, 1008, 496);
+
+  ctx.fillStyle = '#e8c07a';
+  ctx.font = '24px monospace';
+  ctx.fillText('MODULE 01 · BASELINE', 50, 70);
+
+  ctx.fillStyle = '#e6e9ec';
+  ctx.font = 'italic 56px Georgia';
+  ctx.fillText('Plate Tectonics Sandbox', 50, 150);
+
+  ctx.fillStyle = '#8a939c';
+  ctx.font = '28px Georgia';
+  ctx.fillText('Squeeze the trigger to grab a plate.', 50, 230);
+  ctx.fillText('Release to drop it back on the table.', 50, 270);
+
+  ctx.fillStyle = '#e8c07a';
+  ctx.font = '22px monospace';
+  ctx.fillText('Geology to come — this is a build check.', 50, 380);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+  const geo = new THREE.PlaneGeometry(0.8, 0.4);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(0, 1.6, -1.2);
+  scene.add(mesh);
+  return mesh;
+}
+makeInstructionPanel();
+
+// ---------- Desktop controls ----------
+const orbit = new OrbitControls(camera, renderer.domElement);
+orbit.target.set(0, TABLE_Y, 0);
+orbit.enableDamping = true;
+orbit.dampingFactor = 0.08;
+orbit.minDistance = 0.5;
+orbit.maxDistance = 4;
+orbit.maxPolarAngle = Math.PI / 2 - 0.05;
+// Use right-click to orbit, so left-click is free for plate dragging
+orbit.mouseButtons = {
+  LEFT: null,
+  MIDDLE: THREE.MOUSE.DOLLY,
+  RIGHT: THREE.MOUSE.ROTATE,
+};
+orbit.update();
+
+// ---------- Desktop plate drag (mouse) ----------
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -(TABLE_Y + PLATE_THICKNESS / 2 + 0.005));
+let dragging = null;
+const dragOffset = new THREE.Vector3();
+const hitPoint = new THREE.Vector3();
+
+function setPointer(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+}
+
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0) return; // left click only
+  setPointer(e);
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(plates, false);
+  if (hits.length) {
+    dragging = hits[0].object;
+    dragging.material.emissive.setHex(0x332200);
+    raycaster.ray.intersectPlane(dragPlane, hitPoint);
+    dragOffset.copy(dragging.position).sub(hitPoint);
+    orbit.enabled = false;
+  }
+});
+
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (!dragging) return;
+  setPointer(e);
+  raycaster.setFromCamera(pointer, camera);
+  if (raycaster.ray.intersectPlane(dragPlane, hitPoint)) {
+    dragging.position.x = hitPoint.x + dragOffset.x;
+    dragging.position.z = hitPoint.z + dragOffset.z;
+  }
+});
+
+renderer.domElement.addEventListener('pointerup', () => {
+  if (dragging) {
+    dragging.material.emissive.setHex(0x000000);
+    dragging = null;
+    orbit.enabled = true;
+  }
+});
+
+// ---------- VR Controllers ----------
+const controllers = [];
+const controllerGrips = [];
+const factory = new XRControllerModelFactory();
+
+for (let i = 0; i < 2; i++) {
+  const controller = renderer.xr.getController(i);
+  controller.addEventListener('selectstart', onSelectStart);
+  controller.addEventListener('selectend', onSelectEnd);
+  controller.userData.heldPlate = null;
+  scene.add(controller);
+  controllers.push(controller);
+
+  const grip = renderer.xr.getControllerGrip(i);
+  grip.add(factory.createControllerModel(grip));
+  scene.add(grip);
+  controllerGrips.push(grip);
+
+  // Pointer ray
+  const lineGeo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0, 0, -1.5),
+  ]);
+  const lineMat = new THREE.LineBasicMaterial({
+    color: 0xe8c07a,
+    transparent: true,
+    opacity: 0.5,
+  });
+  const line = new THREE.Line(lineGeo, lineMat);
+  controller.add(line);
+}
+
+const tempMatrix = new THREE.Matrix4();
+
+function getControllerIntersections(controller) {
+  tempMatrix.identity().extractRotation(controller.matrixWorld);
+  raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+  raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+  return raycaster.intersectObjects(plates, false);
+}
+
+function onSelectStart(event) {
+  const controller = event.target;
+  const hits = getControllerIntersections(controller);
+  if (hits.length) {
+    const plate = hits[0].object;
+    plate.material.emissive.setHex(0x332200);
+    controller.attach(plate);
+    controller.userData.heldPlate = plate;
+  }
+}
+
+function onSelectEnd(event) {
+  const controller = event.target;
+  const plate = controller.userData.heldPlate;
+  if (plate) {
+    plate.material.emissive.setHex(0x000000);
+    scene.attach(plate);
+    // Snap back to table height (keep it on the surface)
+    plate.position.y = TABLE_Y + PLATE_THICKNESS / 2 + 0.005;
+    // Keep rotation flat against table
+    plate.rotation.set(0, plate.rotation.y, 0);
+    controller.userData.heldPlate = null;
+  }
+}
+
+// ---------- VR session lifecycle ----------
+const vrButton = VRButton.createButton(renderer);
+document.body.appendChild(vrButton);
+
+renderer.xr.addEventListener('sessionstart', () => {
+  setStatus('VR session active');
+  document.getElementById('hud').style.display = 'none';
+});
+renderer.xr.addEventListener('sessionend', () => {
+  setStatus('Desktop · WebXR ready');
+  document.getElementById('hud').style.display = 'block';
+});
+
+// Detect WebXR availability for status
+if ('xr' in navigator) {
+  navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+    setStatus(supported ? 'Desktop · WebXR ready' : 'Desktop · No VR detected');
+  }).catch(() => setStatus('Desktop · No VR detected'));
+} else {
+  setStatus('Desktop · WebXR unsupported');
+}
+
+// ---------- Resize ----------
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ---------- Animation loop ----------
+// MUST use setAnimationLoop (not requestAnimationFrame) for WebXR.
+renderer.setAnimationLoop(() => {
+  // Keep grabbed plates flat-ish even mid-grab so they slide naturally
+  for (const c of controllers) {
+    const p = c.userData.heldPlate;
+    if (p) {
+      // Optional: clamp to near table height so plates don't fly to the ceiling
+      // (Comment this block out if you want full 6DOF lifting.)
+      // p.position.y = TABLE_Y + PLATE_THICKNESS / 2 + 0.005;
+    }
+  }
+  if (!renderer.xr.isPresenting) orbit.update();
+  renderer.render(scene, camera);
+});
+</script>
+
+</body>
+</html>
