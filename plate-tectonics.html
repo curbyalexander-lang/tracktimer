@@ -3,13 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Plate Tectonics — WebXR Baseline</title>
+<title>Plate Tectonics — Three Boundary Types</title>
 <style>
   :root {
-    --bg-deep: #0a0e14;
+    --bg-deep: #07090d;
     --bg-mid: #131a23;
     --accent: #e8c07a;
-    --accent-dim: #8a7553;
+    --conv: #c25450;
+    --div: #6ea75e;
+    --trans: #d4a04a;
     --text: #e6e9ec;
     --text-dim: #8a939c;
     --rule: rgba(232, 192, 122, 0.25);
@@ -26,7 +28,6 @@
   #app { position: fixed; inset: 0; }
   canvas { display: block; }
 
-  /* HUD overlay - hidden once XR session begins */
   #hud {
     position: fixed;
     top: 24px;
@@ -38,7 +39,6 @@
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--rule);
     border-radius: 2px;
-    pointer-events: auto;
     z-index: 10;
   }
   #hud .eyebrow {
@@ -53,19 +53,27 @@
     font-size: 22px;
     font-weight: 400;
     line-height: 1.2;
-    letter-spacing: 0.01em;
     margin-bottom: 14px;
   }
-  #hud h1 em {
-    font-style: italic;
-    color: var(--accent);
-  }
+  #hud h1 em { font-style: italic; color: var(--accent); }
   #hud p {
     font-size: 13px;
     line-height: 1.55;
     color: var(--text-dim);
     margin-bottom: 10px;
   }
+  #hud .legend {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-size: 11px;
+    line-height: 1.9;
+  }
+  #hud .legend .row { display: flex; align-items: center; gap: 10px; }
+  #hud .legend .swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  #hud .legend .label { color: var(--text); letter-spacing: 0.1em; text-transform: uppercase; }
+  #hud .legend .desc { color: var(--text-dim); margin-left: auto; font-style: italic; }
   #hud .controls {
     margin-top: 14px;
     padding-top: 12px;
@@ -77,7 +85,6 @@
   }
   #hud .controls strong { color: var(--accent); font-weight: 500; }
 
-  /* Status badge */
   #status {
     position: fixed;
     bottom: 24px;
@@ -102,12 +109,8 @@
     vertical-align: middle;
     animation: pulse 2.4s ease-in-out infinite;
   }
-  @keyframes pulse {
-    0%, 100% { opacity: 0.4; }
-    50% { opacity: 1; }
-  }
+  @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
-  /* Override Three.js's VRButton styling to match aesthetic */
   body > button {
     font-family: 'IBM Plex Mono', 'Courier New', monospace !important;
     font-size: 11px !important;
@@ -125,12 +128,17 @@
 <div id="app"></div>
 
 <div id="hud">
-  <div class="eyebrow">Module 01 · Baseline</div>
-  <h1>Plate <em>Tectonics</em><br/>Sandbox</h1>
-  <p>A WebXR scratchpad for building geological intuition. Currently a build verification — three plates, grab to move. Geology to come.</p>
+  <div class="eyebrow">Module 02 · Boundaries</div>
+  <h1>Three <em>Plate</em><br/>Boundary Types</h1>
+  <p>The globe is divided into three demonstration zones. Drag a continent across its zone to set up the boundary geometry.</p>
+  <div class="legend">
+    <div class="row"><span class="swatch" style="background:#c25450"></span><span class="label">Convergent</span><span class="desc">continent ↔ continent</span></div>
+    <div class="row"><span class="swatch" style="background:#6ea75e"></span><span class="label">Divergent</span><span class="desc">pull apart</span></div>
+    <div class="row"><span class="swatch" style="background:#d4a04a"></span><span class="label">Transform</span><span class="desc">slide past</span></div>
+  </div>
   <div class="controls">
-    <div><strong>VR</strong> &nbsp;trigger to grab plate</div>
-    <div><strong>Desktop</strong> &nbsp;click + drag plates</div>
+    <div><strong>VR</strong> &nbsp;trigger to grab continent</div>
+    <div><strong>Desktop</strong> &nbsp;left-click + drag continent</div>
     <div><strong>Camera</strong> &nbsp;right-drag · scroll</div>
   </div>
 </div>
@@ -152,43 +160,63 @@ import { VRButton } from 'three/addons/webxr/VRButton.js';
 import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// ---------- Status helper ----------
-const statusEl = document.getElementById('status-text');
-const setStatus = (msg) => { statusEl.textContent = msg; };
+// ===========================================================================
+// CONFIG
+// ===========================================================================
+const GLOBE_RADIUS = 0.32;
+const GLOBE_CENTER = new THREE.Vector3(0, 1.25, 0);
+const SURFACE_OFFSET = 0.003;
+const HOVER_LIFT = 0.012;
+const CONTINENT_BASE_R = 0.055;
+const CONTINENT_DEPTH = 0.012;
 
-// ---------- Renderer ----------
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+// Three zones, each spanning 120 of longitude.
+// Center longitudes are 60, 180, 300; dividers fall at 0, 120, 240.
+const ZONES = [
+  { id: 'convergent', label: 'CONVERGENT', subtitle: 'CONTINENT  TO  CONTINENT',
+    centerLon: 60,  color: 0xc25450 },
+  { id: 'divergent',  label: 'DIVERGENT',  subtitle: 'PLATES  PULL  APART',
+    centerLon: 180, color: 0x6ea75e },
+  { id: 'transform',  label: 'TRANSFORM',  subtitle: 'SLIDE  PAST',
+    centerLon: 300, color: 0xd4a04a },
+];
+
+// ===========================================================================
+// STATUS HELPER
+// ===========================================================================
+const statusEl = document.getElementById('status-text');
+const setStatus = (m) => { statusEl.textContent = m; };
+
+// ===========================================================================
+// RENDERER / SCENE / CAMERA / LIGHTS
+// ===========================================================================
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x0a0e14, 1);
+renderer.setClearColor(0x07090d, 1);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.xr.enabled = true;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.getElementById('app').appendChild(renderer.domElement);
 
-// ---------- Scene ----------
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0e14);
-scene.fog = new THREE.Fog(0x0a0e14, 4, 12);
+scene.background = new THREE.Color(0x07090d);
+scene.fog = new THREE.Fog(0x07090d, 5, 14);
 
-// ---------- Camera ----------
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.05, 100);
-// Desktop default: stand-and-look-at-table position
-camera.position.set(0, 1.55, 1.0);
+camera.position.set(0, 1.55, 0.95);
 
-// ---------- Lighting ----------
-const hemi = new THREE.HemisphereLight(0x6a7280, 0x1a1410, 0.55);
-scene.add(hemi);
+scene.add(new THREE.HemisphereLight(0x6a7280, 0x1a1410, 0.5));
 
-const key = new THREE.DirectionalLight(0xfff2d8, 1.1);
+const key = new THREE.DirectionalLight(0xfff2d8, 1.05);
 key.position.set(2.5, 4, 1.5);
 key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
-key.shadow.camera.left = -3;
-key.shadow.camera.right = 3;
-key.shadow.camera.top = 3;
-key.shadow.camera.bottom = -3;
+key.shadow.camera.left = -2;
+key.shadow.camera.right = 2;
+key.shadow.camera.top = 2;
+key.shadow.camera.bottom = -2;
 key.shadow.bias = -0.0005;
 scene.add(key);
 
@@ -196,132 +224,322 @@ const rim = new THREE.DirectionalLight(0x88a4d4, 0.35);
 rim.position.set(-3, 2, -2);
 scene.add(rim);
 
-// ---------- Floor grid (orientation reference) ----------
-const grid = new THREE.GridHelper(10, 20, 0x2a3340, 0x1a2230);
-grid.material.opacity = 0.6;
+const grid = new THREE.GridHelper(10, 20, 0x1d2530, 0x121820);
+grid.material.opacity = 0.55;
 grid.material.transparent = true;
 scene.add(grid);
 
-// ---------- "Table" / mantle surface ----------
-// A subtle disk at workspace height. Plates float just above this.
-const TABLE_Y = 1.0;
-const tableGeo = new THREE.CircleGeometry(1.2, 64);
-const tableMat = new THREE.MeshStandardMaterial({
-  color: 0x161c24,
-  roughness: 0.85,
-  metalness: 0.05,
+// ===========================================================================
+// GLOBE
+// ===========================================================================
+const globeGroup = new THREE.Group();
+globeGroup.position.copy(GLOBE_CENTER);
+scene.add(globeGroup);
+
+const globeGeo = new THREE.SphereGeometry(GLOBE_RADIUS, 96, 48);
+const globeMat = new THREE.MeshStandardMaterial({
+  color: 0x1a2533,
+  roughness: 0.78,
+  metalness: 0.18,
 });
-const table = new THREE.Mesh(tableGeo, tableMat);
-table.rotation.x = -Math.PI / 2;
-table.position.y = TABLE_Y;
-table.receiveShadow = true;
-scene.add(table);
+const globe = new THREE.Mesh(globeGeo, globeMat);
+globe.receiveShadow = true;
+globeGroup.add(globe);
 
-// Subtle ring around table to define workspace
-const ringGeo = new THREE.RingGeometry(1.18, 1.22, 64);
-const ringMat = new THREE.MeshBasicMaterial({ color: 0xe8c07a, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
-const ring = new THREE.Mesh(ringGeo, ringMat);
-ring.rotation.x = -Math.PI / 2;
-ring.position.y = TABLE_Y + 0.001;
-scene.add(ring);
+const haloGeo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.025, 64, 32);
+const haloMat = new THREE.MeshBasicMaterial({
+  color: 0x4a6080, transparent: true, opacity: 0.06, side: THREE.BackSide,
+});
+globeGroup.add(new THREE.Mesh(haloGeo, haloMat));
 
-// ---------- Plate factory ----------
-// Holding all the plate-construction logic in one helper makes it easy
-// to add geological properties (density, age, type, motion vector) later.
-const plates = [];
-const PLATE_THICKNESS = 0.04;
+// Zone divider meridians
+function makeMeridian(lonDeg, color, opacity) {
+  const pts = [];
+  const lon = THREE.MathUtils.degToRad(lonDeg);
+  const r = GLOBE_RADIUS + 0.0015;
+  for (let lat = 90; lat >= -90; lat -= 1.5) {
+    const la = THREE.MathUtils.degToRad(lat);
+    pts.push(new THREE.Vector3(
+      r * Math.cos(la) * Math.cos(lon),
+      r * Math.sin(la),
+      r * Math.cos(la) * Math.sin(lon)
+    ));
+  }
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity });
+  return new THREE.Line(geo, mat);
+}
+[0, 120, 240].forEach((lon) => globeGroup.add(makeMeridian(lon, 0xe8c07a, 0.55)));
 
-function createPlate({ name, size = [0.4, 0.4], position, color, type = 'continental' }) {
-  const [w, d] = size;
-  const geo = new THREE.BoxGeometry(w, PLATE_THICKNESS, d);
-  const mat = new THREE.MeshStandardMaterial({
-    color,
-    roughness: type === 'continental' ? 0.95 : 0.6,
-    metalness: type === 'continental' ? 0.0 : 0.15,
-    emissive: 0x000000,
-  });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.set(position[0], TABLE_Y + PLATE_THICKNESS / 2 + 0.005, position[2]);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  // Stash metadata on the object for later geological logic
-  mesh.userData = { name, type, isPlate: true, baseColor: new THREE.Color(color) };
-  scene.add(mesh);
-  plates.push(mesh);
-  return mesh;
+// Equator reference
+(function makeEquator() {
+  const pts = [];
+  const r = GLOBE_RADIUS + 0.0015;
+  for (let lon = 0; lon <= 360; lon += 1.5) {
+    const lo = THREE.MathUtils.degToRad(lon);
+    pts.push(new THREE.Vector3(r * Math.cos(lo), 0, r * Math.sin(lo)));
+  }
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const mat = new THREE.LineBasicMaterial({ color: 0xe8c07a, transparent: true, opacity: 0.18 });
+  globeGroup.add(new THREE.Line(geo, mat));
+})();
+
+// Zone labels (canvas-textured planes floating above each zone)
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
 }
 
-// Three placeholder plates — names are arbitrary until you give me the
-// actual geological setup you want.
-createPlate({
-  name: 'Plate A',
-  size: [0.5, 0.5],
-  position: [-0.45, 0, 0.1],
-  color: 0xa8825a,
-  type: 'continental',
-});
-createPlate({
-  name: 'Plate B',
-  size: [0.55, 0.4],
-  position: [0.25, 0, -0.15],
-  color: 0xc9a878,
-  type: 'continental',
-});
-createPlate({
-  name: 'Plate C',
-  size: [0.45, 0.5],
-  position: [0.05, 0, 0.35],
-  color: 0x4d6878,
-  type: 'oceanic',
-});
+function makeZoneLabel(zone) {
+  const w = 1024, h = 384;
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, w, h);
 
-// ---------- In-VR instruction panel ----------
-// HUD <div> disappears in immersive mode, so put a 3D panel in the scene.
-function makeInstructionPanel() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 1024; canvas.height = 512;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#131a23'; ctx.fillRect(0, 0, 1024, 512);
-  ctx.strokeStyle = 'rgba(232,192,122,0.3)'; ctx.lineWidth = 3;
-  ctx.strokeRect(8, 8, 1008, 496);
+  ctx.fillStyle = 'rgba(15, 22, 30, 0.92)';
+  roundRect(ctx, 8, 8, w - 16, h - 16, 8);
+  ctx.fill();
 
-  ctx.fillStyle = '#e8c07a';
-  ctx.font = '24px monospace';
-  ctx.fillText('MODULE 01 · BASELINE', 50, 70);
+  const hex = '#' + zone.color.toString(16).padStart(6, '0');
+  ctx.fillStyle = hex;
+  ctx.fillRect(40, 60, 8, h - 120);
+
+  ctx.beginPath();
+  ctx.arc(80, 100, 10, 0, Math.PI * 2);
+  ctx.fillStyle = hex;
+  ctx.fill();
 
   ctx.fillStyle = '#e6e9ec';
-  ctx.font = 'italic 56px Georgia';
-  ctx.fillText('Plate Tectonics Sandbox', 50, 150);
+  ctx.font = 'bold 88px "Iowan Old Style", Georgia, serif';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(zone.label, 110, 170);
 
   ctx.fillStyle = '#8a939c';
-  ctx.font = '28px Georgia';
-  ctx.fillText('Squeeze the trigger to grab a plate.', 50, 230);
-  ctx.fillText('Release to drop it back on the table.', 50, 270);
+  ctx.font = '32px "IBM Plex Mono", monospace';
+  ctx.fillText(zone.subtitle, 110, 230);
 
-  ctx.fillStyle = '#e8c07a';
-  ctx.font = '22px monospace';
-  ctx.fillText('Geology to come — this is a build check.', 50, 380);
-
-  const tex = new THREE.CanvasTexture(canvas);
+  const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
-  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
-  const geo = new THREE.PlaneGeometry(0.8, 0.4);
+  tex.anisotropy = 8;
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+  const aspect = w / h;
+  const labelHeight = 0.085;
+  const geo = new THREE.PlaneGeometry(labelHeight * aspect, labelHeight);
+  return new THREE.Mesh(geo, mat);
+}
+
+ZONES.forEach((zone) => {
+  const label = makeZoneLabel(zone);
+  const lonR = THREE.MathUtils.degToRad(zone.centerLon);
+  const latR = THREE.MathUtils.degToRad(45);
+  const r = GLOBE_RADIUS + 0.12;
+  label.position.set(
+    r * Math.cos(latR) * Math.cos(lonR),
+    r * Math.sin(latR),
+    r * Math.cos(latR) * Math.sin(lonR)
+  );
+  const outward = label.position.clone().multiplyScalar(2);
+  label.lookAt(outward);
+  globeGroup.add(label);
+});
+
+// ===========================================================================
+// CONTINENT FACTORY
+// ===========================================================================
+function mulberry32(seed) {
+  let s = seed >>> 0;
+  return function () {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function makeContinentShape(seed, baseR = CONTINENT_BASE_R, irregularity = 0.5) {
+  const rng = mulberry32(seed);
+  const N = 14;
+  const ctrl = [];
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2 + (rng() - 0.5) * 0.15;
+    const r = baseR * (1 - irregularity * 0.5 + rng() * irregularity);
+    ctrl.push(new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, 0));
+  }
+  const curve = new THREE.CatmullRomCurve3(ctrl, true, 'catmullrom', 0.5);
+  const samples = curve.getPoints(96);
+  const shape = new THREE.Shape();
+  shape.moveTo(samples[0].x, samples[0].y);
+  for (let i = 1; i < samples.length; i++) shape.lineTo(samples[i].x, samples[i].y);
+  return shape;
+}
+
+const _bx = new THREE.Vector3();
+const _by = new THREE.Vector3();
+const _bz = new THREE.Vector3();
+const _bm = new THREE.Matrix4();
+const _worldUp = new THREE.Vector3(0, 1, 0);
+
+// Place a flat mesh tangent to the globe at a unit normal.
+// Local +Z aligns with surface normal; local +Y stays "north-up".
+function placeOnSphereByNormal(mesh, normal, lift = 0) {
+  const n = _bz.copy(normal).normalize();
+  mesh.position.copy(n)
+    .multiplyScalar(GLOBE_RADIUS + SURFACE_OFFSET + lift)
+    .add(GLOBE_CENTER);
+
+  _by.copy(_worldUp).addScaledVector(n, -_worldUp.dot(n));
+  if (_by.lengthSq() < 1e-6) _by.set(0, 0, 1);
+  _by.normalize();
+  _bx.crossVectors(_by, n).normalize();
+
+  _bm.makeBasis(_bx, _by, n);
+  mesh.quaternion.setFromRotationMatrix(_bm);
+}
+
+function placeOnSphere(mesh, lonDeg, latDeg, lift = 0) {
+  const lo = THREE.MathUtils.degToRad(lonDeg);
+  const la = THREE.MathUtils.degToRad(latDeg);
+  const n = new THREE.Vector3(
+    Math.cos(la) * Math.cos(lo),
+    Math.sin(la),
+    Math.cos(la) * Math.sin(lo)
+  );
+  placeOnSphereByNormal(mesh, n, lift);
+}
+
+const continents = [];
+
+function createContinent({ name, zone, lonDeg, latDeg, seed, color, scale = 1 }) {
+  const shape = makeContinentShape(seed, CONTINENT_BASE_R * scale, 0.5);
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth: CONTINENT_DEPTH,
+    bevelEnabled: true,
+    bevelThickness: 0.0025,
+    bevelSize: 0.0025,
+    bevelSegments: 3,
+    steps: 1,
+  });
+  geo.translate(0, 0, -CONTINENT_DEPTH / 2);
+  geo.computeVertexNormals();
+
+  const mat = new THREE.MeshStandardMaterial({
+    color, roughness: 0.92, metalness: 0.04, emissive: 0x000000,
+  });
   const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.set(0, 1.6, -1.2);
-  scene.add(mesh);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.userData = {
+    isContinent: true, name, zone, baseColor: new THREE.Color(color),
+  };
+  placeOnSphere(mesh, lonDeg, latDeg);
+  globeGroup.add(mesh);
+  continents.push(mesh);
   return mesh;
 }
-makeInstructionPanel();
 
-// ---------- Desktop controls ----------
+// Earth-tone palette (warm, varied)
+const EARTH_A = 0xb8895a;
+const EARTH_B = 0xc9a878;
+const EARTH_C = 0x9a724d;
+const EARTH_D = 0xd4b88a;
+const EARTH_E = 0xa8825a;
+const EARTH_F = 0xbf9a6e;
+
+// CONVERGENT (centerLon = 60). Two continents poised to collide on the equator.
+createContinent({ name: 'Conv-West', zone: 'convergent', seed: 11,
+  lonDeg: 38, latDeg: 5,  color: EARTH_A, scale: 1.0 });
+createContinent({ name: 'Conv-East', zone: 'convergent', seed: 23,
+  lonDeg: 82, latDeg: -3, color: EARTH_C, scale: 1.05 });
+
+// DIVERGENT (centerLon = 180). Two halves close together, ready to be pulled apart.
+createContinent({ name: 'Div-North', zone: 'divergent', seed: 41,
+  lonDeg: 175, latDeg: 7,   color: EARTH_B, scale: 0.95 });
+createContinent({ name: 'Div-South', zone: 'divergent', seed: 53,
+  lonDeg: 185, latDeg: -10, color: EARTH_D, scale: 1.0 });
+
+// TRANSFORM (centerLon = 300). Two continents flanking a fault line, offset.
+createContinent({ name: 'Trans-A', zone: 'transform', seed: 71,
+  lonDeg: 285, latDeg: 12, color: EARTH_E, scale: 1.0 });
+createContinent({ name: 'Trans-B', zone: 'transform', seed: 89,
+  lonDeg: 315, latDeg: -8, color: EARTH_F, scale: 0.95 });
+
+// ===========================================================================
+// SPHERE-CONSTRAINED DRAGGING (works for both desktop and VR)
+// ===========================================================================
+const globeSphere = new THREE.Sphere(GLOBE_CENTER, GLOBE_RADIUS);
+const raycaster = new THREE.Raycaster();
+const _hit = new THREE.Vector3();
+const _hitNormal = new THREE.Vector3();
+const _initialContinentNormal = new THREE.Vector3();
+const _grabOffsetQ = new THREE.Quaternion();
+const _newContinentNormal = new THREE.Vector3();
+
+let dragging = null;
+let dragController = null;
+
+function rayHitsGlobe(ray) {
+  return ray.intersectSphere(globeSphere, _hit) ? _hit : null;
+}
+
+// Pick a continent under the ray and capture grab offset so the continent
+// doesn't snap to the cursor when picked up.
+function tryStartDrag(ray, controller = null) {
+  raycaster.ray.copy(ray);
+  const hits = raycaster.intersectObjects(continents, false);
+  if (!hits.length) return false;
+  const continent = hits[0].object;
+
+  const onSphere = rayHitsGlobe(ray);
+  if (!onSphere) return false;
+  _hitNormal.copy(onSphere).sub(GLOBE_CENTER).normalize();
+
+  _initialContinentNormal.copy(continent.position).sub(GLOBE_CENTER).normalize();
+
+  // Quaternion that rotates cursorNormal to continentNormal at grab.
+  // Apply this same rotation to new cursor normals to preserve angular offset.
+  _grabOffsetQ.setFromUnitVectors(_hitNormal, _initialContinentNormal);
+
+  dragging = continent;
+  dragController = controller;
+  continent.material.emissive.setHex(0x332200);
+  placeOnSphereByNormal(continent, _initialContinentNormal, HOVER_LIFT);
+  return true;
+}
+
+function updateDragFromRay(ray) {
+  if (!dragging) return;
+  const onSphere = rayHitsGlobe(ray);
+  if (!onSphere) return;
+  _hitNormal.copy(onSphere).sub(GLOBE_CENTER).normalize();
+  _newContinentNormal.copy(_hitNormal).applyQuaternion(_grabOffsetQ).normalize();
+  placeOnSphereByNormal(dragging, _newContinentNormal, HOVER_LIFT);
+}
+
+function endDrag() {
+  if (!dragging) return;
+  dragging.material.emissive.setHex(0x000000);
+  const n = new THREE.Vector3().copy(dragging.position).sub(GLOBE_CENTER).normalize();
+  placeOnSphereByNormal(dragging, n, 0);
+  dragging = null;
+  dragController = null;
+}
+
+// ===========================================================================
+// DESKTOP CAMERA + MOUSE
+// ===========================================================================
 const orbit = new OrbitControls(camera, renderer.domElement);
-orbit.target.set(0, TABLE_Y, 0);
+orbit.target.copy(GLOBE_CENTER);
 orbit.enableDamping = true;
 orbit.dampingFactor = 0.08;
 orbit.minDistance = 0.5;
-orbit.maxDistance = 4;
-orbit.maxPolarAngle = Math.PI / 2 - 0.05;
-// Use right-click to orbit, so left-click is free for plate dragging
+orbit.maxDistance = 3;
 orbit.mouseButtons = {
   LEFT: null,
   MIDDLE: THREE.MOUSE.DOLLY,
@@ -329,14 +547,7 @@ orbit.mouseButtons = {
 };
 orbit.update();
 
-// ---------- Desktop plate drag (mouse) ----------
-const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
-const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -(TABLE_Y + PLATE_THICKNESS / 2 + 0.005));
-let dragging = null;
-const dragOffset = new THREE.Vector3();
-const hitPoint = new THREE.Vector3();
-
 function setPointer(e) {
   const rect = renderer.domElement.getBoundingClientRect();
   pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -344,106 +555,132 @@ function setPointer(e) {
 }
 
 renderer.domElement.addEventListener('pointerdown', (e) => {
-  if (e.button !== 0) return; // left click only
+  if (e.button !== 0) return;
   setPointer(e);
   raycaster.setFromCamera(pointer, camera);
-  const hits = raycaster.intersectObjects(plates, false);
-  if (hits.length) {
-    dragging = hits[0].object;
-    dragging.material.emissive.setHex(0x332200);
-    raycaster.ray.intersectPlane(dragPlane, hitPoint);
-    dragOffset.copy(dragging.position).sub(hitPoint);
+  if (tryStartDrag(raycaster.ray)) {
     orbit.enabled = false;
   }
 });
 
 renderer.domElement.addEventListener('pointermove', (e) => {
-  if (!dragging) return;
+  if (!dragging || dragController) return;
   setPointer(e);
   raycaster.setFromCamera(pointer, camera);
-  if (raycaster.ray.intersectPlane(dragPlane, hitPoint)) {
-    dragging.position.x = hitPoint.x + dragOffset.x;
-    dragging.position.z = hitPoint.z + dragOffset.z;
-  }
+  updateDragFromRay(raycaster.ray);
 });
 
 renderer.domElement.addEventListener('pointerup', () => {
-  if (dragging) {
-    dragging.material.emissive.setHex(0x000000);
-    dragging = null;
+  if (dragging && !dragController) {
+    endDrag();
     orbit.enabled = true;
   }
 });
 
-// ---------- VR Controllers ----------
+// ===========================================================================
+// VR CONTROLLERS
+// ===========================================================================
 const controllers = [];
-const controllerGrips = [];
 const factory = new XRControllerModelFactory();
+
+const _ctrlRay = new THREE.Ray();
+const _ctrlMat = new THREE.Matrix4();
+function makeControllerRay(controller) {
+  _ctrlRay.origin.setFromMatrixPosition(controller.matrixWorld);
+  _ctrlMat.identity().extractRotation(controller.matrixWorld);
+  _ctrlRay.direction.set(0, 0, -1).applyMatrix4(_ctrlMat).normalize();
+  return _ctrlRay;
+}
 
 for (let i = 0; i < 2; i++) {
   const controller = renderer.xr.getController(i);
-  controller.addEventListener('selectstart', onSelectStart);
-  controller.addEventListener('selectend', onSelectEnd);
-  controller.userData.heldPlate = null;
   scene.add(controller);
   controllers.push(controller);
 
   const grip = renderer.xr.getControllerGrip(i);
   grip.add(factory.createControllerModel(grip));
   scene.add(grip);
-  controllerGrips.push(grip);
 
-  // Pointer ray
   const lineGeo = new THREE.BufferGeometry().setFromPoints([
     new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(0, 0, -1.5),
+    new THREE.Vector3(0, 0, -1.2),
   ]);
   const lineMat = new THREE.LineBasicMaterial({
-    color: 0xe8c07a,
-    transparent: true,
-    opacity: 0.5,
+    color: 0xe8c07a, transparent: true, opacity: 0.55,
   });
-  const line = new THREE.Line(lineGeo, lineMat);
-  controller.add(line);
+  controller.add(new THREE.Line(lineGeo, lineMat));
+
+  controller.addEventListener('selectstart', () => {
+    tryStartDrag(makeControllerRay(controller), controller);
+  });
+  controller.addEventListener('selectend', () => {
+    if (dragController === controller) endDrag();
+  });
 }
 
-const tempMatrix = new THREE.Matrix4();
+// ===========================================================================
+// IN-VR INFO PANEL
+// ===========================================================================
+function makeVRInfoPanel() {
+  const w = 1024, h = 512;
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d');
 
-function getControllerIntersections(controller) {
-  tempMatrix.identity().extractRotation(controller.matrixWorld);
-  raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-  raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
-  return raycaster.intersectObjects(plates, false);
+  ctx.fillStyle = '#131a23';
+  ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = 'rgba(232,192,122,0.3)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(8, 8, w - 16, h - 16);
+
+  ctx.fillStyle = '#e8c07a';
+  ctx.font = 'bold 22px monospace';
+  ctx.fillText('MODULE 02 ·  BOUNDARIES', 50, 60);
+
+  ctx.fillStyle = '#e6e9ec';
+  ctx.font = 'italic 52px Georgia';
+  ctx.fillText('Three plate boundary types', 50, 130);
+
+  const rows = [
+    { color: '#c25450', label: 'CONVERGENT', desc: 'continent  to  continent' },
+    { color: '#6ea75e', label: 'DIVERGENT',  desc: 'pull apart' },
+    { color: '#d4a04a', label: 'TRANSFORM',  desc: 'slide past' },
+  ];
+  rows.forEach((row, i) => {
+    const y = 200 + i * 60;
+    ctx.fillStyle = row.color;
+    ctx.beginPath();
+    ctx.arc(70, y - 8, 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#e6e9ec';
+    ctx.font = '28px monospace';
+    ctx.fillText(row.label, 100, y);
+
+    ctx.fillStyle = '#8a939c';
+    ctx.font = 'italic 24px Georgia';
+    ctx.fillText(row.desc, 360, y);
+  });
+
+  ctx.fillStyle = '#8a939c';
+  ctx.font = '22px monospace';
+  ctx.fillText('Squeeze trigger to grab a continent.', 50, 460);
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+  const geo = new THREE.PlaneGeometry(0.7, 0.35);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(-0.55, 1.55, -0.6);
+  mesh.rotation.y = Math.PI / 8;
+  scene.add(mesh);
 }
+makeVRInfoPanel();
 
-function onSelectStart(event) {
-  const controller = event.target;
-  const hits = getControllerIntersections(controller);
-  if (hits.length) {
-    const plate = hits[0].object;
-    plate.material.emissive.setHex(0x332200);
-    controller.attach(plate);
-    controller.userData.heldPlate = plate;
-  }
-}
-
-function onSelectEnd(event) {
-  const controller = event.target;
-  const plate = controller.userData.heldPlate;
-  if (plate) {
-    plate.material.emissive.setHex(0x000000);
-    scene.attach(plate);
-    // Snap back to table height (keep it on the surface)
-    plate.position.y = TABLE_Y + PLATE_THICKNESS / 2 + 0.005;
-    // Keep rotation flat against table
-    plate.rotation.set(0, plate.rotation.y, 0);
-    controller.userData.heldPlate = null;
-  }
-}
-
-// ---------- VR session lifecycle ----------
-const vrButton = VRButton.createButton(renderer);
-document.body.appendChild(vrButton);
+// ===========================================================================
+// VR BUTTON + LIFECYCLE
+// ===========================================================================
+document.body.appendChild(VRButton.createButton(renderer));
 
 renderer.xr.addEventListener('sessionstart', () => {
   setStatus('VR session active');
@@ -454,33 +691,26 @@ renderer.xr.addEventListener('sessionend', () => {
   document.getElementById('hud').style.display = 'block';
 });
 
-// Detect WebXR availability for status
 if ('xr' in navigator) {
-  navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
-    setStatus(supported ? 'Desktop · WebXR ready' : 'Desktop · No VR detected');
+  navigator.xr.isSessionSupported('immersive-vr').then((s) => {
+    setStatus(s ? 'Desktop · WebXR ready' : 'Desktop · No VR detected');
   }).catch(() => setStatus('Desktop · No VR detected'));
 } else {
   setStatus('Desktop · WebXR unsupported');
 }
 
-// ---------- Resize ----------
+// ===========================================================================
+// RESIZE + ANIMATION LOOP
+// ===========================================================================
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// ---------- Animation loop ----------
-// MUST use setAnimationLoop (not requestAnimationFrame) for WebXR.
 renderer.setAnimationLoop(() => {
-  // Keep grabbed plates flat-ish even mid-grab so they slide naturally
-  for (const c of controllers) {
-    const p = c.userData.heldPlate;
-    if (p) {
-      // Optional: clamp to near table height so plates don't fly to the ceiling
-      // (Comment this block out if you want full 6DOF lifting.)
-      // p.position.y = TABLE_Y + PLATE_THICKNESS / 2 + 0.005;
-    }
+  if (dragging && dragController) {
+    updateDragFromRay(makeControllerRay(dragController));
   }
   if (!renderer.xr.isPresenting) orbit.update();
   renderer.render(scene, camera);
