@@ -390,9 +390,10 @@ const _worldUp = new THREE.Vector3(0, 1, 0);
 // Local +Z aligns with surface normal; local +Y stays "north-up".
 function placeOnSphereByNormal(mesh, normal, lift = 0) {
   const n = _bz.copy(normal).normalize();
+  // Continents are children of globeGroup (which is already at GLOBE_CENTER),
+  // so we set position in the group's LOCAL space — just direction × radius.
   mesh.position.copy(n)
-    .multiplyScalar(GLOBE_RADIUS + SURFACE_OFFSET + lift)
-    .add(GLOBE_CENTER);
+    .multiplyScalar(GLOBE_RADIUS + SURFACE_OFFSET + lift);
 
   _by.copy(_worldUp).addScaledVector(n, -_worldUp.dot(n));
   if (_by.lengthSq() < 1e-6) _by.set(0, 0, 1);
@@ -500,7 +501,9 @@ function tryStartDrag(ray, controller = null) {
   if (!onSphere) return false;
   _hitNormal.copy(onSphere).sub(GLOBE_CENTER).normalize();
 
-  _initialContinentNormal.copy(continent.position).sub(GLOBE_CENTER).normalize();
+  // continent.position is in globeGroup's local frame (origin = globe center),
+  // so direction-from-globe-center is just the normalized local position.
+  _initialContinentNormal.copy(continent.position).normalize();
 
   // Quaternion that rotates cursorNormal to continentNormal at grab.
   // Apply this same rotation to new cursor normals to preserve angular offset.
@@ -525,7 +528,7 @@ function updateDragFromRay(ray) {
 function endDrag() {
   if (!dragging) return;
   dragging.material.emissive.setHex(0x000000);
-  const n = new THREE.Vector3().copy(dragging.position).sub(GLOBE_CENTER).normalize();
+  const n = new THREE.Vector3().copy(dragging.position).normalize();
   placeOnSphereByNormal(dragging, n, 0);
   dragging = null;
   dragController = null;
