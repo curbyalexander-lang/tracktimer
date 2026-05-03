@@ -1,0 +1,1502 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Plate Tectonics VR</title>
+  <style>
+    html, body { margin:0; padding:0; height:100%; background:#06090f; color:#dde; font-family:system-ui,sans-serif; overflow:hidden; }
+    #app { position:fixed; inset:0; }
+    #status { position:fixed; top:10px; right:10px; background:rgba(0,0,0,.55); border:1px solid #2a3340; padding:6px 10px; border-radius:6px; font-size:12px; z-index:5; }
+    #status .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#5fa; margin-right:6px; vertical-align:middle; }
+    #help { position:fixed; bottom:10px; left:10px; background:rgba(0,0,0,.55); border:1px solid #2a3340; padding:8px 12px; border-radius:6px; font-size:12px; max-width:340px; z-index:5; line-height:1.45; }
+    #help b { color:#fc8; }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="status"><span class="dot"></span><span id="status-text">Loading…</span></div>
+<div id="help">
+  <b>VR (Quest 3):</b> point a controller and pull the trigger to click buttons or grab plates.<br>
+  <b>Desktop:</b> left-click + drag plates &middot; click buttons with the cursor &middot; right-drag to orbit the camera.
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { VRButton } from 'three/addons/webxr/VRButton.js';
+import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================================
+// 1. ENGINE BOOTSTRAP
+//    Renderer, scene, camera, lighting. Persistent across all scenes.
+// ============================================================================
+const statusEl = document.getElementById('status-text');
+const setStatus = m => { statusEl.textContent = m; };
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x06090f, 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.xr.enabled = true;
+document.getElementById('app').appendChild(renderer.domElement);
+document.body.appendChild(VRButton.createButton(renderer));
+
+const world = new THREE.Scene();
+world.background = new THREE.Color(0x06090f);
+world.fog = new THREE.Fog(0x06090f, 6, 18);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.05, 200);
+camera.position.set(0, 1.6, 1.4);
+
+const orbit = new OrbitControls(camera, renderer.domElement);
+orbit.target.set(0, 1.4, -0.5);
+orbit.enableDamping = true;
+orbit.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+
+// Lighting (warm key from upper right, cool fill from left, ambient hemi)
+const hemi = new THREE.HemisphereLight(0x7a8898, 0x1a1410, 0.65);
+world.add(hemi);
+const key = new THREE.DirectionalLight(0xfff2d8, 1.05);
+key.position.set(2.5, 4, 1.2); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = -4; key.shadow.camera.right = 4;
+key.shadow.camera.top = 4; key.shadow.camera.bottom = -4;
+key.shadow.bias = -0.0005;
+world.add(key);
+const rim = new THREE.DirectionalLight(0x88a4d4, 0.4);
+rim.position.set(-3, 2, -2);
+world.add(rim);
+
+// Ground grid (helps orientation in VR)
+const grid = new THREE.GridHelper(20, 40, 0x2a3340, 0x141a22);
+grid.material.opacity = 0.45; grid.material.transparent = true;
+world.add(grid);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ============================================================================
+// 2. SHARED HELPERS
+//    Text panels, buttons, geometry helpers. Reused by every scene.
+// ============================================================================
+
+// Build a CanvasTexture-backed text panel. Simple, readable, no font loading.
+function makeTextPanel(opts) {
+  const {
+    text, width = 2, height = 0.6,
+    bg = '#15202a', fg = '#fff', accent = null,
+    fontSize = 32, padding = 24, lineHeight = 1.3,
+    align = 'left', titleSize = 0
+  } = opts;
+  const cw = 1024, ch = Math.round(cw * (height/width));
+  const c = document.createElement('canvas');
+  c.width = cw; c.height = ch;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, cw, ch);
+  if (accent) {
+    ctx.fillStyle = accent;
+    ctx.fillRect(0, 0, 8, ch);
+  }
+  ctx.fillStyle = fg;
+  ctx.textBaseline = 'top';
+  ctx.font = `${fontSize}px system-ui, sans-serif`;
+  ctx.textAlign = align;
+
+  // Word-wrap with explicit \n support
+  const lines = [];
+  const paragraphs = text.split('\n');
+  const maxW = cw - padding * 2 - (accent ? 12 : 0);
+  for (const p of paragraphs) {
+    if (p === '') { lines.push(''); continue; }
+    const words = p.split(' ');
+    let cur = '';
+    for (const w of words) {
+      const test = cur ? cur + ' ' + w : w;
+      if (ctx.measureText(test).width > maxW) {
+        lines.push(cur);
+        cur = w;
+      } else cur = test;
+    }
+    if (cur) lines.push(cur);
+  }
+  const xBase = align === 'center' ? cw/2 : padding + (accent ? 12 : 0);
+  let y = padding;
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], xBase, y);
+    y += fontSize * lineHeight;
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
+  mesh.userData.canvas = c;
+  mesh.userData.ctx = ctx;
+  mesh.userData.tex = tex;
+  return mesh;
+}
+
+// Clickable 3D button with hover state and label.
+function makeButton({ label, color = '#2a5298', hover = '#ffaa00', width = 0.7, height = 0.22, onClick }) {
+  const group = new THREE.Group();
+  const geo = new THREE.BoxGeometry(width, height, 0.04);
+  const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.1, roughness: 0.6 });
+  const box = new THREE.Mesh(geo, mat);
+  box.castShadow = true;
+  group.add(box);
+
+  // Label as text panel mounted on the front face
+  const labelPlane = makeTextPanel({
+    text: label, width: width * 0.95, height: height * 0.85,
+    bg: '#00000000', fg: '#fff',
+    fontSize: 64, align: 'center', padding: 8
+  });
+  // Manually re-render with transparent background
+  const ctx = labelPlane.userData.ctx;
+  const cw = labelPlane.userData.canvas.width, ch = labelPlane.userData.canvas.height;
+  ctx.clearRect(0, 0, cw, ch);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 80px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // Wrap if needed
+  const lines = label.split('\n');
+  const lh = 90;
+  const startY = ch/2 - (lines.length - 1) * lh / 2;
+  lines.forEach((ln, i) => ctx.fillText(ln, cw/2, startY + i * lh));
+  labelPlane.userData.tex.needsUpdate = true;
+  labelPlane.position.z = 0.022;
+  group.add(labelPlane);
+
+  group.userData.isButton = true;
+  group.userData.baseColor = new THREE.Color(color);
+  group.userData.hoverColor = new THREE.Color(hover);
+  group.userData.box = box;
+  group.userData.onClick = onClick;
+  return group;
+}
+
+// Slab cross-section: a box showing crust + mantle layers as colored stripes.
+// Used in simulation scenes as the "ground" the continents sit on.
+function makeMantleSlab({ width = 4, height = 0.5, depth = 0.5 }) {
+  const g = new THREE.Group();
+  // Mantle (warm orange-red) — bottom 70%
+  const mantleH = height * 0.7;
+  const mantle = new THREE.Mesh(
+    new THREE.BoxGeometry(width, mantleH, depth),
+    new THREE.MeshStandardMaterial({ color: 0x8b3a1a, roughness: 0.95 })
+  );
+  mantle.position.y = -height/2 + mantleH/2;
+  g.add(mantle);
+  // Asthenosphere (glowing orange) — middle 15%
+  const asthH = height * 0.18;
+  const asth = new THREE.Mesh(
+    new THREE.BoxGeometry(width, asthH, depth),
+    new THREE.MeshStandardMaterial({
+      color: 0xff7733, emissive: 0xcc4400, emissiveIntensity: 0.6, roughness: 0.5
+    })
+  );
+  asth.position.y = -height/2 + mantleH + asthH/2;
+  g.add(asth);
+  // Lithosphere base (dark grey) — top sliver
+  const lithH = height - mantleH - asthH;
+  const lith = new THREE.Mesh(
+    new THREE.BoxGeometry(width, lithH, depth),
+    new THREE.MeshStandardMaterial({ color: 0x2a2a30, roughness: 0.9 })
+  );
+  lith.position.y = -height/2 + mantleH + asthH + lithH/2;
+  g.add(lith);
+  g.userData.surfaceY = -height/2 + height; // top of slab in local coords
+  g.userData.height = height;
+  return g;
+}
+
+// A "continent" — green textured top, brown sides. Sits on the slab.
+function makeContinent({ name, width = 1, depth = 0.4, height = 0.12, color = 0x4a7c4e }) {
+  // Top surface: undulating land tone
+  const topMat = new THREE.MeshStandardMaterial({ color, roughness: 0.9 });
+  const sideMat = new THREE.MeshStandardMaterial({ color: 0x5d3a1f, roughness: 0.95 });
+  const mats = [sideMat, sideMat, topMat, sideMat, sideMat, sideMat];
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), mats);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.userData.name = name;
+  mesh.userData.width = width;
+  mesh.userData.depth = depth;
+  mesh.userData.height = height;
+  mesh.userData.isContinent = true;
+  mesh.userData.draggable = true;
+  return mesh;
+}
+
+// ============================================================================
+// 3. INTERACTION SYSTEM
+//    Raycaster-based hover/click + grab-and-drag for both XR controllers and
+//    desktop mouse. The active scene exposes `clickables` and `draggables`
+//    arrays — this layer stays generic.
+// ============================================================================
+const raycaster = new THREE.Raycaster();
+const tmpVec = new THREE.Vector3();
+const tmpDir = new THREE.Vector3();
+const tmpMat = new THREE.Matrix4();
+
+let hoveredButton = null;
+let dragTarget = null;
+let dragController = null;
+let dragOffsetWorld = new THREE.Vector3();
+let dragStartDistance = 0;
+
+const controllers = [];
+const controllerModelFactory = new XRControllerModelFactory();
+
+for (let i = 0; i < 2; i++) {
+  const ctl = renderer.xr.getController(i);
+  ctl.userData.id = i;
+  ctl.addEventListener('selectstart', () => onSelectStart(ctl));
+  ctl.addEventListener('selectend', () => onSelectEnd(ctl));
+  world.add(ctl);
+  // Visible ray
+  const lineGeo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -10)
+  ]);
+  const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: 0x88ccff, transparent: true, opacity: 0.7 }));
+  ctl.add(line);
+  // Hand model
+  const grip = renderer.xr.getControllerGrip(i);
+  grip.add(controllerModelFactory.createControllerModel(grip));
+  world.add(grip);
+  controllers.push(ctl);
+}
+
+function makeControllerRay(controller) {
+  tmpMat.identity().extractRotation(controller.matrixWorld);
+  const origin = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
+  const direction = new THREE.Vector3(0, 0, -1).applyMatrix4(tmpMat).normalize();
+  return { origin, direction };
+}
+
+function intersectButtons(ray) {
+  raycaster.set(ray.origin, ray.direction);
+  const targets = sceneManager.getClickables().map(g => g.userData.box || g);
+  const hits = raycaster.intersectObjects(targets, false);
+  if (!hits.length) return null;
+  // Walk up to the button group
+  let obj = hits[0].object;
+  while (obj && !obj.userData.isButton) obj = obj.parent;
+  return obj || null;
+}
+
+function intersectDraggables(ray) {
+  raycaster.set(ray.origin, ray.direction);
+  const targets = sceneManager.getDraggables();
+  const hits = raycaster.intersectObjects(targets, false);
+  return hits.length ? hits[0] : null;
+}
+
+function setHover(btn) {
+  if (hoveredButton === btn) return;
+  if (hoveredButton) {
+    hoveredButton.userData.box.material.color.copy(hoveredButton.userData.baseColor);
+    hoveredButton.scale.set(1, 1, 1);
+  }
+  hoveredButton = btn;
+  if (hoveredButton) {
+    hoveredButton.userData.box.material.color.copy(hoveredButton.userData.hoverColor);
+    hoveredButton.scale.set(1.05, 1.05, 1.05);
+  }
+}
+
+function onSelectStart(controller) {
+  const ray = makeControllerRay(controller);
+  // Buttons take priority
+  const btn = intersectButtons(ray);
+  if (btn) {
+    btn.userData.onClick?.();
+    return;
+  }
+  // Then draggables
+  const hit = intersectDraggables(ray);
+  if (hit && !dragTarget) {
+    dragTarget = hit.object;
+    dragController = controller;
+    dragStartDistance = hit.distance;
+    dragOffsetWorld.copy(dragTarget.position).sub(
+      ray.origin.clone().add(ray.direction.clone().multiplyScalar(dragStartDistance))
+    );
+    sceneManager.current?.onDragStart?.(dragTarget);
+  }
+}
+function onSelectEnd(controller) {
+  if (dragTarget && dragController === controller) {
+    sceneManager.current?.onDragEnd?.(dragTarget);
+    dragTarget = null;
+    dragController = null;
+  }
+}
+
+// Desktop mouse fallback (fires fake controller events)
+const mouse = new THREE.Vector2();
+let mouseDown = false;
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (e.button !== 0) return; // left only
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const ray = { origin: raycaster.ray.origin.clone(), direction: raycaster.ray.direction.clone() };
+  const btn = intersectButtons(ray);
+  if (btn) { btn.userData.onClick?.(); return; }
+  const hit = intersectDraggables(ray);
+  if (hit) {
+    dragTarget = hit.object;
+    dragController = null; // signals mouse drag
+    dragStartDistance = hit.distance;
+    orbit.enabled = false;
+    sceneManager.current?.onDragStart?.(dragTarget);
+  }
+});
+renderer.domElement.addEventListener('pointermove', e => {
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  if (!dragTarget) {
+    // Hover detection on desktop
+    raycaster.setFromCamera(mouse, camera);
+    const ray = { origin: raycaster.ray.origin.clone(), direction: raycaster.ray.direction.clone() };
+    setHover(intersectButtons(ray));
+  }
+});
+renderer.domElement.addEventListener('pointerup', () => {
+  if (dragTarget) {
+    sceneManager.current?.onDragEnd?.(dragTarget);
+    dragTarget = null;
+    orbit.enabled = true;
+  }
+});
+
+function updateDrag() {
+  if (!dragTarget) return;
+  let ray;
+  if (dragController) {
+    ray = makeControllerRay(dragController);
+  } else {
+    raycaster.setFromCamera(mouse, camera);
+    ray = raycaster.ray;
+  }
+  const targetWorld = ray.origin.clone().add(ray.direction.clone().multiplyScalar(dragStartDistance));
+  targetWorld.add(dragOffsetWorld);
+  // Let the active scene constrain the position (axis locks, bounds)
+  sceneManager.current?.constrainDrag?.(dragTarget, targetWorld);
+  dragTarget.parent.worldToLocal(targetWorld);
+  dragTarget.position.copy(targetWorld);
+  sceneManager.current?.onDragMove?.(dragTarget);
+}
+
+// ============================================================================
+// 4. SCENE MANAGER
+//    Each scene = a Group + lifecycle hooks. Manager swaps groups in/out.
+// ============================================================================
+class Scene {
+  constructor(name) {
+    this.name = name;
+    this.group = new THREE.Group();
+    this.clickables = [];
+    this.draggables = [];
+    this._built = false;
+  }
+  build() { /* override */ this._built = true; }
+  enter() { /* override */ }
+  exit() { /* override */ }
+  update(dt, t) { /* override */ }
+  // optional: onDragStart/onDragMove/onDragEnd/constrainDrag
+}
+
+const sceneManager = {
+  scenes: new Map(),
+  current: null,
+  register(scene) { this.scenes.set(scene.name, scene); },
+  show(name) {
+    if (this.current) {
+      this.current.exit();
+      world.remove(this.current.group);
+    }
+    setHover(null);
+    const next = this.scenes.get(name);
+    if (!next) return;
+    if (!next._built) next.build();
+    this.current = next;
+    world.add(next.group);
+    next.enter();
+    setStatus(`Scene: ${next.name}`);
+  },
+  getClickables() { return this.current?.clickables ?? []; },
+  getDraggables() { return this.current?.draggables ?? []; }
+};
+
+// "Back to Menu" button you can drop into any non-menu scene
+function makeBackButton(onBack) {
+  const btn = makeButton({
+    label: '← Menu', color: '#3a3a4a', hover: '#ffaa00',
+    width: 0.5, height: 0.16, onClick: onBack
+  });
+  return btn;
+}
+
+// ============================================================================
+// 5. SCENE: MENU
+// ============================================================================
+class MenuScene extends Scene {
+  constructor() { super('Menu'); }
+  build() {
+    super.build();
+    const g = this.group;
+
+    // Title
+    const title = makeTextPanel({
+      text: 'PLATE TECTONICS VR',
+      width: 3.2, height: 0.5,
+      bg: '#0a1320', fg: '#FFD060', accent: '#FFD060',
+      fontSize: 88, align: 'center', padding: 20
+    });
+    title.position.set(0, 2.6, -3);
+    g.add(title);
+
+    // Subtitle
+    const sub = makeTextPanel({
+      text: 'An interactive simulation for learning about plate tectonics.',
+      width: 3.2, height: 0.22,
+      bg: '#00000000', fg: '#cce',
+      fontSize: 36, align: 'center', padding: 12
+    });
+    sub.position.set(0, 2.25, -3);
+    g.add(sub);
+
+    // Intro
+    const intro = makeTextPanel({
+      text: 'Earth\'s outer shell is broken into giant slabs of rock called tectonic plates. They drift on a layer of hot, partly melted rock — slowly, about as fast as your fingernails grow. Where two plates meet, they build mountains, open valleys, or cause earthquakes.\n\nPick a section below to begin.',
+      width: 3.2, height: 0.95,
+      bg: '#101820', fg: '#dde',
+      fontSize: 30, padding: 24, lineHeight: 1.35
+    });
+    intro.position.set(0, 1.55, -3);
+    g.add(intro);
+
+    // Five buttons in a single row
+    const buttonsY = 0.85;
+    const buttonsZ = -2.6;
+    const specs = [
+      { label: 'Information',    color: '#2a5298', target: 'Information' },
+      { label: 'Vocabulary\nGame', color: '#7a3a8a', target: 'Vocabulary' },
+      { label: 'Himalayas',      color: '#6a4a2a', target: 'Himalayas' },
+      { label: 'Rift Valley',    color: '#a04a2a', target: 'Rift Valley' },
+      { label: 'San Andreas',    color: '#a8302e', target: 'San Andreas' }
+    ];
+    const spacing = 0.78;
+    const startX = -((specs.length - 1) * spacing) / 2;
+    specs.forEach((s, i) => {
+      const btn = makeButton({
+        label: s.label, color: s.color, width: 0.72, height: 0.32,
+        onClick: () => sceneManager.show(s.target)
+      });
+      btn.position.set(startX + i * spacing, buttonsY, buttonsZ);
+      btn.rotation.x = -0.1;
+      g.add(btn);
+      this.clickables.push(btn);
+    });
+
+    // Decorative slowly-rotating Earth on the side
+    const earth = new THREE.Mesh(
+      new THREE.SphereGeometry(0.5, 48, 32),
+      new THREE.MeshStandardMaterial({ color: 0x2266aa, roughness: 0.7 })
+    );
+    earth.position.set(-3, 1.6, -3.5);
+    g.add(earth);
+    this.earth = earth;
+
+    // Tiny green continents on Earth
+    const greenMat = new THREE.MeshStandardMaterial({ color: 0x4a7c4e, roughness: 0.85 });
+    for (let i = 0; i < 8; i++) {
+      const lat = (Math.random() - 0.5) * Math.PI;
+      const lon = Math.random() * Math.PI * 2;
+      const r = 0.5;
+      const x = r * Math.cos(lat) * Math.cos(lon);
+      const y = r * Math.sin(lat);
+      const z = r * Math.cos(lat) * Math.sin(lon);
+      const blob = new THREE.Mesh(
+        new THREE.SphereGeometry(0.07 + Math.random() * 0.06, 12, 8),
+        greenMat
+      );
+      blob.position.set(x, y, z);
+      blob.scale.set(1.2, 0.4, 1.2);
+      blob.lookAt(0, 0, 0);
+      earth.add(blob);
+    }
+  }
+  update(dt) {
+    if (this.earth) this.earth.rotation.y += dt * 0.15;
+  }
+}
+
+// ============================================================================
+// 6. SCENE: INFORMATION
+//    Three stations arranged in an arc. Each has a title, description, and a
+//    looping mini-animation. Plus a vocabulary panel.
+// ============================================================================
+class InformationScene extends Scene {
+  constructor() { super('Information'); }
+  build() {
+    super.build();
+    const g = this.group;
+
+    // Header
+    const header = makeTextPanel({
+      text: 'Plate Boundaries',
+      width: 2.2, height: 0.3, bg: '#0a1320', fg: '#FFD060',
+      accent: '#FFD060', fontSize: 60, align: 'center', padding: 14
+    });
+    header.position.set(0, 2.6, -2.6);
+    g.add(header);
+
+    // Three stations in an arc around the user
+    const stations = [
+      {
+        title: 'Convergent (continent–continent)',
+        body: 'When two continental plates push into each other, neither can sink — both crumple upward into folded mountain ranges.\n\nExample: the HIMALAYAS, where India is still pushing into Asia. Mount Everest grows about 4 mm taller every year.',
+        accent: '#c25450', angle: -0.7,
+        anim: g => this.buildConvergentAnim(g)
+      },
+      {
+        title: 'Divergent',
+        body: 'When two plates pull apart, hot magma rises from below to fill the gap and cools into new crust.\n\nExample: the EAST AFRICAN RIFT VALLEY, where the African plate is slowly splitting in two. On the seafloor, divergent boundaries create mid-ocean ridges.',
+        accent: '#6ea75e', angle: 0,
+        anim: g => this.buildDivergentAnim(g)
+      },
+      {
+        title: 'Transform',
+        body: 'When two plates grind sideways past each other, friction builds until they suddenly slip — releasing the energy as an earthquake. No crust is created or destroyed.\n\nExample: the SAN ANDREAS FAULT in California.',
+        accent: '#d4a04a', angle: 0.7,
+        anim: g => this.buildTransformAnim(g)
+      }
+    ];
+    const radius = 3.2;
+    const animUpdaters = [];
+    for (const s of stations) {
+      const st = new THREE.Group();
+      st.position.set(Math.sin(s.angle) * radius, 1.5, -Math.cos(s.angle) * radius);
+      st.lookAt(0, 1.5, 0);
+
+      const title = makeTextPanel({
+        text: s.title, width: 1.6, height: 0.22,
+        bg: '#101820', fg: '#fff', accent: s.accent,
+        fontSize: 36, padding: 14
+      });
+      title.position.y = 0.85;
+      st.add(title);
+
+      const body = makeTextPanel({
+        text: s.body, width: 1.6, height: 0.85,
+        bg: '#0d141c', fg: '#cdd', fontSize: 24, padding: 18, lineHeight: 1.4
+      });
+      body.position.y = 0.35;
+      st.add(body);
+
+      // Mini-animation below the text
+      const animGroup = new THREE.Group();
+      animGroup.position.y = -0.4;
+      const updater = s.anim(animGroup);
+      st.add(animGroup);
+      animUpdaters.push(updater);
+
+      g.add(st);
+    }
+    this.animUpdaters = animUpdaters;
+
+    // Vocabulary panel (large, behind the user — they can turn around)
+    const vocabText =
+      'Lithosphere — Earth\'s rigid outer layer (crust + uppermost mantle).\n' +
+      'Asthenosphere — Hot, partly melted layer of mantle that plates float on.\n' +
+      'Convection currents — Slow circular flow of hot mantle that drives plate motion.\n' +
+      'Subduction — When one plate sinks beneath another at a convergent boundary.\n' +
+      'Magma — Melted rock beneath Earth\'s surface (called lava once it erupts).\n' +
+      'Fault — A crack in Earth\'s crust where rock layers move against each other.';
+    const vocab = makeTextPanel({
+      text: 'KEY VOCABULARY\n\n' + vocabText,
+      width: 3.0, height: 1.6,
+      bg: '#10182a', fg: '#dde', accent: '#88ccff',
+      fontSize: 28, padding: 26, lineHeight: 1.5
+    });
+    vocab.position.set(0, 1.5, 2.4);
+    vocab.rotation.y = Math.PI;
+    g.add(vocab);
+
+    // Back button
+    const back = makeBackButton(() => sceneManager.show('Menu'));
+    back.position.set(0, 0.5, -1.6);
+    back.rotation.x = -0.3;
+    g.add(back);
+    this.clickables.push(back);
+  }
+
+  // Mini convergent animation: two blocks slide together; a bump grows between them
+  buildConvergentAnim(g) {
+    const slabW = 0.8;
+    const left = new THREE.Mesh(
+      new THREE.BoxGeometry(slabW/2, 0.06, 0.18),
+      new THREE.MeshStandardMaterial({ color: 0x5d7a4a })
+    );
+    const right = left.clone();
+    right.material = left.material.clone();
+    g.add(left); g.add(right);
+    // Mountain ridge
+    const ridge = new THREE.Mesh(
+      new THREE.ConeGeometry(0.04, 0.18, 6),
+      new THREE.MeshStandardMaterial({ color: 0x886655 })
+    );
+    ridge.position.y = 0.09;
+    ridge.scale.y = 0.01;
+    g.add(ridge);
+    return (t) => {
+      const phase = (Math.sin(t * 0.6) + 1) / 2; // 0..1..0
+      const sep = 0.16 - phase * 0.16; // separation goes to 0
+      left.position.x = -slabW/4 - sep;
+      right.position.x = slabW/4 + sep;
+      ridge.scale.y = 0.05 + phase * 1.6;
+      ridge.position.y = 0.03 + phase * 0.09;
+    };
+  }
+  buildDivergentAnim(g) {
+    const slabW = 0.8;
+    const left = new THREE.Mesh(
+      new THREE.BoxGeometry(slabW/2, 0.06, 0.18),
+      new THREE.MeshStandardMaterial({ color: 0x5d7a4a })
+    );
+    const right = left.clone(); right.material = left.material.clone();
+    g.add(left); g.add(right);
+    // Magma glow in the gap
+    const magma = new THREE.Mesh(
+      new THREE.BoxGeometry(0.001, 0.06, 0.18),
+      new THREE.MeshStandardMaterial({
+        color: 0xff6622, emissive: 0xff4400, emissiveIntensity: 1.2
+      })
+    );
+    g.add(magma);
+    return (t) => {
+      const phase = (Math.sin(t * 0.5) + 1) / 2;
+      const sep = phase * 0.12;
+      left.position.x = -slabW/4 - sep;
+      right.position.x = slabW/4 + sep;
+      magma.scale.x = Math.max(0.05, sep * 18);
+    };
+  }
+  buildTransformAnim(g) {
+    const slabW = 0.8;
+    const front = new THREE.Mesh(
+      new THREE.BoxGeometry(slabW, 0.06, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0x5d7a4a })
+    );
+    const back = front.clone(); back.material = front.material.clone();
+    front.position.z = 0.05; back.position.z = -0.05;
+    g.add(front); g.add(back);
+    // Fault line
+    const fault = new THREE.Mesh(
+      new THREE.BoxGeometry(slabW, 0.062, 0.005),
+      new THREE.MeshStandardMaterial({ color: 0xd4a04a, emissive: 0x884400, emissiveIntensity: 0.5 })
+    );
+    g.add(fault);
+    let lastQ = 0;
+    return (t) => {
+      const slowDrift = Math.sin(t * 0.4) * 0.18;
+      front.position.x = slowDrift;
+      back.position.x = -slowDrift;
+      // Earthquake jolt every ~5s
+      const q = Math.floor(t / 5);
+      if (q !== lastQ) lastQ = q;
+      const jolt = Math.exp(-((t % 5)) * 4) * 0.02 * Math.sin(t * 60);
+      front.position.z = 0.05 + jolt;
+      back.position.z = -0.05 - jolt;
+    };
+  }
+
+  update(dt, t) {
+    if (this.animUpdaters) for (const fn of this.animUpdaters) fn(t);
+  }
+}
+
+// ============================================================================
+// 7. SCENE: VOCABULARY GAME
+//    A volcano in the middle. A vocabulary term appears at the top; three
+//    definition options float around it. Click the correct one before time
+//    runs out. Score and round counter shown overhead.
+// ============================================================================
+const VOCAB_BANK = [
+  { term: 'Lithosphere',   def: 'Earth\'s rigid outer layer that includes the crust and uppermost mantle.' },
+  { term: 'Asthenosphere', def: 'The hot, partly melted layer of the mantle that plates float on.' },
+  { term: 'Convection currents', def: 'The slow, circular movement of hot material in the mantle that drives plate motion.' },
+  { term: 'Subduction',    def: 'When one plate sinks beneath another at a convergent boundary.' },
+  { term: 'Magma',         def: 'Melted rock beneath Earth\'s surface.' },
+  { term: 'Fault',         def: 'A crack in Earth\'s crust where rock layers move against each other.' },
+  { term: 'Tectonic plate', def: 'A huge slab of rock that makes up part of Earth\'s lithosphere.' },
+  { term: 'Pangaea',       def: 'The supercontinent that contained all of Earth\'s land about 250 million years ago.' },
+  { term: 'Mid-ocean ridge', def: 'An underwater mountain chain formed at a divergent boundary on the seafloor.' },
+  { term: 'Island arc',    def: 'A chain of volcanic islands formed where two oceanic plates converge.' }
+];
+
+class VocabularyScene extends Scene {
+  constructor() { super('Vocabulary'); }
+  build() {
+    super.build();
+    const g = this.group;
+
+    // Volcano
+    const volcano = new THREE.Group();
+    const cone = new THREE.Mesh(
+      new THREE.ConeGeometry(0.6, 1.2, 24),
+      new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.95 })
+    );
+    cone.position.y = 0.6;
+    volcano.add(cone);
+    // Crater glow
+    const crater = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18, 0.12, 0.08, 16),
+      new THREE.MeshStandardMaterial({
+        color: 0xff5522, emissive: 0xff3300, emissiveIntensity: 1.4
+      })
+    );
+    crater.position.y = 1.18;
+    volcano.add(crater);
+    volcano.position.set(0, 0.4, -2.6);
+    g.add(volcano);
+    this.volcano = volcano;
+    this.crater = crater;
+
+    // Score / round display
+    this.scorePanel = makeTextPanel({
+      text: 'Score: 0\nRound: 1',
+      width: 1.0, height: 0.32, bg: '#0a1320', fg: '#FFD060',
+      accent: '#FFD060', fontSize: 44, padding: 16
+    });
+    this.scorePanel.position.set(-1.7, 2.4, -2.6);
+    g.add(this.scorePanel);
+
+    // Term display (above the volcano)
+    this.termPanel = makeTextPanel({
+      text: '',
+      width: 1.6, height: 0.28, bg: '#10182a', fg: '#88ccff',
+      accent: '#88ccff', fontSize: 56, align: 'center', padding: 12
+    });
+    this.termPanel.position.set(0, 2.4, -2.6);
+    g.add(this.termPanel);
+
+    // Instruction
+    this.instruction = makeTextPanel({
+      text: 'Click the correct definition before lava reaches the top!',
+      width: 2.4, height: 0.18,
+      bg: '#00000000', fg: '#dde',
+      fontSize: 30, align: 'center', padding: 8
+    });
+    this.instruction.position.set(0, 2.05, -2.6);
+    g.add(this.instruction);
+
+    // Lava timer bar (rises inside crater)
+    this.lavaBar = new THREE.Mesh(
+      new THREE.BoxGeometry(1.5, 0.04, 0.05),
+      new THREE.MeshStandardMaterial({ color: 0xff5522, emissive: 0xff3300, emissiveIntensity: 1.0 })
+    );
+    this.lavaBar.position.set(0, 1.78, -2.6);
+    this.lavaBar.scale.x = 1;
+    g.add(this.lavaBar);
+
+    // Definition buttons (3 of them in front of the user)
+    this.defButtons = [];
+    for (let i = 0; i < 3; i++) {
+      const btn = makeButton({
+        label: '', color: '#3a4d6a', hover: '#88ccff',
+        width: 1.35, height: 0.5, onClick: () => this.onAnswer(i)
+      });
+      btn.position.set((i - 1) * 1.45, 1.0, -1.5);
+      btn.rotation.x = -0.2;
+      g.add(btn);
+      this.defButtons.push(btn);
+      this.clickables.push(btn);
+    }
+
+    // Feedback panel
+    this.feedback = makeTextPanel({
+      text: '',
+      width: 2.0, height: 0.22,
+      bg: '#00000000', fg: '#fff',
+      fontSize: 36, align: 'center', padding: 8
+    });
+    this.feedback.position.set(0, 0.55, -1.5);
+    this.feedback.visible = false;
+    g.add(this.feedback);
+
+    // Back button
+    const back = makeBackButton(() => sceneManager.show('Menu'));
+    back.position.set(-1.7, 0.55, -1.6);
+    back.rotation.x = -0.3;
+    g.add(back);
+    this.clickables.push(back);
+
+    // Reset button
+    const reset = makeButton({
+      label: 'Reset', color: '#3a3a4a', hover: '#ffaa00',
+      width: 0.5, height: 0.16, onClick: () => this.startGame()
+    });
+    reset.position.set(1.7, 0.55, -1.6);
+    reset.rotation.x = -0.3;
+    g.add(reset);
+    this.clickables.push(reset);
+  }
+
+  enter() {
+    this.startGame();
+  }
+  startGame() {
+    this.score = 0;
+    this.round = 0;
+    this.maxRounds = 8;
+    this.timer = 0;
+    this.gameOver = false;
+    this.advanceRound();
+  }
+  advanceRound() {
+    this.round++;
+    this.timer = 0;
+    this.feedback.visible = false;
+    if (this.round > this.maxRounds) {
+      this.gameOver = true;
+      this.showResult();
+      return;
+    }
+    // Pick a term
+    const correctIdx = Math.floor(Math.random() * VOCAB_BANK.length);
+    this.correctTerm = VOCAB_BANK[correctIdx];
+    // Pick 2 distractors
+    const others = VOCAB_BANK.filter((_, i) => i !== correctIdx);
+    others.sort(() => Math.random() - 0.5);
+    const choices = [this.correctTerm, others[0], others[1]];
+    choices.sort(() => Math.random() - 0.5);
+    this.choices = choices;
+    this.correctButtonIndex = choices.indexOf(this.correctTerm);
+
+    // Update term and button labels
+    this.setPanelText(this.termPanel, this.correctTerm.term);
+    for (let i = 0; i < 3; i++) {
+      this.setButtonLabel(this.defButtons[i], wrapForButton(choices[i].def, 22));
+    }
+    this.updateScore();
+  }
+  setPanelText(panel, text) {
+    const ctx = panel.userData.ctx;
+    const cw = panel.userData.canvas.width, ch = panel.userData.canvas.height;
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.fillStyle = '#10182a'; ctx.fillRect(0, 0, cw, ch);
+    ctx.fillStyle = '#88ccff'; ctx.fillRect(0, 0, 8, ch);
+    ctx.fillStyle = '#88ccff'; ctx.font = 'bold 76px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, cw/2, ch/2);
+    panel.userData.tex.needsUpdate = true;
+  }
+  setButtonLabel(button, label) {
+    const labelPlane = button.children[1];
+    const ctx = labelPlane.userData.ctx;
+    const cw = labelPlane.userData.canvas.width, ch = labelPlane.userData.canvas.height;
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 38px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const lines = label.split('\n');
+    const lh = 50;
+    const startY = ch/2 - (lines.length - 1) * lh / 2;
+    lines.forEach((ln, i) => ctx.fillText(ln, cw/2, startY + i * lh));
+    labelPlane.userData.tex.needsUpdate = true;
+  }
+  updateScore() {
+    const ctx = this.scorePanel.userData.ctx;
+    const cw = this.scorePanel.userData.canvas.width, ch = this.scorePanel.userData.canvas.height;
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.fillStyle = '#0a1320'; ctx.fillRect(0, 0, cw, ch);
+    ctx.fillStyle = '#FFD060'; ctx.fillRect(0, 0, 8, ch);
+    ctx.fillStyle = '#FFD060'; ctx.font = 'bold 56px system-ui, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(`Score: ${this.score}`, 30, 30);
+    ctx.fillText(`Round: ${Math.min(this.round, this.maxRounds)}/${this.maxRounds}`, 30, 100);
+    this.scorePanel.userData.tex.needsUpdate = true;
+  }
+  showFeedback(text, color) {
+    const ctx = this.feedback.userData.ctx;
+    const cw = this.feedback.userData.canvas.width, ch = this.feedback.userData.canvas.height;
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.fillStyle = color; ctx.font = 'bold 52px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, cw/2, ch/2);
+    this.feedback.userData.tex.needsUpdate = true;
+    this.feedback.visible = true;
+  }
+  showResult() {
+    this.setPanelText(this.termPanel, 'Done!');
+    for (let i = 0; i < 3; i++) this.setButtonLabel(this.defButtons[i], '');
+    this.showFeedback(`Final score: ${this.score} / ${this.maxRounds}`, '#FFD060');
+  }
+  onAnswer(i) {
+    if (this.gameOver) return;
+    if (i === this.correctButtonIndex) {
+      this.score++;
+      this.showFeedback('Correct!', '#5fa05f');
+    } else {
+      this.showFeedback(`Answer: "${this.correctTerm.def.slice(0, 36)}..."`, '#e07050');
+    }
+    setTimeout(() => this.advanceRound(), 1400);
+  }
+  update(dt, t) {
+    if (this.gameOver) return;
+    // Crater pulse
+    if (this.crater) {
+      this.crater.material.emissiveIntensity = 1.2 + Math.sin(t * 6) * 0.3;
+    }
+    // Volcano timer (12s per round)
+    this.timer += dt;
+    const frac = Math.min(1, this.timer / 12);
+    this.lavaBar.scale.x = Math.max(0.001, frac * 1.5);
+    this.lavaBar.position.x = (frac * 1.5 - 1.5) / 2;
+    if (frac >= 1 && !this.feedback.visible) {
+      this.showFeedback('Time\'s up!', '#e07050');
+      setTimeout(() => this.advanceRound(), 1400);
+      this.timer = 1e9; // freeze
+    }
+  }
+}
+function wrapForButton(text, maxChars) {
+  const words = text.split(' '), lines = [];
+  let cur = '';
+  for (const w of words) {
+    if ((cur + ' ' + w).trim().length > maxChars) { lines.push(cur); cur = w; }
+    else cur = (cur + ' ' + w).trim();
+  }
+  if (cur) lines.push(cur);
+  return lines.slice(0, 4).join('\n');
+}
+
+// ============================================================================
+// 8. SIMULATION SCENE BASE CLASS
+//    Two continents on a slab, draggable along X. Subclasses define how the
+//    landscape responds — mountains, rift, fault.
+// ============================================================================
+class SimulationScene extends Scene {
+  constructor(name, opts) {
+    super(name);
+    this.opts = opts;
+  }
+  build() {
+    super.build();
+    const g = this.group;
+    const o = this.opts;
+
+    // Title panel
+    const title = makeTextPanel({
+      text: o.title, width: 2.4, height: 0.28,
+      bg: '#0a1320', fg: o.titleColor || '#FFD060',
+      accent: o.titleColor || '#FFD060', fontSize: 52, align: 'center', padding: 12
+    });
+    title.position.set(0, 2.5, -2.4);
+    g.add(title);
+
+    // Instructions
+    const instr = makeTextPanel({
+      text: o.instructions, width: 2.4, height: 0.32,
+      bg: '#10182a', fg: '#cdd', fontSize: 26, align: 'center', padding: 14, lineHeight: 1.35
+    });
+    instr.position.set(0, 2.15, -2.4);
+    g.add(instr);
+
+    // Mantle slab — floats in front of user, like a workbench
+    const slabW = 3.0, slabH = 0.5, slabD = 0.7;
+    this.slab = makeMantleSlab({ width: slabW, height: slabH, depth: slabD });
+    this.slab.position.set(0, 1.2, -1.7);
+    g.add(this.slab);
+    this.slabSurfaceY = 1.2 + slabH/2; // world Y of the slab top
+
+    // Two continents
+    const contW = o.continentWidth || 0.9;
+    const contH = o.continentHeight || 0.18;
+    const contD = slabD * 0.78;
+    this.left = makeContinent({
+      name: o.leftName, width: contW, depth: contD, height: contH,
+      color: o.leftColor || 0x4a7c4e
+    });
+    this.right = makeContinent({
+      name: o.rightName, width: contW, depth: contD, height: contH,
+      color: o.rightColor || 0x5d8a3e
+    });
+    // Initial positions (slightly separated) — relative to slab
+    const startGap = o.startGap ?? 0.4;
+    this.left.position.set(-(contW/2 + startGap/2), this.slabSurfaceY + contH/2, -1.7);
+    this.right.position.set(contW/2 + startGap/2, this.slabSurfaceY + contH/2, -1.7);
+    g.add(this.left);
+    g.add(this.right);
+    this.draggables.push(this.left, this.right);
+
+    // Continent labels (floating above each)
+    this.leftLabel = this.makeFloatingLabel(o.leftName, o.leftColor);
+    this.leftLabel.position.copy(this.left.position);
+    this.leftLabel.position.y += 0.35;
+    g.add(this.leftLabel);
+    this.rightLabel = this.makeFloatingLabel(o.rightName, o.rightColor);
+    this.rightLabel.position.copy(this.right.position);
+    this.rightLabel.position.y += 0.35;
+    g.add(this.rightLabel);
+
+    // Movement direction arrows (subtle visual cue)
+    this.arrows = this.makeArrows(o.arrowDirection);
+
+    // Reset + back buttons
+    const back = makeBackButton(() => sceneManager.show('Menu'));
+    back.position.set(-1.0, 0.7, -1.2);
+    back.rotation.x = -0.4;
+    g.add(back);
+    this.clickables.push(back);
+
+    const reset = makeButton({
+      label: 'Reset', color: '#3a3a4a', hover: '#ffaa00',
+      width: 0.5, height: 0.16, onClick: () => this.reset()
+    });
+    reset.position.set(1.0, 0.7, -1.2);
+    reset.rotation.x = -0.4;
+    g.add(reset);
+    this.clickables.push(reset);
+
+    // Subclass scene-specific construction
+    this.buildSpecific?.();
+  }
+  makeFloatingLabel(text, accentHex) {
+    const accent = '#' + new THREE.Color(accentHex).getHexString();
+    return makeTextPanel({
+      text, width: 0.5, height: 0.13, bg: '#10182a', fg: '#fff',
+      accent, fontSize: 40, align: 'center', padding: 8
+    });
+  }
+  makeArrows(/* direction */) { /* override per scene */ }
+
+  // Constrain dragging — continents only move along X, stay on slab top
+  constrainDrag(target, worldPos) {
+    if (target === this.left || target === this.right) {
+      // Lock Y to surface, lock Z to slab center
+      worldPos.y = this.slabSurfaceY + target.userData.height/2;
+      worldPos.z = -1.7;
+      // X bounds: stay on slab
+      const half = 1.5 - target.userData.width/2;
+      worldPos.x = THREE.MathUtils.clamp(worldPos.x, -half, half);
+      // Don't allow swapping order
+      if (target === this.left && this.right) {
+        worldPos.x = Math.min(worldPos.x, this.right.position.x - target.userData.width/2 - 0.02);
+      }
+      if (target === this.right && this.left) {
+        worldPos.x = Math.max(worldPos.x, this.left.position.x + target.userData.width/2 + 0.02);
+      }
+    }
+  }
+  onDragMove(target) {
+    // Keep labels above their continents
+    if (target === this.left) {
+      this.leftLabel.position.x = this.left.position.x;
+    } else if (target === this.right) {
+      this.rightLabel.position.x = this.right.position.x;
+    }
+  }
+
+  reset() {
+    const o = this.opts;
+    const contW = o.continentWidth || 0.9;
+    const startGap = o.startGap ?? 0.4;
+    this.left.position.x = -(contW/2 + startGap/2);
+    this.right.position.x = contW/2 + startGap/2;
+    this.leftLabel.position.x = this.left.position.x;
+    this.rightLabel.position.x = this.right.position.x;
+    this.resetSpecific?.();
+  }
+
+  // Helpers used by subclasses
+  edgeGap() {
+    const lE = this.left.position.x + this.left.userData.width/2;
+    const rE = this.right.position.x - this.right.userData.width/2;
+    return rE - lE;
+  }
+  contactX() {
+    const lE = this.left.position.x + this.left.userData.width/2;
+    const rE = this.right.position.x - this.right.userData.width/2;
+    return (lE + rE) / 2;
+  }
+}
+
+// ============================================================================
+// 9. SCENE: HIMALAYAS (CONVERGENT)
+// ============================================================================
+class HimalayaScene extends SimulationScene {
+  constructor() {
+    super('Himalayas', {
+      title: 'The Himalayas — Convergent Boundary',
+      titleColor: '#c25450',
+      instructions: 'Push the two continents together. Both are too thick to sink, so they crumple upward into mountains.',
+      leftName: 'Indian Plate',  leftColor: 0x6a8a4a,
+      rightName: 'Eurasian Plate', rightColor: 0x4d7a4e,
+      continentWidth: 1.0, startGap: 0.5
+    });
+  }
+  buildSpecific() {
+    // Mountain ridge: 7 cones along Z that grow when plates compress
+    this.peaks = [];
+    const peakMat = new THREE.MeshStandardMaterial({ color: 0x886655, roughness: 0.95 });
+    const snowMat = new THREE.MeshStandardMaterial({ color: 0xeeeefa, roughness: 0.6 });
+    const peakRoot = new THREE.Group();
+    peakRoot.position.set(0, this.slabSurfaceY + this.left.userData.height, -1.7);
+    this.group.add(peakRoot);
+    this.peakRoot = peakRoot;
+    const numPeaks = 9;
+    for (let i = 0; i < numPeaks; i++) {
+      const z = (i / (numPeaks - 1) - 0.5) * (this.opts.continentWidth ? this.left.userData.depth * 0.85 : 0.5);
+      const peak = new THREE.Group();
+      const baseR = 0.05 + Math.random() * 0.025;
+      const peakH = 0.32 + Math.random() * 0.18;
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(baseR, peakH, 6), peakMat);
+      cone.position.y = peakH / 2;
+      peak.add(cone);
+      // Snowcap
+      const snow = new THREE.Mesh(new THREE.ConeGeometry(baseR * 0.5, peakH * 0.3, 6), snowMat);
+      snow.position.y = peakH - peakH * 0.15;
+      peak.add(snow);
+      peak.position.z = z;
+      peak.userData.fullHeight = peakH;
+      peak.scale.y = 0.001;
+      peakRoot.add(peak);
+      this.peaks.push(peak);
+    }
+    // Volcano on top of the range (smaller, off to one side)
+    const volcano = new THREE.Mesh(
+      new THREE.ConeGeometry(0.09, 0.25, 8),
+      new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.95 })
+    );
+    volcano.position.set(0, 0.125, 0.18);
+    const lava = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.025, 0.018, 0.02, 12),
+      new THREE.MeshStandardMaterial({
+        color: 0xff5522, emissive: 0xff3300, emissiveIntensity: 1.2
+      })
+    );
+    lava.position.set(0, 0.245, 0.18);
+    volcano.scale.y = 0.001;
+    lava.scale.y = 0.001;
+    peakRoot.add(volcano);
+    peakRoot.add(lava);
+    this.volcano = volcano;
+    this.lava = lava;
+  }
+  resetSpecific() {
+    for (const p of this.peaks) p.scale.y = 0.001;
+    this.volcano.scale.y = 0.001;
+    this.lava.scale.y = 0.001;
+  }
+  update(dt, t) {
+    if (!this.peaks) return;
+    const gap = this.edgeGap();
+    // Compression intensity (0 = no contact, 1 = full overlap)
+    const TRIGGER = 0.05, FULL = -0.15;
+    let intensity = 0;
+    if (gap < TRIGGER) {
+      intensity = THREE.MathUtils.clamp((TRIGGER - gap) / (TRIGGER - FULL), 0, 1);
+      intensity = intensity * intensity * (3 - 2 * intensity); // smoothstep
+    }
+    // Center the range on the contact
+    this.peakRoot.position.x += (this.contactX() - this.peakRoot.position.x) * 0.15;
+    // Peaks rise smoothly
+    for (const p of this.peaks) {
+      const target = Math.max(0.001, intensity);
+      p.scale.y += (target - p.scale.y) * 0.12;
+      // Subtle z-shimmer
+      p.position.y = Math.sin(t * 2 + p.position.z * 8) * 0.005;
+    }
+    // Volcano kicks in only at high intensity
+    const vTarget = intensity > 0.6 ? Math.min(1, (intensity - 0.6) / 0.4) : 0.001;
+    this.volcano.scale.y += (vTarget - this.volcano.scale.y) * 0.1;
+    this.lava.scale.y += (vTarget - this.lava.scale.y) * 0.1;
+    if (this.lava.material) {
+      this.lava.material.emissiveIntensity = 1.0 + Math.sin(t * 8) * 0.3;
+    }
+  }
+}
+
+// ============================================================================
+// 10. SCENE: EAST AFRICAN RIFT (DIVERGENT)
+// ============================================================================
+class RiftScene extends SimulationScene {
+  constructor() {
+    super('Rift Valley', {
+      title: 'East African Rift — Divergent Boundary',
+      titleColor: '#6ea75e',
+      instructions: 'Pull the two plates apart. Magma rises from below to fill the gap, forming a rift valley with new crust.',
+      leftName: 'Nubian Plate', leftColor: 0x6a8a4a,
+      rightName: 'Somali Plate', rightColor: 0x7d9a4e,
+      continentWidth: 0.9, startGap: 0.05
+    });
+  }
+  buildSpecific() {
+    // Magma fissure between plates: a glowing strip on the slab surface, scales with gap
+    const magmaGeo = new THREE.BoxGeometry(1, 0.04, this.left.userData.depth * 0.95);
+    const magmaMat = new THREE.MeshStandardMaterial({
+      color: 0xff5522, emissive: 0xff3300, emissiveIntensity: 1.5, roughness: 0.4
+    });
+    this.magma = new THREE.Mesh(magmaGeo, magmaMat);
+    this.magma.position.set(0, this.slabSurfaceY + 0.02, -1.7);
+    this.magma.scale.x = 0.001;
+    this.group.add(this.magma);
+    // Lava glow light
+    this.magmaLight = new THREE.PointLight(0xff4422, 0, 1.5);
+    this.magmaLight.position.set(0, this.slabSurfaceY + 0.05, -1.7);
+    this.group.add(this.magmaLight);
+    // Steam particles (simple expanding spheres) — array of meshes
+    this.steams = [];
+    const steamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 });
+    for (let i = 0; i < 6; i++) {
+      const s = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), steamMat.clone());
+      s.userData.life = Math.random();
+      s.userData.zOffset = (Math.random() - 0.5) * this.left.userData.depth * 0.7;
+      this.group.add(s);
+      this.steams.push(s);
+    }
+  }
+  resetSpecific() {
+    if (this.magma) this.magma.scale.x = 0.001;
+  }
+  update(dt, t) {
+    if (!this.magma) return;
+    const gap = Math.max(0, this.edgeGap());
+    // Magma scales with gap (clamped)
+    const intensity = Math.min(1, gap / 0.6);
+    const target = Math.max(0.001, gap);
+    this.magma.scale.x += (target - this.magma.scale.x) * 0.18;
+    this.magma.position.x = this.contactX();
+    // Pulsing emissive
+    if (this.magma.material) {
+      this.magma.material.emissiveIntensity = 1.2 + Math.sin(t * 4) * 0.4;
+    }
+    this.magmaLight.intensity = intensity * (1.0 + Math.sin(t * 5) * 0.3);
+    this.magmaLight.position.x = this.contactX();
+    // Steam particles
+    for (const s of this.steams) {
+      s.userData.life += dt * 0.8;
+      if (s.userData.life > 1) {
+        s.userData.life = 0;
+        s.userData.zOffset = (Math.random() - 0.5) * this.left.userData.depth * 0.7;
+      }
+      const life = s.userData.life;
+      s.position.x = this.contactX() + (Math.random() - 0.5) * 0.04;
+      s.position.y = this.slabSurfaceY + 0.05 + life * 0.6;
+      s.position.z = -1.7 + s.userData.zOffset;
+      s.scale.setScalar(0.5 + life * 2.5);
+      s.material.opacity = (1 - life) * 0.5 * intensity;
+      s.visible = intensity > 0.05;
+    }
+  }
+}
+
+// ============================================================================
+// 11. SCENE: SAN ANDREAS (TRANSFORM)
+//    Plates are oriented front/back instead of left/right, and slide along X.
+//    When the offset between them grows large, an "earthquake" releases
+//    accumulated stress in a sudden snap with a screen shake.
+// ============================================================================
+class SanAndreasScene extends SimulationScene {
+  constructor() {
+    super('San Andreas', {
+      title: 'San Andreas Fault — Transform Boundary',
+      titleColor: '#d4a04a',
+      instructions: 'Slide the plates past each other along the fault line. Friction builds stress — when it releases, the ground shakes.',
+      leftName: 'Pacific Plate', leftColor: 0x6a8aaa,
+      rightName: 'N. American Plate', rightColor: 0x4a7c4e,
+      continentWidth: 2.4, startGap: 0
+    });
+  }
+  build() {
+    super.build();
+    // After base build, reorient continents to be split front/back instead of L/R.
+    // The simplest way: rebuild positions and override constrainDrag in this class.
+    // We'll keep the boxes the same shape; just place them stacked on Z, full slab width.
+    const slabD = 0.7;
+    const contD = 0.30;
+    const contW = 2.4;
+    // Resize continents
+    [this.left, this.right].forEach(c => {
+      c.geometry.dispose();
+      c.geometry = new THREE.BoxGeometry(contW, c.userData.height, contD);
+      c.userData.width = contW;
+      c.userData.depth = contD;
+    });
+    // Position them front and back on the slab
+    this.left.position.set(0, this.slabSurfaceY + this.left.userData.height/2, -1.7 - contD/2 - 0.01);
+    this.right.position.set(0, this.slabSurfaceY + this.right.userData.height/2, -1.7 + contD/2 + 0.01);
+    // Move labels to follow
+    this.leftLabel.position.set(this.left.position.x, this.left.position.y + 0.35, this.left.position.z);
+    this.rightLabel.position.set(this.right.position.x, this.right.position.y + 0.35, this.right.position.z);
+    // Add fault line — glowing strip between them
+    const faultMat = new THREE.MeshStandardMaterial({
+      color: 0xd4a04a, emissive: 0x884400, emissiveIntensity: 0.7
+    });
+    this.fault = new THREE.Mesh(
+      new THREE.BoxGeometry(contW, 0.02, 0.05),
+      faultMat
+    );
+    this.fault.position.set(0, this.slabSurfaceY + 0.012, -1.7);
+    this.group.add(this.fault);
+    // Stress markers: small cracks across the fault that grow with offset
+    this.cracks = [];
+    const crackMat = new THREE.MeshStandardMaterial({
+      color: 0xffaa00, emissive: 0x884400, emissiveIntensity: 0.3, transparent: true, opacity: 0
+    });
+    for (let i = 0; i < 12; i++) {
+      const x = (i / 11 - 0.5) * contW * 0.9;
+      const c = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.025, 0.18), crackMat.clone());
+      c.position.set(x, this.slabSurfaceY + 0.013, -1.7);
+      c.rotation.y = (Math.random() - 0.5) * 0.4;
+      c.material.opacity = 0;
+      this.group.add(c);
+      this.cracks.push(c);
+    }
+    // Earthquake state
+    this.stress = 0;
+    this.shakeAmplitude = 0;
+    this.lastLeftX = 0;
+    this.lastRightX = 0;
+  }
+  // Override drag constraints: lock Y, allow X (along fault), lock Z to each plate's row
+  constrainDrag(target, worldPos) {
+    if (target === this.left || target === this.right) {
+      worldPos.y = this.slabSurfaceY + target.userData.height/2;
+      // Each plate stays on its own side of the fault (Z-locked)
+      worldPos.z = (target === this.left) ? -1.7 - target.userData.depth/2 - 0.01
+                                          : -1.7 + target.userData.depth/2 + 0.01;
+      // X bounds — let them drift quite far
+      worldPos.x = THREE.MathUtils.clamp(worldPos.x, -1.0, 1.0);
+    }
+  }
+  onDragMove(target) {
+    // Update label X (Z stays put)
+    if (target === this.left) this.leftLabel.position.x = this.left.position.x;
+    else if (target === this.right) this.rightLabel.position.x = this.right.position.x;
+  }
+  resetSpecific() {
+    this.left.position.x = 0;
+    this.right.position.x = 0;
+    this.leftLabel.position.x = 0;
+    this.rightLabel.position.x = 0;
+    this.stress = 0;
+    this.shakeAmplitude = 0;
+    for (const c of this.cracks) c.material.opacity = 0;
+  }
+  update(dt, t) {
+    if (!this.fault) return;
+    // Stress = how much the two plates have been offset relative to each other,
+    // accumulated by drag motion (opposite directions = more stress).
+    const lDelta = this.left.position.x - this.lastLeftX;
+    const rDelta = this.right.position.x - this.lastRightX;
+    this.lastLeftX = this.left.position.x;
+    this.lastRightX = this.right.position.x;
+    // Opposite-direction motion accumulates stress
+    if (Math.sign(lDelta) !== Math.sign(rDelta) && Math.abs(lDelta) + Math.abs(rDelta) > 0.001) {
+      this.stress += (Math.abs(lDelta) + Math.abs(rDelta)) * 8;
+    }
+    // Cracks light up with stress
+    const stressNorm = Math.min(1, this.stress);
+    for (const c of this.cracks) {
+      c.material.opacity += (stressNorm * 0.9 - c.material.opacity) * 0.1;
+    }
+    if (this.fault.material) {
+      this.fault.material.emissiveIntensity = 0.7 + stressNorm * 1.2;
+    }
+    // Earthquake when stress passes threshold
+    if (this.stress > 1.0 && this.shakeAmplitude < 0.001) {
+      this.shakeAmplitude = 0.04;
+      this.stress = 0;
+    }
+    // Apply and decay shake
+    if (this.shakeAmplitude > 0.001) {
+      const sx = (Math.random() - 0.5) * this.shakeAmplitude;
+      const sz = (Math.random() - 0.5) * this.shakeAmplitude;
+      this.left.position.z = -1.7 - this.left.userData.depth/2 - 0.01 + sz;
+      this.right.position.z = -1.7 + this.right.userData.depth/2 + 0.01 - sz;
+      this.fault.position.z = -1.7 + sz * 0.5;
+      this.shakeAmplitude *= 0.92;
+    } else {
+      this.left.position.z = -1.7 - this.left.userData.depth/2 - 0.01;
+      this.right.position.z = -1.7 + this.right.userData.depth/2 + 0.01;
+      this.fault.position.z = -1.7;
+    }
+    // Stress slowly decays even without earthquake
+    this.stress = Math.max(0, this.stress - dt * 0.05);
+  }
+}
+
+// ============================================================================
+// 12. REGISTER + START
+// ============================================================================
+sceneManager.register(new MenuScene());
+sceneManager.register(new InformationScene());
+sceneManager.register(new VocabularyScene());
+sceneManager.register(new HimalayaScene());
+sceneManager.register(new RiftScene());
+sceneManager.register(new SanAndreasScene());
+sceneManager.show('Menu');
+
+// WebXR support detection
+if ('xr' in navigator) {
+  navigator.xr.isSessionSupported('immersive-vr').then(ok => {
+    setStatus(ok ? 'Ready · Click "Enter VR" or use desktop controls' : 'Desktop only · No VR detected');
+  }).catch(() => setStatus('Desktop only · No VR detected'));
+} else {
+  setStatus('WebXR unsupported in this browser');
+}
+
+// ============================================================================
+// 13. ANIMATION LOOP
+// ============================================================================
+let lastT = 0;
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = clock.getDelta();
+  const t = clock.elapsedTime;
+
+  // Hover detection in VR (each frame)
+  if (renderer.xr.isPresenting) {
+    let anyHover = null;
+    for (const ctl of controllers) {
+      const ray = makeControllerRay(ctl);
+      const btn = intersectButtons(ray);
+      if (btn) { anyHover = btn; break; }
+    }
+    setHover(anyHover);
+  }
+
+  updateDrag();
+  sceneManager.current?.update(dt, t);
+  if (!renderer.xr.isPresenting) orbit.update();
+  renderer.render(world, camera);
+});
+</script>
+</body>
+</html>
