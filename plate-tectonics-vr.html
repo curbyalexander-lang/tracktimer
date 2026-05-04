@@ -562,21 +562,22 @@ class MenuScene extends Scene {
     intro.position.set(0, 1.55, -3);
     g.add(intro);
 
-    // Five buttons in a single row
+    // Six buttons in a single row
     const buttonsY = 0.85;
     const buttonsZ = -2.6;
     const specs = [
-      { label: 'Information',    color: '#2a5298', target: 'Information' },
+      { label: 'Information',     color: '#2a5298', target: 'Information' },
       { label: 'Vocabulary\nGame', color: '#7a3a8a', target: 'Vocabulary' },
-      { label: 'Himalayas',      color: '#6a4a2a', target: 'Himalayas' },
-      { label: 'Rift Valley',    color: '#a04a2a', target: 'Rift Valley' },
-      { label: 'San Andreas',    color: '#a8302e', target: 'San Andreas' }
+      { label: 'Himalayas',       color: '#6a4a2a', target: 'Himalayas' },
+      { label: 'Andes',           color: '#a76a4a', target: 'Andes' },
+      { label: 'Rift Valley',     color: '#a04a2a', target: 'Rift Valley' },
+      { label: 'San Andreas',     color: '#a8302e', target: 'San Andreas' }
     ];
-    const spacing = 0.78;
+    const spacing = 0.70;
     const startX = -((specs.length - 1) * spacing) / 2;
     specs.forEach((s, i) => {
       const btn = makeButton({
-        label: s.label, color: s.color, width: 0.72, height: 0.32,
+        label: s.label, color: s.color, width: 0.64, height: 0.32,
         onClick: () => sceneManager.show(s.target)
       });
       btn.position.set(startX + i * spacing, buttonsY, buttonsZ);
@@ -1599,7 +1600,177 @@ class SanAndreasScene extends SimulationScene {
 }
 
 // ============================================================================
-// 12. REGISTER + START
+// 12. SCENE: ANDES (SUBDUCTION ZONE)
+//    The denser oceanic plate sinks beneath the lighter continental plate. As
+//    it descends and melts, magma rises and feeds a chain of volcanoes — the
+//    volcanic arc — on the continental side.
+// ============================================================================
+class AndesScene extends SimulationScene {
+  constructor() {
+    super('Andes', {
+      title: 'The Andes — Subduction Zone',
+      titleColor: '#d4a04a',
+      instructions: 'Push the dense oceanic plate into the lighter continental plate. The oceanic plate sinks below, melts, and feeds a chain of volcanoes above.',
+      leftName: 'Nazca Plate',         leftColor: 0x3d5872,   // oceanic — blue-grey
+      rightName: 'S. American Plate',  rightColor: 0x6a7d3a,  // continental — green
+      continentWidth: 0.9,
+      continentHeight: 0.10,            // base height — applies to oceanic plate
+      startGap: 0.6
+    });
+  }
+
+  buildSpecific() {
+    // The base class created both plates with continentHeight=0.10 (oceanic).
+    // Resize the right plate to be visibly THICKER, representing continental crust.
+    const thickH = 0.20;
+    this.right.geometry.dispose();
+    this.right.geometry = new THREE.BoxGeometry(
+      this.right.userData.width, thickH, this.right.userData.depth
+    );
+    this.right.userData.height = thickH;
+    this.right.position.y = this.slabSurfaceY + thickH / 2;
+    this.rightLabel.position.y = this.right.position.y + 0.35;
+
+    // Cache the oceanic plate's resting Y so update() can dip it below
+    this._oceanicBaseY = this.slabSurfaceY + this.left.userData.height / 2;
+
+    // Trench — dark recessed stripe at the contact zone
+    this.trench = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 0.03, this.left.userData.depth * 0.95),
+      new THREE.MeshStandardMaterial({ color: 0x141822, roughness: 0.95 })
+    );
+    this.trench.position.set(0, this.slabSurfaceY + 0.005, 0);
+    this.trench.visible = false;
+    this.platform.add(this.trench);
+
+    // Magma chamber — glowing sphere that appears just above the slab,
+    // tucked beneath the leading edge of the continental plate.
+    this.magmaChamber = new THREE.Mesh(
+      new THREE.SphereGeometry(0.14, 16, 12),
+      new THREE.MeshStandardMaterial({
+        color: 0xff5522, emissive: 0xff3300, emissiveIntensity: 0,
+        transparent: true, opacity: 0, roughness: 0.4
+      })
+    );
+    this.platform.add(this.magmaChamber);
+
+    // Magma point light — illuminates the underside of the continental plate
+    this.magmaLight = new THREE.PointLight(0xff5522, 0, 1.6);
+    this.platform.add(this.magmaLight);
+
+    // Volcanic arc — three cones grow on top of the continental plate
+    this.volcanoes = [];
+    const stoneMat = new THREE.MeshStandardMaterial({
+      color: 0x4a3d33, roughness: 0.95
+    });
+    const lavaMatBase = new THREE.MeshStandardMaterial({
+      color: 0xff6633, emissive: 0xff4400, emissiveIntensity: 1.4
+    });
+    const numVolcanoes = 3;
+    for (let i = 0; i < numVolcanoes; i++) {
+      const v = new THREE.Group();
+      const z = (i - (numVolcanoes - 1) / 2) * (this.right.userData.depth / numVolcanoes);
+      const cone = new THREE.Mesh(
+        new THREE.ConeGeometry(0.10, 0.32, 12),
+        stoneMat
+      );
+      cone.position.y = 0.16;
+      v.add(cone);
+      const lava = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.035, 0.035, 0.04, 12),
+        lavaMatBase.clone()
+      );
+      lava.position.y = 0.31;
+      v.add(lava);
+      v.userData.lava = lava;
+      v.userData.zOffset = z;
+      v.userData.xJitter = (Math.random() - 0.5) * 0.06;
+      v.scale.y = 0.001;  // start hidden
+      this.platform.add(v);
+      this.volcanoes.push(v);
+    }
+
+    // Smoothed subduction-tilt state
+    this.subAngle = 0;
+  }
+
+  resetSpecific() {
+    if (this.trench) this.trench.visible = false;
+    if (this.left) {
+      this.left.rotation.z = 0;
+      this.left.position.y = this._oceanicBaseY;
+    }
+    for (const v of (this.volcanoes || [])) v.scale.y = 0.001;
+    if (this.magmaChamber) {
+      this.magmaChamber.material.emissiveIntensity = 0;
+      this.magmaChamber.material.opacity = 0;
+    }
+    if (this.magmaLight) this.magmaLight.intensity = 0;
+    this.subAngle = 0;
+  }
+
+  update(dt, t) {
+    this._updateRecenter();
+    if (!this.volcanoes) return;
+
+    // Subduction intensity from compression (same smoothstep curve as Himalayas)
+    const gap = this.edgeGap();
+    const TRIGGER = 0.05, FULL = -0.10;
+    let intensity = 0;
+    if (gap < TRIGGER) {
+      intensity = THREE.MathUtils.clamp((TRIGGER - gap) / (TRIGGER - FULL), 0, 1);
+      intensity = intensity * intensity * (3 - 2 * intensity);
+    }
+
+    // ---- Oceanic plate tilts down and dips into the slab ----
+    // Negative rotation.z = clockwise from +Z view = right edge dips down.
+    const targetAngle = -intensity * (Math.PI / 4);   // up to ~45°
+    this.subAngle += (targetAngle - this.subAngle) * 0.12;
+    this.left.rotation.z = this.subAngle;
+    this.left.position.y = this._oceanicBaseY - intensity * 0.05;
+
+    // ---- Trench at contact ----
+    this.trench.visible = intensity > 0.05;
+    if (this.trench.visible) {
+      this.trench.position.x = this.contactX();
+      this.trench.scale.x = 0.6 + intensity * 0.8;
+    }
+
+    // ---- Magma chamber under continental plate (just inland of trench) ----
+    const magmaX = this.right.position.x - this.right.userData.width / 2 + 0.20;
+    this.magmaChamber.position.set(
+      magmaX,
+      this.slabSurfaceY + 0.06 + Math.sin(t * 1.5) * 0.01,
+      0
+    );
+    this.magmaChamber.scale.setScalar(0.5 + intensity * 0.8);
+    this.magmaChamber.material.opacity = intensity * 0.85;
+    this.magmaChamber.material.emissiveIntensity =
+      intensity * (1.4 + Math.sin(t * 4) * 0.3);
+    this.magmaLight.position.copy(this.magmaChamber.position);
+    this.magmaLight.intensity = intensity * 1.6 * (1 + Math.sin(t * 3) * 0.2);
+
+    // ---- Volcanic arc grows on top of continental plate, inland of trench ----
+    const continentalLeadingEdge = this.right.position.x - this.right.userData.width / 2;
+    const arcX = continentalLeadingEdge + 0.25;
+    for (let i = 0; i < this.volcanoes.length; i++) {
+      const v = this.volcanoes[i];
+      const target = intensity > 0.3 ? Math.min(1, (intensity - 0.3) / 0.5) : 0.001;
+      v.scale.y += (target - v.scale.y) * 0.07;
+      v.position.set(
+        arcX + v.userData.xJitter,
+        this.slabSurfaceY + this.right.userData.height,
+        v.userData.zOffset
+      );
+      if (v.userData.lava) {
+        v.userData.lava.material.emissiveIntensity = 1.0 + Math.sin(t * 5 + i * 1.7) * 0.5;
+      }
+    }
+  }
+}
+
+// ============================================================================
+// 13. REGISTER + START
 // ============================================================================
 sceneManager.register(new MenuScene());
 sceneManager.register(new InformationScene());
@@ -1607,6 +1778,7 @@ sceneManager.register(new VocabularyScene());
 sceneManager.register(new HimalayaScene());
 sceneManager.register(new RiftScene());
 sceneManager.register(new SanAndreasScene());
+sceneManager.register(new AndesScene());
 sceneManager.show('Menu');
 
 // WebXR support detection
@@ -1619,7 +1791,7 @@ if ('xr' in navigator) {
 }
 
 // ============================================================================
-// 13. ANIMATION LOOP
+// 14. ANIMATION LOOP
 // ============================================================================
 let lastT = 0;
 const clock = new THREE.Clock();
