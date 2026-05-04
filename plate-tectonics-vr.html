@@ -229,21 +229,124 @@ function makeMantleSlab({ width = 4, height = 0.5, depth = 0.5 }) {
   return g;
 }
 
-// A "continent" — green textured top, brown sides. Sits on the slab.
-function makeContinent({ name, width = 1, depth = 0.4, height = 0.12, color = 0x4a7c4e }) {
-  // Top surface: undulating land tone
-  const topMat = new THREE.MeshStandardMaterial({ color, roughness: 0.9 });
-  const sideMat = new THREE.MeshStandardMaterial({ color: 0x5d3a1f, roughness: 0.95 });
-  const mats = [sideMat, sideMat, topMat, sideMat, sideMat, sideMat];
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), mats);
+// Builds the geometry for a continent — a subdivided box whose inner top-face
+// vertices are displaced upward by sum-of-sines noise to create rolling terrain,
+// with vertex colors that tint peaks brown and sides darker. The perimeter top
+// vertices are kept at the base height so the sides remain flush (coastlines
+// stay clean). `terrain` selects the visual style:
+//   'continental' — visible hills, brown peaks, decorative trees added later
+//   'oceanic'     — subtle ridges only, dark blue tones
+//   'none'        — flat box (no subdivision, no displacement)
+function makeContinentGeometry(width, depth, height, terrain = 'continental', baseColor = 0x4a7c4e) {
+  const isOceanic = terrain === 'oceanic';
+  const isFlat    = terrain === 'none';
+  const segW = isFlat ? 1 : (isOceanic ? 8  : 14);
+  const segD = isFlat ? 1 : (isOceanic ? 5  : 9);
+  const geo = new THREE.BoxGeometry(width, height, depth, segW, 1, segD);
+
+  const positions = geo.attributes.position;
+  const baseCol   = new THREE.Color(baseColor);
+  const peakCol   = isOceanic
+    ? new THREE.Color(baseColor).multiplyScalar(0.55)   // dark ocean ridges
+    : new THREE.Color(0x9a7855);                        // tan/brown mountain tops
+  const sideCol   = isOceanic ? new THREE.Color(0x2a3540) : new THREE.Color(0x5d3a1f);
+  const bottomCol = new THREE.Color(0x171717);
+
+  const maxElev = isFlat ? 0 : (isOceanic ? 0.005 : 0.04);
+  const colors  = new Float32Array(positions.count * 3);
+  // Phase from dimensions so different-sized plates get visually distinct terrain
+  const phi = (width * 3.7 + depth * 1.9 + height * 17.1);
+
+  for (let i = 0; i < positions.count; i++) {
+    const x = positions.getX(i);
+    const y = positions.getY(i);
+    const z = positions.getZ(i);
+
+    const onTop          = Math.abs(y - height/2) < 0.001;
+    const onBottom       = Math.abs(y + height/2) < 0.001;
+    const onPerimeterX   = Math.abs(Math.abs(x) - width/2)  < 0.0005;
+    const onPerimeterZ   = Math.abs(Math.abs(z) - depth/2)  < 0.0005;
+
+    let c;
+    if (onTop && !onPerimeterX && !onPerimeterZ && !isFlat) {
+      // Inner top-face vertex — displace upward and color by elevation
+      const e1 = Math.sin(x * 5.7  + phi)        * Math.cos(z * 6.3  + phi * 1.3);
+      const e2 = Math.sin(x * 11.0 + phi * 2)    * Math.cos(z * 9.2  + phi * 0.7) * 0.5;
+      const e3 = Math.sin(x * 19   + phi * 3)    * Math.cos(z * 17   + phi * 1.7) * 0.25;
+      const e  = (e1 + e2 + e3) / 1.75;
+      // Smooth falloff toward edges so coastlines stay flat
+      const fx = 1 - Math.pow(Math.abs(x) / (width/2), 2);
+      const fz = 1 - Math.pow(Math.abs(z) / (depth/2), 2);
+      const fall = Math.max(0, fx) * Math.max(0, fz);
+      const elev = Math.max(0, e) * maxElev * fall;
+      positions.setY(i, height/2 + elev);
+      const t = Math.min(1, elev / maxElev);
+      c = baseCol.clone().lerp(peakCol, t * 0.65);
+    } else if (onTop) {
+      c = baseCol.clone();
+    } else if (onBottom) {
+      c = bottomCol;
+    } else {
+      // Side vertex — gradient from darker base (near bottom) to lighter near top
+      const tY = (y + height/2) / height; // 0 at bottom, 1 at top
+      c = sideCol.clone().lerp(baseCol, tY * 0.35);
+    }
+    colors[i * 3]     = c.r;
+    colors[i * 3 + 1] = c.g;
+    colors[i * 3 + 2] = c.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+// Scatter a few low-poly trees across the top of a continental plate. Trees are
+// added as children so they ride along when the plate is dragged or rotated.
+function addTreesToContinent(mesh, width, depth, height) {
+  const foliageMat = new THREE.MeshStandardMaterial({ color: 0x1f3a25, roughness: 0.9 });
+  const trunkMat   = new THREE.MeshStandardMaterial({ color: 0x3a2818, roughness: 0.95 });
+  const numTrees = Math.max(3, Math.round(width * depth * 8));
+  for (let i = 0; i < numTrees; i++) {
+    const tree = new THREE.Group();
+    tree.userData.isTree = true;
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.006, 0.008, 0.03, 5), trunkMat
+    );
+    trunk.position.y = 0.015;
+    tree.add(trunk);
+    const foliage = new THREE.Mesh(
+      new THREE.ConeGeometry(0.025, 0.06, 6), foliageMat
+    );
+    foliage.position.y = 0.06;
+    tree.add(foliage);
+    const tx = (Math.random() - 0.5) * width * 0.75;
+    const tz = (Math.random() - 0.5) * depth * 0.75;
+    tree.position.set(tx, height/2 + 0.005, tz);
+    tree.rotation.y = Math.random() * Math.PI * 2;
+    // Small per-tree scale variation
+    const s = 0.85 + Math.random() * 0.4;
+    tree.scale.set(s, s, s);
+    mesh.add(tree);
+  }
+}
+
+// A "continent" — subdivided box with displaced terrain top, vertex-colored
+// for elevation tinting, plus tree decorations on continental variants.
+function makeContinent({ name, width = 1, depth = 0.4, height = 0.12, color = 0x4a7c4e, terrain = 'continental' }) {
+  const geo = makeContinentGeometry(width, depth, height, terrain, color);
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92 });
+  const mesh = new THREE.Mesh(geo, mat);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
-  mesh.userData.name = name;
-  mesh.userData.width = width;
-  mesh.userData.depth = depth;
-  mesh.userData.height = height;
+  mesh.userData.name        = name;
+  mesh.userData.width       = width;
+  mesh.userData.depth       = depth;
+  mesh.userData.height      = height;
+  mesh.userData.baseColor   = color;     // remembered so resizing scenes can rebuild geometry
+  mesh.userData.terrain     = terrain;
   mesh.userData.isContinent = true;
-  mesh.userData.draggable = true;
+  mesh.userData.draggable   = true;
+  if (terrain === 'continental') addTreesToContinent(mesh, width, depth, height);
   return mesh;
 }
 
@@ -1111,21 +1214,25 @@ class SimulationScene extends Scene {
     this.slabHalfW = slabW / 2;
     this.slabHalfD = slabD / 2;
 
-    // Two continents (children of platform)
-    const contW = o.continentWidth || 0.9;
-    const contH = o.continentHeight || 0.18;
-    const contD = slabD * 0.78;
+    // Two continents (children of platform). Per-side height and terrain
+    // options let scenes mix oceanic + continental plates (e.g., Andes).
+    const contW         = o.continentWidth  || 0.9;
+    const contH_left    = o.leftHeight      || o.continentHeight || 0.18;
+    const contH_right   = o.rightHeight     || o.continentHeight || 0.18;
+    const contD         = slabD * 0.78;
+    const leftTerrain   = o.leftTerrain     || 'continental';
+    const rightTerrain  = o.rightTerrain    || 'continental';
     this.left = makeContinent({
-      name: o.leftName, width: contW, depth: contD, height: contH,
-      color: o.leftColor || 0x4a7c4e
+      name: o.leftName, width: contW, depth: contD, height: contH_left,
+      color: o.leftColor || 0x4a7c4e, terrain: leftTerrain
     });
     this.right = makeContinent({
-      name: o.rightName, width: contW, depth: contD, height: contH,
-      color: o.rightColor || 0x5d8a3e
+      name: o.rightName, width: contW, depth: contD, height: contH_right,
+      color: o.rightColor || 0x5d8a3e, terrain: rightTerrain
     });
     const startGap = o.startGap ?? 0.4;
-    this.left.position.set(-(contW/2 + startGap/2),  this.slabSurfaceY + contH/2, 0);
-    this.right.position.set(contW/2 + startGap/2,    this.slabSurfaceY + contH/2, 0);
+    this.left.position.set(-(contW/2 + startGap/2),  this.slabSurfaceY + contH_left/2,  0);
+    this.right.position.set(contW/2 + startGap/2,    this.slabSurfaceY + contH_right/2, 0);
     this.platform.add(this.left);
     this.platform.add(this.right);
     this.draggables.push(this.left, this.right);
@@ -1486,12 +1593,15 @@ class SanAndreasScene extends SimulationScene {
     // Everything below is in PLATFORM-LOCAL coordinates (Z=0 is the slab center).
     const contD = 0.30;
     const contW = 2.4;
-    // Resize continents
+    // Rebuild the continents at the new dimensions, regenerating terrain & trees.
     [this.left, this.right].forEach(c => {
       c.geometry.dispose();
-      c.geometry = new THREE.BoxGeometry(contW, c.userData.height, contD);
+      // Strip old tree decorations (they were sized for the original plate)
+      c.children.slice().forEach(child => { if (child.userData.isTree) c.remove(child); });
+      c.geometry = makeContinentGeometry(contW, contD, c.userData.height, 'continental', c.userData.baseColor);
       c.userData.width = contW;
       c.userData.depth = contD;
+      addTreesToContinent(c, contW, contD, c.userData.height);
     });
     // Position them front and back on the slab (platform-local Z)
     this.left.position.set(0,  this.slabSurfaceY + this.left.userData.height/2,  -contD/2 - 0.01);
@@ -1614,24 +1724,17 @@ class AndesScene extends SimulationScene {
       leftName: 'Nazca Plate',         leftColor: 0x3d5872,   // oceanic — blue-grey
       rightName: 'S. American Plate',  rightColor: 0x6a7d3a,  // continental — green
       continentWidth: 0.9,
-      continentHeight: 0.10,            // base height — applies to oceanic plate
+      leftHeight:    0.10,    // oceanic plate is thin
+      rightHeight:   0.20,    // continental plate is thicker
+      leftTerrain:   'oceanic',
+      rightTerrain:  'continental',
       startGap: 0.6
     });
   }
 
   buildSpecific() {
-    // The base class created both plates with continentHeight=0.10 (oceanic).
-    // Resize the right plate to be visibly THICKER, representing continental crust.
-    const thickH = 0.20;
-    this.right.geometry.dispose();
-    this.right.geometry = new THREE.BoxGeometry(
-      this.right.userData.width, thickH, this.right.userData.depth
-    );
-    this.right.userData.height = thickH;
-    this.right.position.y = this.slabSurfaceY + thickH / 2;
-    this.rightLabel.position.y = this.right.position.y + 0.35;
-
-    // Cache the oceanic plate's resting Y so update() can dip it below
+    // Heights & terrain are already correct from base build via per-side opts.
+    // Cache the oceanic plate's resting Y so update() can dip it during subduction.
     this._oceanicBaseY = this.slabSurfaceY + this.left.userData.height / 2;
 
     // Trench — dark recessed stripe at the contact zone
