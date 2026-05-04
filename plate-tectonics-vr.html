@@ -18,8 +18,8 @@
 
 <div id="status"><span class="dot"></span><span id="status-text">Loading…</span></div>
 <div id="help">
-  <b>VR (Quest 3):</b> point a controller and pull the trigger to click buttons or grab plates.<br>
-  <b>Desktop:</b> left-click + drag plates &middot; click buttons with the cursor &middot; right-drag to orbit the camera.
+  <b>VR (Quest 3):</b> point a controller and pull the trigger to click buttons, grab plates, or grab the gold pedestal to rotate.<br>
+  <b>Desktop:</b> left-click + drag plates or pedestal &middot; click buttons with the cursor &middot; right-drag to orbit the camera.
 </div>
 
 <script type="importmap">
@@ -263,6 +263,12 @@ let dragTarget = null;
 let dragController = null;
 let dragOffsetWorld = new THREE.Vector3();
 let dragStartDistance = 0;
+// Rotator drag state — set when isRotator object is grabbed; null otherwise
+let rotState = null;
+const TILT_MIN = -Math.PI / 1.7;  // ~-105° (lets user lean it back to look "down" on top)
+const TILT_MAX =  Math.PI / 12;   // ~+15°
+const ROT_SENS_VR = 2.5;          // radians per meter of hand motion
+const ROT_SENS_MOUSE = 3.0;       // radians per NDC unit
 
 const controllers = [];
 const controllerModelFactory = new XRControllerModelFactory();
@@ -338,17 +344,35 @@ function onSelectStart(controller) {
     dragTarget = hit.object;
     dragController = controller;
     dragStartDistance = hit.distance;
-    dragOffsetWorld.copy(dragTarget.position).sub(
-      ray.origin.clone().add(ray.direction.clone().multiplyScalar(dragStartDistance))
-    );
-    sceneManager.current?.onDragStart?.(dragTarget);
+    if (dragTarget.userData.isRotator && dragTarget.userData.platform) {
+      // Rotation mode — track controller world position
+      const platform = dragTarget.userData.platform;
+      rotState = {
+        type: 'vr',
+        platform,
+        controller,
+        startCtrlPos: new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld),
+        startRotX: platform.rotation.x,
+        startRotY: platform.rotation.y
+      };
+    } else {
+      // Position-drag mode (continents). Offset must be in WORLD space — the
+      // dragTarget sits inside a rotatable platform group, so its local position
+      // differs from its world position once the platform is tilted/spun.
+      const targetWorldPos = new THREE.Vector3();
+      dragTarget.getWorldPosition(targetWorldPos);
+      const hitWorldPos = ray.origin.clone().add(ray.direction.clone().multiplyScalar(dragStartDistance));
+      dragOffsetWorld.copy(targetWorldPos).sub(hitWorldPos);
+      sceneManager.current?.onDragStart?.(dragTarget);
+    }
   }
 }
 function onSelectEnd(controller) {
   if (dragTarget && dragController === controller) {
-    sceneManager.current?.onDragEnd?.(dragTarget);
+    if (!rotState) sceneManager.current?.onDragEnd?.(dragTarget);
     dragTarget = null;
     dragController = null;
+    rotState = null;
   }
 }
 
@@ -369,7 +393,23 @@ renderer.domElement.addEventListener('pointerdown', e => {
     dragController = null; // signals mouse drag
     dragStartDistance = hit.distance;
     orbit.enabled = false;
-    sceneManager.current?.onDragStart?.(dragTarget);
+    if (dragTarget.userData.isRotator && dragTarget.userData.platform) {
+      const platform = dragTarget.userData.platform;
+      rotState = {
+        type: 'mouse',
+        platform,
+        startMouseNDC: mouse.clone(),
+        startRotX: platform.rotation.x,
+        startRotY: platform.rotation.y
+      };
+    } else {
+      // World-space offset so the grab-point on the continent stays under the cursor
+      const targetWorldPos = new THREE.Vector3();
+      dragTarget.getWorldPosition(targetWorldPos);
+      const hitWorldPos = ray.origin.clone().add(ray.direction.clone().multiplyScalar(dragStartDistance));
+      dragOffsetWorld.copy(targetWorldPos).sub(hitWorldPos);
+      sceneManager.current?.onDragStart?.(dragTarget);
+    }
   }
 });
 renderer.domElement.addEventListener('pointermove', e => {
@@ -384,14 +424,38 @@ renderer.domElement.addEventListener('pointermove', e => {
 });
 renderer.domElement.addEventListener('pointerup', () => {
   if (dragTarget) {
-    sceneManager.current?.onDragEnd?.(dragTarget);
+    if (!rotState) sceneManager.current?.onDragEnd?.(dragTarget);
     dragTarget = null;
+    rotState = null;
     orbit.enabled = true;
   }
 });
 
 function updateDrag() {
   if (!dragTarget) return;
+
+  // ---- Rotation drag (pedestal) ----
+  if (rotState) {
+    if (rotState.type === 'vr') {
+      const ctrlPos = new THREE.Vector3().setFromMatrixPosition(rotState.controller.matrixWorld);
+      const dx = ctrlPos.x - rotState.startCtrlPos.x;
+      const dy = ctrlPos.y - rotState.startCtrlPos.y;
+      rotState.platform.rotation.y = rotState.startRotY + dx * ROT_SENS_VR;
+      rotState.platform.rotation.x = THREE.MathUtils.clamp(
+        rotState.startRotX - dy * ROT_SENS_VR, TILT_MIN, TILT_MAX
+      );
+    } else { // mouse
+      const dx = mouse.x - rotState.startMouseNDC.x;
+      const dy = mouse.y - rotState.startMouseNDC.y;
+      rotState.platform.rotation.y = rotState.startRotY + dx * ROT_SENS_MOUSE;
+      rotState.platform.rotation.x = THREE.MathUtils.clamp(
+        rotState.startRotX + dy * ROT_SENS_MOUSE, TILT_MIN, TILT_MAX
+      );
+    }
+    return;
+  }
+
+  // ---- Position drag (continents) ----
   let ray;
   if (dragController) {
     ray = makeControllerRay(dragController);
@@ -401,10 +465,11 @@ function updateDrag() {
   }
   const targetWorld = ray.origin.clone().add(ray.direction.clone().multiplyScalar(dragStartDistance));
   targetWorld.add(dragOffsetWorld);
-  // Let the active scene constrain the position (axis locks, bounds)
-  sceneManager.current?.constrainDrag?.(dragTarget, targetWorld);
-  dragTarget.parent.worldToLocal(targetWorld);
-  dragTarget.position.copy(targetWorld);
+  // Convert to parent-local space FIRST so constraints operate in the platform's
+  // own coordinate system (correct even when the platform is rotated/tilted).
+  const targetLocal = dragTarget.parent.worldToLocal(targetWorld.clone());
+  sceneManager.current?.constrainDrag?.(dragTarget, targetLocal);
+  dragTarget.position.copy(targetLocal);
   sceneManager.current?.onDragMove?.(dragTarget);
 }
 
@@ -1010,6 +1075,9 @@ class SimulationScene extends Scene {
     const g = this.group;
     const o = this.opts;
 
+    // ---- World-fixed UI (title, instructions, buttons) ----
+    // These stay readable regardless of how the user rotates the simulation.
+
     // Title panel
     const title = makeTextPanel({
       text: o.title, width: 2.4, height: 0.28,
@@ -1019,22 +1087,30 @@ class SimulationScene extends Scene {
     title.position.set(0, 2.5, -2.4);
     g.add(title);
 
-    // Instructions
+    // Instructions (auto-extended with rotation hint)
     const instr = makeTextPanel({
-      text: o.instructions, width: 2.4, height: 0.32,
+      text: o.instructions + '\nGrab the pedestal to rotate or tilt the simulation.',
+      width: 2.4, height: 0.4,
       bg: '#10182a', fg: '#cdd', fontSize: 26, align: 'center', padding: 14, lineHeight: 1.35
     });
-    instr.position.set(0, 2.15, -2.4);
+    instr.position.set(0, 2.10, -2.4);
     g.add(instr);
 
-    // Mantle slab — floats in front of user, like a workbench
+    // ---- Platform group (everything inside rotates together) ----
+    // Pivot is at the slab's vertical center, sitting in front of the user.
+    this.platform = new THREE.Group();
+    this.platform.position.set(0, 1.2, -1.7);
+    g.add(this.platform);
+
+    // Mantle slab — child of platform at local (0, 0, 0)
     const slabW = 3.0, slabH = 0.5, slabD = 0.7;
     this.slab = makeMantleSlab({ width: slabW, height: slabH, depth: slabD });
-    this.slab.position.set(0, 1.2, -1.7);
-    g.add(this.slab);
-    this.slabSurfaceY = 1.2 + slabH/2; // world Y of the slab top
+    this.platform.add(this.slab);
+    this.slabSurfaceY = slabH / 2;     // platform-local Y of slab top
+    this.slabHalfW = slabW / 2;
+    this.slabHalfD = slabD / 2;
 
-    // Two continents
+    // Two continents (children of platform)
     const contW = o.continentWidth || 0.9;
     const contH = o.continentHeight || 0.18;
     const contD = slabD * 0.78;
@@ -1046,30 +1122,77 @@ class SimulationScene extends Scene {
       name: o.rightName, width: contW, depth: contD, height: contH,
       color: o.rightColor || 0x5d8a3e
     });
-    // Initial positions (slightly separated) — relative to slab
     const startGap = o.startGap ?? 0.4;
-    this.left.position.set(-(contW/2 + startGap/2), this.slabSurfaceY + contH/2, -1.7);
-    this.right.position.set(contW/2 + startGap/2, this.slabSurfaceY + contH/2, -1.7);
-    g.add(this.left);
-    g.add(this.right);
+    this.left.position.set(-(contW/2 + startGap/2),  this.slabSurfaceY + contH/2, 0);
+    this.right.position.set(contW/2 + startGap/2,    this.slabSurfaceY + contH/2, 0);
+    this.platform.add(this.left);
+    this.platform.add(this.right);
     this.draggables.push(this.left, this.right);
 
-    // Continent labels (floating above each)
+    // Continent labels — children of platform so they rotate too
     this.leftLabel = this.makeFloatingLabel(o.leftName, o.leftColor);
     this.leftLabel.position.copy(this.left.position);
     this.leftLabel.position.y += 0.35;
-    g.add(this.leftLabel);
+    this.platform.add(this.leftLabel);
     this.rightLabel = this.makeFloatingLabel(o.rightName, o.rightColor);
     this.rightLabel.position.copy(this.right.position);
     this.rightLabel.position.y += 0.35;
-    g.add(this.rightLabel);
+    this.platform.add(this.rightLabel);
 
-    // Movement direction arrows (subtle visual cue)
-    this.arrows = this.makeArrows(o.arrowDirection);
+    // ---- Pedestal (rotator handle) ----
+    // A circular base wider than the slab, plus a glowing band around its side
+    // and four small directional arrows on top — all flagged isRotator so the
+    // user can grab any of them to spin or tilt the simulation.
+    const pedH = 0.2, pedR = 1.7;
+    const pedestal = new THREE.Mesh(
+      new THREE.CylinderGeometry(pedR, pedR * 1.05, pedH, 48),
+      new THREE.MeshStandardMaterial({ color: 0x3a4658, metalness: 0.5, roughness: 0.4 })
+    );
+    pedestal.position.y = -slabH/2 - pedH/2;
+    pedestal.userData.isRotator = true;
+    pedestal.userData.platform = this.platform;
+    this.platform.add(pedestal);
+    this.draggables.push(pedestal);
 
-    // Reset + back buttons
+    // Glowing band around the side of the pedestal — discoverable "grab here" cue
+    const band = new THREE.Mesh(
+      new THREE.TorusGeometry(pedR * 1.01, 0.025, 12, 64),
+      new THREE.MeshStandardMaterial({
+        color: 0xFFD060, emissive: 0x664400, emissiveIntensity: 0.4,
+        metalness: 0.7, roughness: 0.25
+      })
+    );
+    band.rotation.x = Math.PI / 2;        // lay it flat → wraps around cylinder side
+    band.position.y = -slabH/2 - pedH/2;  // pedestal's vertical center
+    band.userData.isRotator = true;
+    band.userData.platform = this.platform;
+    this.platform.add(band);
+    this.draggables.push(band);
+
+    // Four small triangular arrows on top of the pedestal at compass points,
+    // placed at radius 1.6 so they're always outside the slab footprint and
+    // never occluded by it. They visually suggest tangential rotation.
+    const arrowMat = new THREE.MeshBasicMaterial({ color: 0xFFD060 });
+    for (let i = 0; i < 4; i++) {
+      const angle = i * Math.PI / 2 + Math.PI / 4;
+      const arrowGroup = new THREE.Group();
+      const triShape = new THREE.Shape();
+      triShape.moveTo(-0.05, -0.03); triShape.lineTo(0.05, 0);
+      triShape.lineTo(-0.05, 0.03); triShape.closePath();
+      const tri = new THREE.Mesh(new THREE.ShapeGeometry(triShape), arrowMat);
+      tri.rotation.x = -Math.PI / 2;
+      arrowGroup.add(tri);
+      arrowGroup.position.set(Math.cos(angle) * 1.6, -slabH/2 + 0.001, Math.sin(angle) * 1.6);
+      arrowGroup.rotation.y = -angle; // tangent to circle
+      this.platform.add(arrowGroup);
+    }
+
+    // Subclass scene-specific construction (peaks, magma, fault)
+    this.buildSpecific?.();
+
+    // ---- World-fixed control buttons ----
     const back = makeBackButton(() => sceneManager.show('Menu'));
-    back.position.set(-1.0, 0.7, -1.2);
+    back.position.set(-1.0, 0.65, -1.2);
     back.rotation.x = -0.4;
     g.add(back);
     this.clickables.push(back);
@@ -1078,14 +1201,27 @@ class SimulationScene extends Scene {
       label: 'Reset', color: '#3a3a4a', hover: '#ffaa00',
       width: 0.5, height: 0.16, onClick: () => this.reset()
     });
-    reset.position.set(1.0, 0.7, -1.2);
+    reset.position.set(0, 0.65, -1.2);
     reset.rotation.x = -0.4;
     g.add(reset);
     this.clickables.push(reset);
 
-    // Subclass scene-specific construction
-    this.buildSpecific?.();
+    const recenter = makeButton({
+      label: 'Recenter', color: '#3a3a4a', hover: '#ffaa00',
+      width: 0.5, height: 0.16, onClick: () => this.recenterPlatform()
+    });
+    recenter.position.set(1.0, 0.65, -1.2);
+    recenter.rotation.x = -0.4;
+    g.add(recenter);
+    this.clickables.push(recenter);
   }
+
+  recenterPlatform() {
+    if (!this.platform) return;
+    // Smoothly snap rotation back to identity over a few frames
+    this._recentering = true;
+  }
+
   makeFloatingLabel(text, accentHex) {
     const accent = '#' + new THREE.Color(accentHex).getHexString();
     return makeTextPanel({
@@ -1093,55 +1229,61 @@ class SimulationScene extends Scene {
       accent, fontSize: 40, align: 'center', padding: 8
     });
   }
-  makeArrows(/* direction */) { /* override per scene */ }
 
-  // Constrain dragging — continents only move along X, stay on slab top
-  constrainDrag(target, worldPos) {
+  // Constraints are now applied in PLATFORM-LOCAL coordinates.
+  // Continents stay glued to slab top, locked Z-center, X bounded to slab.
+  constrainDrag(target, localPos) {
     if (target === this.left || target === this.right) {
-      // Lock Y to surface, lock Z to slab center
-      worldPos.y = this.slabSurfaceY + target.userData.height/2;
-      worldPos.z = -1.7;
-      // X bounds: stay on slab
-      const half = 1.5 - target.userData.width/2;
-      worldPos.x = THREE.MathUtils.clamp(worldPos.x, -half, half);
+      localPos.y = this.slabSurfaceY + target.userData.height / 2;
+      localPos.z = 0;
+      const half = this.slabHalfW - target.userData.width / 2;
+      localPos.x = THREE.MathUtils.clamp(localPos.x, -half, half);
       // Don't allow swapping order
       if (target === this.left && this.right) {
-        worldPos.x = Math.min(worldPos.x, this.right.position.x - target.userData.width/2 - 0.02);
+        localPos.x = Math.min(localPos.x, this.right.position.x - target.userData.width/2 - 0.02);
       }
       if (target === this.right && this.left) {
-        worldPos.x = Math.max(worldPos.x, this.left.position.x + target.userData.width/2 + 0.02);
+        localPos.x = Math.max(localPos.x, this.left.position.x + target.userData.width/2 + 0.02);
       }
     }
   }
   onDragMove(target) {
-    // Keep labels above their continents
-    if (target === this.left) {
-      this.leftLabel.position.x = this.left.position.x;
-    } else if (target === this.right) {
-      this.rightLabel.position.x = this.right.position.x;
-    }
+    if (target === this.left)  this.leftLabel.position.x  = this.left.position.x;
+    else if (target === this.right) this.rightLabel.position.x = this.right.position.x;
   }
 
   reset() {
     const o = this.opts;
     const contW = o.continentWidth || 0.9;
     const startGap = o.startGap ?? 0.4;
-    this.left.position.x = -(contW/2 + startGap/2);
-    this.right.position.x = contW/2 + startGap/2;
-    this.leftLabel.position.x = this.left.position.x;
+    this.left.position.x  = -(contW/2 + startGap/2);
+    this.right.position.x =  (contW/2 + startGap/2);
+    this.leftLabel.position.x  = this.left.position.x;
     this.rightLabel.position.x = this.right.position.x;
     this.resetSpecific?.();
   }
 
-  // Helpers used by subclasses
+  // Smooth recenter — called from update() if requested via Recenter button
+  _updateRecenter() {
+    if (!this._recentering || !this.platform) return;
+    const r = this.platform.rotation;
+    r.x += (0 - r.x) * 0.18;
+    r.y += (0 - r.y) * 0.18;
+    if (Math.abs(r.x) < 0.002 && Math.abs(r.y) < 0.002) {
+      r.x = 0; r.y = 0;
+      this._recentering = false;
+    }
+  }
+
+  // Helpers used by subclasses (operate on platform-local positions)
   edgeGap() {
-    const lE = this.left.position.x + this.left.userData.width/2;
-    const rE = this.right.position.x - this.right.userData.width/2;
+    const lE = this.left.position.x  + this.left.userData.width  / 2;
+    const rE = this.right.position.x - this.right.userData.width / 2;
     return rE - lE;
   }
   contactX() {
-    const lE = this.left.position.x + this.left.userData.width/2;
-    const rE = this.right.position.x - this.right.userData.width/2;
+    const lE = this.left.position.x  + this.left.userData.width  / 2;
+    const rE = this.right.position.x - this.right.userData.width / 2;
     return (lE + rE) / 2;
   }
 }
@@ -1166,8 +1308,9 @@ class HimalayaScene extends SimulationScene {
     const peakMat = new THREE.MeshStandardMaterial({ color: 0x886655, roughness: 0.95 });
     const snowMat = new THREE.MeshStandardMaterial({ color: 0xeeeefa, roughness: 0.6 });
     const peakRoot = new THREE.Group();
-    peakRoot.position.set(0, this.slabSurfaceY + this.left.userData.height, -1.7);
-    this.group.add(peakRoot);
+    // Platform-local: sit on slab surface above the continent tops
+    peakRoot.position.set(0, this.slabSurfaceY + this.left.userData.height, 0);
+    this.platform.add(peakRoot);
     this.peakRoot = peakRoot;
     const numPeaks = 9;
     for (let i = 0; i < numPeaks; i++) {
@@ -1214,6 +1357,7 @@ class HimalayaScene extends SimulationScene {
     this.lava.scale.y = 0.001;
   }
   update(dt, t) {
+    this._updateRecenter();
     if (!this.peaks) return;
     const gap = this.edgeGap();
     // Compression intensity (0 = no contact, 1 = full overlap)
@@ -1263,13 +1407,14 @@ class RiftScene extends SimulationScene {
       color: 0xff5522, emissive: 0xff3300, emissiveIntensity: 1.5, roughness: 0.4
     });
     this.magma = new THREE.Mesh(magmaGeo, magmaMat);
-    this.magma.position.set(0, this.slabSurfaceY + 0.02, -1.7);
+    // Platform-local: just above slab surface, centered
+    this.magma.position.set(0, this.slabSurfaceY + 0.02, 0);
     this.magma.scale.x = 0.001;
-    this.group.add(this.magma);
+    this.platform.add(this.magma);
     // Lava glow light
     this.magmaLight = new THREE.PointLight(0xff4422, 0, 1.5);
-    this.magmaLight.position.set(0, this.slabSurfaceY + 0.05, -1.7);
-    this.group.add(this.magmaLight);
+    this.magmaLight.position.set(0, this.slabSurfaceY + 0.05, 0);
+    this.platform.add(this.magmaLight);
     // Steam particles (simple expanding spheres) — array of meshes
     this.steams = [];
     const steamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 });
@@ -1277,7 +1422,7 @@ class RiftScene extends SimulationScene {
       const s = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), steamMat.clone());
       s.userData.life = Math.random();
       s.userData.zOffset = (Math.random() - 0.5) * this.left.userData.depth * 0.7;
-      this.group.add(s);
+      this.platform.add(s);
       this.steams.push(s);
     }
   }
@@ -1285,6 +1430,7 @@ class RiftScene extends SimulationScene {
     if (this.magma) this.magma.scale.x = 0.001;
   }
   update(dt, t) {
+    this._updateRecenter();
     if (!this.magma) return;
     const gap = Math.max(0, this.edgeGap());
     // Magma scales with gap (clamped)
@@ -1308,7 +1454,7 @@ class RiftScene extends SimulationScene {
       const life = s.userData.life;
       s.position.x = this.contactX() + (Math.random() - 0.5) * 0.04;
       s.position.y = this.slabSurfaceY + 0.05 + life * 0.6;
-      s.position.z = -1.7 + s.userData.zOffset;
+      s.position.z = s.userData.zOffset; // platform-local: no -1.7 offset
       s.scale.setScalar(0.5 + life * 2.5);
       s.material.opacity = (1 - life) * 0.5 * intensity;
       s.visible = intensity > 0.05;
@@ -1336,9 +1482,7 @@ class SanAndreasScene extends SimulationScene {
   build() {
     super.build();
     // After base build, reorient continents to be split front/back instead of L/R.
-    // The simplest way: rebuild positions and override constrainDrag in this class.
-    // We'll keep the boxes the same shape; just place them stacked on Z, full slab width.
-    const slabD = 0.7;
+    // Everything below is in PLATFORM-LOCAL coordinates (Z=0 is the slab center).
     const contD = 0.30;
     const contW = 2.4;
     // Resize continents
@@ -1348,13 +1492,13 @@ class SanAndreasScene extends SimulationScene {
       c.userData.width = contW;
       c.userData.depth = contD;
     });
-    // Position them front and back on the slab
-    this.left.position.set(0, this.slabSurfaceY + this.left.userData.height/2, -1.7 - contD/2 - 0.01);
-    this.right.position.set(0, this.slabSurfaceY + this.right.userData.height/2, -1.7 + contD/2 + 0.01);
+    // Position them front and back on the slab (platform-local Z)
+    this.left.position.set(0,  this.slabSurfaceY + this.left.userData.height/2,  -contD/2 - 0.01);
+    this.right.position.set(0, this.slabSurfaceY + this.right.userData.height/2,  contD/2 + 0.01);
     // Move labels to follow
-    this.leftLabel.position.set(this.left.position.x, this.left.position.y + 0.35, this.left.position.z);
-    this.rightLabel.position.set(this.right.position.x, this.right.position.y + 0.35, this.right.position.z);
-    // Add fault line — glowing strip between them
+    this.leftLabel.position.set(0, this.left.position.y + 0.35, this.left.position.z);
+    this.rightLabel.position.set(0, this.right.position.y + 0.35, this.right.position.z);
+    // Add fault line — glowing strip between them (platform-local)
     const faultMat = new THREE.MeshStandardMaterial({
       color: 0xd4a04a, emissive: 0x884400, emissiveIntensity: 0.7
     });
@@ -1362,8 +1506,8 @@ class SanAndreasScene extends SimulationScene {
       new THREE.BoxGeometry(contW, 0.02, 0.05),
       faultMat
     );
-    this.fault.position.set(0, this.slabSurfaceY + 0.012, -1.7);
-    this.group.add(this.fault);
+    this.fault.position.set(0, this.slabSurfaceY + 0.012, 0);
+    this.platform.add(this.fault);
     // Stress markers: small cracks across the fault that grow with offset
     this.cracks = [];
     const crackMat = new THREE.MeshStandardMaterial({
@@ -1372,10 +1516,10 @@ class SanAndreasScene extends SimulationScene {
     for (let i = 0; i < 12; i++) {
       const x = (i / 11 - 0.5) * contW * 0.9;
       const c = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.025, 0.18), crackMat.clone());
-      c.position.set(x, this.slabSurfaceY + 0.013, -1.7);
+      c.position.set(x, this.slabSurfaceY + 0.013, 0);
       c.rotation.y = (Math.random() - 0.5) * 0.4;
       c.material.opacity = 0;
-      this.group.add(c);
+      this.platform.add(c);
       this.cracks.push(c);
     }
     // Earthquake state
@@ -1384,15 +1528,15 @@ class SanAndreasScene extends SimulationScene {
     this.lastLeftX = 0;
     this.lastRightX = 0;
   }
-  // Override drag constraints: lock Y, allow X (along fault), lock Z to each plate's row
-  constrainDrag(target, worldPos) {
+  // Drag constraints in PLATFORM-LOCAL coords: lock Y to slab top, lock Z per row, X bounds
+  constrainDrag(target, localPos) {
     if (target === this.left || target === this.right) {
-      worldPos.y = this.slabSurfaceY + target.userData.height/2;
-      // Each plate stays on its own side of the fault (Z-locked)
-      worldPos.z = (target === this.left) ? -1.7 - target.userData.depth/2 - 0.01
-                                          : -1.7 + target.userData.depth/2 + 0.01;
+      localPos.y = this.slabSurfaceY + target.userData.height/2;
+      // Each plate stays on its own side of the fault (Z-locked, platform-local)
+      localPos.z = (target === this.left) ? -target.userData.depth/2 - 0.01
+                                          :  target.userData.depth/2 + 0.01;
       // X bounds — let them drift quite far
-      worldPos.x = THREE.MathUtils.clamp(worldPos.x, -1.0, 1.0);
+      localPos.x = THREE.MathUtils.clamp(localPos.x, -1.0, 1.0);
     }
   }
   onDragMove(target) {
@@ -1410,6 +1554,7 @@ class SanAndreasScene extends SimulationScene {
     for (const c of this.cracks) c.material.opacity = 0;
   }
   update(dt, t) {
+    this._updateRecenter();
     if (!this.fault) return;
     // Stress = how much the two plates have been offset relative to each other,
     // accumulated by drag motion (opposite directions = more stress).
@@ -1434,18 +1579,19 @@ class SanAndreasScene extends SimulationScene {
       this.shakeAmplitude = 0.04;
       this.stress = 0;
     }
-    // Apply and decay shake
+    // Apply and decay shake (platform-local Z; baseline is per-plate offset, no -1.7)
+    const baseLZ = -this.left.userData.depth/2 - 0.01;
+    const baseRZ =  this.right.userData.depth/2 + 0.01;
     if (this.shakeAmplitude > 0.001) {
-      const sx = (Math.random() - 0.5) * this.shakeAmplitude;
       const sz = (Math.random() - 0.5) * this.shakeAmplitude;
-      this.left.position.z = -1.7 - this.left.userData.depth/2 - 0.01 + sz;
-      this.right.position.z = -1.7 + this.right.userData.depth/2 + 0.01 - sz;
-      this.fault.position.z = -1.7 + sz * 0.5;
+      this.left.position.z  = baseLZ + sz;
+      this.right.position.z = baseRZ - sz;
+      this.fault.position.z = sz * 0.5;
       this.shakeAmplitude *= 0.92;
     } else {
-      this.left.position.z = -1.7 - this.left.userData.depth/2 - 0.01;
-      this.right.position.z = -1.7 + this.right.userData.depth/2 + 0.01;
-      this.fault.position.z = -1.7;
+      this.left.position.z  = baseLZ;
+      this.right.position.z = baseRZ;
+      this.fault.position.z = 0;
     }
     // Stress slowly decays even without earthquake
     this.stress = Math.max(0, this.stress - dt * 0.05);
