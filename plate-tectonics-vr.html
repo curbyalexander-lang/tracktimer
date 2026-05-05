@@ -765,24 +765,30 @@ class InformationScene extends Scene {
     header.position.set(0, 2.6, -2.6);
     g.add(header);
 
-    // Three stations in an arc around the user
+    // Four stations in an arc around the user
     const stations = [
       {
         title: 'Convergent (continent–continent)',
         body: 'When two continental plates push into each other, neither can sink — both crumple upward into folded mountain ranges.\n\nExample: the HIMALAYAS, where India is still pushing into Asia. Mount Everest grows about 4 mm taller every year.',
-        accent: '#c25450', angle: -0.7,
+        accent: '#c25450', angle: -0.9,
         anim: g => this.buildConvergentAnim(g)
+      },
+      {
+        title: 'Convergent (ocean–continent)',
+        body: 'When a dense oceanic plate meets a lighter continental plate, the oceanic plate sinks beneath in a process called subduction. As it descends and melts, magma rises and feeds a chain of volcanoes on the continent above.\n\nExample: the ANDES MOUNTAINS, where the Nazca Plate is subducting beneath South America.',
+        accent: '#d4a04a', angle: -0.3,
+        anim: g => this.buildSubductionAnim(g)
       },
       {
         title: 'Divergent',
         body: 'When two plates pull apart, hot magma rises from below to fill the gap and cools into new crust.\n\nExample: the EAST AFRICAN RIFT VALLEY, where the African plate is slowly splitting in two. On the seafloor, divergent boundaries create mid-ocean ridges.',
-        accent: '#6ea75e', angle: 0,
+        accent: '#6ea75e', angle: 0.3,
         anim: g => this.buildDivergentAnim(g)
       },
       {
         title: 'Transform',
         body: 'When two plates grind sideways past each other, friction builds until they suddenly slip — releasing the energy as an earthquake. No crust is created or destroyed.\n\nExample: the SAN ANDREAS FAULT in California.',
-        accent: '#d4a04a', angle: 0.7,
+        accent: '#e8a850', angle: 0.9,
         anim: g => this.buildTransformAnim(g)
       }
     ];
@@ -846,82 +852,378 @@ class InformationScene extends Scene {
   }
 
   // Mini convergent animation: two blocks slide together; a bump grows between them
+  // ----- Helpers shared by mini-animations ----------------------------------
+
+  // 2D arrow group (stem + triangular head). Default points in +X. Use
+  // rotation.y = Math.PI to flip horizontally; rotation.z = Math.PI/2 to point up.
+  _animArrow(color, length = 0.10, thickness = 0.018) {
+    const mat = new THREE.MeshBasicMaterial({ color });
+    const arrow = new THREE.Group();
+    const stem = new THREE.Mesh(
+      new THREE.BoxGeometry(length * 0.6, thickness, 0.005), mat
+    );
+    stem.position.x = -length * 0.2;
+    arrow.add(stem);
+    const headShape = new THREE.Shape();
+    headShape.moveTo(length * 0.5, 0);
+    headShape.lineTo(length * 0.1, thickness * 1.8);
+    headShape.lineTo(length * 0.1, -thickness * 1.8);
+    headShape.closePath();
+    const head = new THREE.Mesh(new THREE.ShapeGeometry(headShape), mat);
+    arrow.add(head);
+    return arrow;
+  }
+
+  // Continental plate body — tan rectangle with thin horizontal brown stripes
+  // on the front face, suggesting layered/folded sedimentary rock as in the
+  // educational reference diagrams.
+  _stratifiedPlate(width, height, depth, baseColor = 0xc8a878, stripeColor = 0x8a6a3a) {
+    const plate = new THREE.Group();
+    const main = new THREE.Mesh(
+      new THREE.BoxGeometry(width, height, depth),
+      new THREE.MeshStandardMaterial({ color: baseColor, roughness: 0.92 })
+    );
+    plate.add(main);
+    for (let i = 0; i < 2; i++) {
+      const stripe = new THREE.Mesh(
+        new THREE.BoxGeometry(width * 0.97, 0.006, 0.002),
+        new THREE.MeshStandardMaterial({ color: stripeColor })
+      );
+      stripe.position.set(0, -height * 0.22 + i * (height * 0.44), depth / 2 + 0.001);
+      plate.add(stripe);
+    }
+    return plate;
+  }
+
+  // ----- Convergent (continent–continent) -----------------------------------
+  // Cross-section: red mantle base, two stratified tan plates, green crust on
+  // top, black inward-pointing arrows. Mountain ridge folds upward at contact.
   buildConvergentAnim(g) {
-    const slabW = 0.8;
-    const left = new THREE.Mesh(
-      new THREE.BoxGeometry(slabW/2, 0.06, 0.18),
-      new THREE.MeshStandardMaterial({ color: 0x5d7a4a })
+    const W = 0.9, H = 0.45, D = 0.04;
+    const mantle = new THREE.Mesh(
+      new THREE.BoxGeometry(W, H * 0.5, D),
+      new THREE.MeshStandardMaterial({ color: 0xa83828, roughness: 0.95 })
     );
-    const right = left.clone();
-    right.material = left.material.clone();
-    g.add(left); g.add(right);
-    // Mountain ridge
-    const ridge = new THREE.Mesh(
-      new THREE.ConeGeometry(0.04, 0.18, 6),
-      new THREE.MeshStandardMaterial({ color: 0x886655 })
+    mantle.position.y = -H * 0.25;
+    g.add(mantle);
+    const plateLeft  = this._stratifiedPlate(W/2, H * 0.18, D);
+    const plateRight = this._stratifiedPlate(W/2, H * 0.18, D);
+    plateLeft.position.y  = -H * 0.04;
+    plateRight.position.y = -H * 0.04;
+    g.add(plateLeft); g.add(plateRight);
+    const crustMat = new THREE.MeshStandardMaterial({ color: 0x3d7e3d, roughness: 0.9 });
+    const crustL = new THREE.Mesh(new THREE.BoxGeometry(W/2, H * 0.07, D), crustMat);
+    const crustR = new THREE.Mesh(new THREE.BoxGeometry(W/2, H * 0.07, D), crustMat.clone());
+    crustL.position.y = H * 0.085;
+    crustR.position.y = H * 0.085;
+    g.add(crustL); g.add(crustR);
+    // Folded mountain at contact
+    const mountain = new THREE.Mesh(
+      new THREE.ConeGeometry(0.045, 0.16, 4),
+      new THREE.MeshStandardMaterial({ color: 0x3d7e3d, roughness: 0.9 })
     );
-    ridge.position.y = 0.09;
-    ridge.scale.y = 0.01;
-    g.add(ridge);
+    mountain.position.y = H * 0.18;
+    mountain.rotation.y = Math.PI / 4;
+    mountain.scale.y = 0.001;
+    g.add(mountain);
+    // Inward-pointing arrows on plates
+    const arrowL = this._animArrow(0x000000, 0.10);
+    arrowL.position.set(-W * 0.32, -H * 0.04, D/2 + 0.003);
+    g.add(arrowL);
+    const arrowR = this._animArrow(0x000000, 0.10);
+    arrowR.position.set(W * 0.32, -H * 0.04, D/2 + 0.003);
+    arrowR.rotation.y = Math.PI;
+    g.add(arrowR);
     return (t) => {
-      const phase = (Math.sin(t * 0.6) + 1) / 2; // 0..1..0
-      const sep = 0.16 - phase * 0.16; // separation goes to 0
-      left.position.x = -slabW/4 - sep;
-      right.position.x = slabW/4 + sep;
-      ridge.scale.y = 0.05 + phase * 1.6;
-      ridge.position.y = 0.03 + phase * 0.09;
+      const phase = (Math.sin(t * 0.6) + 1) / 2;
+      const sep = 0.10 - phase * 0.10;
+      plateLeft.position.x  = -W/4 - sep;
+      plateRight.position.x =  W/4 + sep;
+      crustL.position.x = plateLeft.position.x;
+      crustR.position.x = plateRight.position.x;
+      mountain.scale.y = 0.05 + phase * 1.4;
+      mountain.position.y = H * 0.13 + phase * 0.07;
+      arrowL.position.x = -W * 0.32 - sep * 0.4;
+      arrowR.position.x =  W * 0.32 + sep * 0.4;
     };
   }
-  buildDivergentAnim(g) {
-    const slabW = 0.8;
-    const left = new THREE.Mesh(
-      new THREE.BoxGeometry(slabW/2, 0.06, 0.18),
-      new THREE.MeshStandardMaterial({ color: 0x5d7a4a })
+
+  // ----- Convergent (ocean–continent) — subduction --------------------------
+  // Cross-section showing distinct earth layers: dark asthenosphere at the
+  // bottom, brown lithosphere above, then on the surface an ocean (water +
+  // thin oceanic crust) on the left and a thicker continental plate with
+  // mountains on the right. The leading edge of the oceanic plate tilts down
+  // under the continent; magma forms beneath; volcanoes grow on top.
+  buildSubductionAnim(g) {
+    const W = 0.9, H = 0.55, D = 0.04;
+    const astheno = new THREE.Mesh(
+      new THREE.BoxGeometry(W, H * 0.32, D),
+      new THREE.MeshStandardMaterial({ color: 0x8a2a20, roughness: 0.95 })
     );
-    const right = left.clone(); right.material = left.material.clone();
-    g.add(left); g.add(right);
-    // Magma glow in the gap
-    const magma = new THREE.Mesh(
-      new THREE.BoxGeometry(0.001, 0.06, 0.18),
+    astheno.position.y = -H * 0.34;
+    g.add(astheno);
+    const litho = new THREE.Mesh(
+      new THREE.BoxGeometry(W, H * 0.16, D),
+      new THREE.MeshStandardMaterial({ color: 0x6a4a3a, roughness: 0.92 })
+    );
+    litho.position.y = -H * 0.10;
+    g.add(litho);
+    // Ocean water (left half, above oceanic crust)
+    const water = new THREE.Mesh(
+      new THREE.BoxGeometry(W * 0.5, H * 0.18, D),
+      new THREE.MeshStandardMaterial({ color: 0x4a7eb0, roughness: 0.6 })
+    );
+    water.position.set(-W * 0.25, H * 0.18, 0);
+    g.add(water);
+    // Oceanic crust — flat segment (left, doesn't move)
+    const oceanicMat = new THREE.MeshStandardMaterial({ color: 0xa88060, roughness: 0.92 });
+    const oceanicFlat = new THREE.Mesh(
+      new THREE.BoxGeometry(W * 0.32, H * 0.05, D), oceanicMat
+    );
+    oceanicFlat.position.set(-W * 0.34, H * 0.06, 0);
+    g.add(oceanicFlat);
+    // Oceanic crust — bending segment (right, pivots around its left edge to dip)
+    const oceanicBent = new THREE.Group();
+    oceanicBent.position.set(-W * 0.18, H * 0.06, 0);
+    const oceanicBentMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(W * 0.20, H * 0.05, D), oceanicMat.clone()
+    );
+    oceanicBentMesh.position.x = W * 0.10;
+    oceanicBent.add(oceanicBentMesh);
+    g.add(oceanicBent);
+    // Continental plate (thicker, on right)
+    const continental = this._stratifiedPlate(W * 0.45, H * 0.22, D);
+    continental.position.set(W * 0.27, H * 0.04, 0);
+    g.add(continental);
+    // Green continental crust on top
+    const contCrust = new THREE.Mesh(
+      new THREE.BoxGeometry(W * 0.45, H * 0.05, D),
+      new THREE.MeshStandardMaterial({ color: 0x3d7e3d, roughness: 0.9 })
+    );
+    contCrust.position.set(W * 0.27, H * 0.18, 0);
+    g.add(contCrust);
+    // Mountains on continental plate (grow during subduction)
+    const mountainMat = new THREE.MeshStandardMaterial({ color: 0x6a5040, roughness: 0.9 });
+    const mtnSpec = [
+      { x:  W * 0.13, h: 0.09 },
+      { x:  W * 0.27, h: 0.13 },
+      { x:  W * 0.40, h: 0.10 }
+    ];
+    const mountains = mtnSpec.map(s => {
+      const m = new THREE.Mesh(
+        new THREE.ConeGeometry(0.035, s.h, 4), mountainMat
+      );
+      m.position.set(s.x, H * 0.20 + s.h / 2, 0);
+      m.rotation.y = Math.PI / 4;
+      m.scale.y = 0.001;
+      g.add(m);
+      return { mesh: m, baseY: H * 0.20 + s.h / 2 };
+    });
+    // Volcano (center mountain has a crater)
+    const volcano = new THREE.Mesh(
+      new THREE.ConeGeometry(0.035, 0.10, 8),
+      new THREE.MeshStandardMaterial({ color: 0x4a3d33, roughness: 0.9 })
+    );
+    volcano.position.set(W * 0.20, H * 0.25, D/2 + 0.001);
+    volcano.scale.y = 0.001;
+    g.add(volcano);
+    const lava = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, 0.012, 8),
       new THREE.MeshStandardMaterial({
-        color: 0xff6622, emissive: 0xff4400, emissiveIntensity: 1.2
+        color: 0xff6633, emissive: 0xff4400, emissiveIntensity: 1.4
       })
     );
+    lava.position.y = 0.05;
+    volcano.add(lava);
+    // Magma chamber (glowing sphere under continental plate)
+    const magma = new THREE.Mesh(
+      new THREE.SphereGeometry(0.045, 12, 8),
+      new THREE.MeshStandardMaterial({
+        color: 0xff5522, emissive: 0xff3300, emissiveIntensity: 0,
+        transparent: true, opacity: 0
+      })
+    );
+    magma.position.set(W * 0.10, -H * 0.02, 0);
     g.add(magma);
+    // Motion arrows (white, on plates)
+    const arrowL = this._animArrow(0xffffff, 0.10);
+    arrowL.position.set(-W * 0.30, H * 0.06, D/2 + 0.003);
+    g.add(arrowL);
+    const arrowR = this._animArrow(0xffffff, 0.10);
+    arrowR.position.set(W * 0.42, H * 0.04, D/2 + 0.003);
+    arrowR.rotation.y = Math.PI;
+    g.add(arrowR);
     return (t) => {
-      const phase = (Math.sin(t * 0.5) + 1) / 2;
-      const sep = phase * 0.12;
-      left.position.x = -slabW/4 - sep;
-      right.position.x = slabW/4 + sep;
-      magma.scale.x = Math.max(0.05, sep * 18);
+      const cycle = (t * 0.30) % 1;
+      const intensity = Math.min(1, cycle * 1.6);
+      oceanicBent.rotation.z = -intensity * 0.7;
+      magma.material.opacity = intensity * 0.9;
+      magma.material.emissiveIntensity = intensity * (1.4 + Math.sin(t * 4) * 0.3);
+      for (const m of mountains) {
+        const target = intensity > 0.3 ? Math.min(1, (intensity - 0.3) / 0.6) : 0.001;
+        m.mesh.scale.y += (target - m.mesh.scale.y) * 0.08;
+      }
+      const volTarget = intensity > 0.4 ? Math.min(1, (intensity - 0.4) / 0.5) : 0.001;
+      volcano.scale.y += (volTarget - volcano.scale.y) * 0.08;
+      lava.material.emissiveIntensity = 1.0 + Math.sin(t * 6) * 0.4;
     };
   }
-  buildTransformAnim(g) {
-    const slabW = 0.8;
-    const front = new THREE.Mesh(
-      new THREE.BoxGeometry(slabW, 0.06, 0.08),
-      new THREE.MeshStandardMaterial({ color: 0x5d7a4a })
+
+  // ----- Divergent (mid-ocean ridge) ----------------------------------------
+  // Cross-section: brown lithosphere base, two tan seafloor plates pulling
+  // apart, blue ocean on top, and a vertical column of magma rising through
+  // the gap with stacked yellow upward-pointing arrows.
+  buildDivergentAnim(g) {
+    const W = 0.9, H = 0.5, D = 0.04;
+    const litho = new THREE.Mesh(
+      new THREE.BoxGeometry(W, H * 0.42, D),
+      new THREE.MeshStandardMaterial({ color: 0xa86040, roughness: 0.95 })
     );
-    const back = front.clone(); back.material = front.material.clone();
-    front.position.z = 0.05; back.position.z = -0.05;
-    g.add(front); g.add(back);
-    // Fault line
-    const fault = new THREE.Mesh(
-      new THREE.BoxGeometry(slabW, 0.062, 0.005),
-      new THREE.MeshStandardMaterial({ color: 0xd4a04a, emissive: 0x884400, emissiveIntensity: 0.5 })
+    litho.position.y = -H * 0.29;
+    g.add(litho);
+    const plateMat = new THREE.MeshStandardMaterial({ color: 0xc8a878, roughness: 0.92 });
+    const plateL = new THREE.Mesh(new THREE.BoxGeometry(W/2 - 0.005, H * 0.10, D), plateMat);
+    const plateR = new THREE.Mesh(new THREE.BoxGeometry(W/2 - 0.005, H * 0.10, D), plateMat.clone());
+    plateL.position.y = -H * 0.03;
+    plateR.position.y = -H * 0.03;
+    g.add(plateL); g.add(plateR);
+    // Ocean water above plates
+    const water = new THREE.Mesh(
+      new THREE.BoxGeometry(W, H * 0.32, D),
+      new THREE.MeshStandardMaterial({ color: 0x4a7eb0, roughness: 0.6 })
     );
-    g.add(fault);
-    let lastQ = 0;
+    water.position.y = H * 0.18;
+    g.add(water);
+    // Magma column — three stacked colored boxes (red bottom → orange → yellow top)
+    const magmaParts = [
+      { color: 0xff3300, emissive: 0xff2200, y: -H * 0.18 },
+      { color: 0xff7722, emissive: 0xff5500, y: -H * 0.06 },
+      { color: 0xffaa22, emissive: 0xff8800, y:  H * 0.06 }
+    ].map(c => {
+      const m = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, H * 0.13, D + 0.002),
+        new THREE.MeshStandardMaterial({
+          color: c.color, emissive: c.emissive, emissiveIntensity: 1.2
+        })
+      );
+      m.position.y = c.y;
+      m.scale.x = 0.001;
+      g.add(m);
+      return m;
+    });
+    // Stacked upward magma arrows in the column
+    const magmaArrows = [];
+    for (let i = 0; i < 3; i++) {
+      const a = this._animArrow(0xffd060, 0.06, 0.014);
+      a.rotation.z = Math.PI / 2;  // point up
+      a.position.set(0, -H * 0.14 + i * H * 0.10, D/2 + 0.005);
+      g.add(a);
+      magmaArrows.push(a);
+    }
+    // White outward arrows on plates
+    const arrowL = this._animArrow(0xffffff, 0.10);
+    arrowL.position.set(-W * 0.28, -H * 0.03, D/2 + 0.003);
+    arrowL.rotation.y = Math.PI;
+    g.add(arrowL);
+    const arrowR = this._animArrow(0xffffff, 0.10);
+    arrowR.position.set(W * 0.28, -H * 0.03, D/2 + 0.003);
+    g.add(arrowR);
     return (t) => {
-      const slowDrift = Math.sin(t * 0.4) * 0.18;
-      front.position.x = slowDrift;
-      back.position.x = -slowDrift;
+      const phase = (Math.sin(t * 0.5) + 1) / 2;
+      const sep = phase * 0.10;
+      plateL.position.x = -W/4 - sep;
+      plateR.position.x =  W/4 + sep;
+      const widen = Math.max(0.05, sep * 8);
+      for (const m of magmaParts) m.scale.x = widen;
+      // Pulse magma arrows up the column
+      for (let i = 0; i < magmaArrows.length; i++) {
+        const a = magmaArrows[i];
+        a.position.y = -H * 0.14 + i * H * 0.10 + Math.sin(t * 2.5 + i) * 0.012;
+      }
+      arrowL.position.x = -W * 0.28 - sep * 0.5;
+      arrowR.position.x =  W * 0.28 + sep * 0.5;
+    };
+  }
+
+  // ----- Transform (San Andreas) --------------------------------------------
+  // 3D perspective: two tilted blocks with brown terrain on top slide past
+  // each other in opposite directions; jagged fault between them; green arrows
+  // show motion direction; periodic earthquake jolts.
+  buildTransformAnim(g) {
+    g.rotation.x = -0.32; // tilt forward to see block tops in perspective
+    const blockW = 0.42, blockH = 0.16, blockD = 0.16;
+    const blockMat = new THREE.MeshStandardMaterial({ color: 0x6a5040, roughness: 0.95 });
+    const front = new THREE.Mesh(
+      new THREE.BoxGeometry(blockW, blockH, blockD), blockMat
+    );
+    front.position.set(0, 0, blockD/2 + 0.002);
+    g.add(front);
+    const back = new THREE.Mesh(
+      new THREE.BoxGeometry(blockW, blockH, blockD), blockMat.clone()
+    );
+    back.position.set(0, 0, -blockD/2 - 0.002);
+    g.add(back);
+    // Subtle terrain bumps on top of each block (rough ground)
+    const terrainMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.95 });
+    function addBumps(block, count) {
+      for (let i = 0; i < count; i++) {
+        const bump = new THREE.Mesh(
+          new THREE.ConeGeometry(0.014 + Math.random() * 0.008, 0.025 + Math.random() * 0.025, 5),
+          terrainMat
+        );
+        bump.position.set(
+          (Math.random() - 0.5) * blockW * 0.85,
+          blockH/2 + 0.012,
+          (Math.random() - 0.5) * blockD * 0.7
+        );
+        bump.rotation.y = Math.random() * Math.PI;
+        block.add(bump);
+      }
+    }
+    addBumps(front, 6);
+    addBumps(back, 6);
+    // Jagged fault line between blocks (zigzag dark stripe on top surface)
+    const faultGroup = new THREE.Group();
+    const faultMat = new THREE.MeshStandardMaterial({
+      color: 0x1a0e08, emissive: 0x3a2010, emissiveIntensity: 0.4, roughness: 0.95
+    });
+    const numSegs = 8;
+    for (let i = 0; i < numSegs; i++) {
+      const seg = new THREE.Mesh(
+        new THREE.BoxGeometry(blockW / numSegs, 0.012, 0.018), faultMat
+      );
+      seg.position.x = -blockW / 2 + (i + 0.5) * (blockW / numSegs);
+      seg.position.y = blockH / 2 + 0.005;
+      seg.position.z = (i % 2 === 0 ? 0.008 : -0.008);
+      faultGroup.add(seg);
+    }
+    g.add(faultGroup);
+    // Green directional arrows on top of each block — wrapped in a group so
+    // the lay-flat rotation (group) and direction-flip (inner mesh) are
+    // independent and don't interact through Euler axis composition.
+    const arrowFront = new THREE.Group();
+    arrowFront.add(this._animArrow(0x4adc4a, 0.10));        // points in +X by default
+    arrowFront.rotation.x = -Math.PI / 2;                    // lay flat on block top
+    arrowFront.position.set(blockW * 0.25, blockH/2 + 0.025, blockD * 0.5);
+    g.add(arrowFront);
+    const arrowBack = new THREE.Group();
+    const arrowBackMesh = this._animArrow(0x4adc4a, 0.10);
+    arrowBackMesh.rotation.y = Math.PI;                      // mesh: flip to -X within own frame
+    arrowBack.add(arrowBackMesh);
+    arrowBack.rotation.x = -Math.PI / 2;                     // group: lay flat
+    arrowBack.position.set(-blockW * 0.25, blockH/2 + 0.025, -blockD * 0.5);
+    g.add(arrowBack);
+    return (t) => {
+      const drift = Math.sin(t * 0.4) * 0.10;
+      front.position.x =  drift;
+      back.position.x  = -drift;
       // Earthquake jolt every ~5s
-      const q = Math.floor(t / 5);
-      if (q !== lastQ) lastQ = q;
-      const jolt = Math.exp(-((t % 5)) * 4) * 0.02 * Math.sin(t * 60);
-      front.position.z = 0.05 + jolt;
-      back.position.z = -0.05 - jolt;
+      const jolt = Math.exp(-((t % 5)) * 4) * 0.012 * Math.sin(t * 60);
+      front.position.z =  blockD/2 + 0.002 + jolt;
+      back.position.z  = -blockD/2 - 0.002 - jolt;
+      // Move arrows with their blocks
+      arrowFront.position.x = drift + blockW * 0.25;
+      arrowBack.position.x  = -drift - blockW * 0.25;
     };
   }
 
