@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inside the Earth — VR Field Trip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0c0908;
+  --surface: #161210;
+  --surface-2: #1f1815;
+  --border: rgba(255, 220, 200, 0.08);
+  --border-bright: rgba(255, 140, 60, 0.28);
+  --text: #f5f1eb;
+  --text-muted: #a39b94;
+  --text-dim: #6b635c;
+  --lava: #ff5722;
+  --magma: #ffa726;
+  --ember: #ff8f4a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 18px;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255, 87, 34, 0.10), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(255, 167, 38, 0.05), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  z-index: 1;
+}
+
+main {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 80px 32px 120px;
+  position: relative;
+  z-index: 2;
+}
+
+/* ===== HEADER ===== */
+header {
+  margin-bottom: 64px;
+  animation: fadeUp 0.8s ease-out;
+}
+
+.eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--lava);
+  margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.eyebrow::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--lava);
+  box-shadow: 0 0 16px var(--lava);
+  animation: pulse 2.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+
+h1 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: clamp(52px, 9vw, 96px);
+  font-weight: 700;
+  font-variation-settings: 'wdth' 92;
+  letter-spacing: -0.035em;
+  line-height: 0.92;
+  margin-bottom: 28px;
+  background: linear-gradient(180deg, var(--text) 30%, var(--ember) 130%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: clamp(20px, 2.4vw, 26px);
+  font-weight: 400;
+  color: var(--text-muted);
+  max-width: 640px;
+  margin-bottom: 48px;
+  letter-spacing: -0.01em;
+}
+
+.session-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.session-meta strong {
+  color: var(--text);
+  font-weight: 500;
+  margin-right: 8px;
+  font-size: 15px;
+}
+
+/* ===== INSTRUCTIONS ===== */
+.instructions {
+  background: linear-gradient(135deg, rgba(255, 87, 34, 0.10), rgba(255, 167, 38, 0.04));
+  border: 1px solid var(--border-bright);
+  border-radius: 16px;
+  padding: 28px 32px 28px 36px;
+  margin-bottom: 56px;
+  position: relative;
+  overflow: hidden;
+}
+
+.instructions::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--lava), var(--magma));
+}
+
+.instructions h3 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+
+.instructions p {
+  color: var(--text-muted);
+  font-size: 16px;
+}
+
+/* ===== STATIONS ===== */
+.stations {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.station {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 40px 44px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 44px;
+  position: relative;
+  transition: all 0.35s cubic-bezier(0.2, 0, 0.1, 1);
+  overflow: hidden;
+  animation: fadeUp 0.6s ease-out backwards;
+}
+
+.station::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ember) 50%, transparent);
+  opacity: 0;
+  transition: opacity 0.35s;
+}
+
+.station:hover {
+  border-color: var(--border-bright);
+  transform: translateY(-2px);
+  background: var(--surface-2);
+}
+
+.station:hover::before { opacity: 1; }
+
+.station:nth-child(1) { animation-delay: 0.15s; }
+.station:nth-child(2) { animation-delay: 0.25s; }
+.station:nth-child(3) { animation-delay: 0.35s; }
+.station:nth-child(4) { animation-delay: 0.45s; }
+.station:nth-child(5) { animation-delay: 0.55s; }
+
+.station-num {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 76px;
+  font-weight: 800;
+  font-variation-settings: 'wdth' 78;
+  line-height: 0.9;
+  background: linear-gradient(180deg, var(--ember), var(--lava));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.05em;
+  align-self: start;
+}
+
+.station-body { display: flex; flex-direction: column; min-width: 0; }
+
+.station-type {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--magma);
+  margin-bottom: 16px;
+  display: inline-block;
+  padding: 6px 14px;
+  background: rgba(255, 167, 38, 0.08);
+  border: 1px solid rgba(255, 167, 38, 0.22);
+  border-radius: 100px;
+  width: fit-content;
+}
+
+.station h2 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: clamp(26px, 3.4vw, 34px);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+  margin-bottom: 10px;
+}
+
+.duration {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 18px;
+  letter-spacing: 0.04em;
+}
+
+.desc {
+  color: var(--text-muted);
+  margin-bottom: 28px;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.launch {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--lava);
+  color: #fff;
+  text-decoration: none;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  padding: 16px 28px;
+  border-radius: 100px;
+  width: fit-content;
+  transition: all 0.2s;
+  box-shadow: 0 4px 20px rgba(255, 87, 34, 0.28);
+  letter-spacing: -0.005em;
+}
+
+.launch:hover {
+  background: #ff6b3d;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 28px rgba(255, 87, 34, 0.42);
+}
+
+.launch:active { transform: translateY(0); }
+
+.launch svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.2s;
+}
+
+.launch:hover svg { transform: translateX(5px); }
+
+.hint {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-top: 18px;
+  font-style: italic;
+  line-height: 1.55;
+}
+
+/* Native app variant */
+.station-native {
+  background: linear-gradient(135deg, var(--surface), rgba(255, 87, 34, 0.05));
+}
+
+.native-instructions {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 28px;
+  margin-top: 4px;
+}
+
+.native-instructions > p {
+  font-weight: 500;
+  margin-bottom: 16px;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.native-instructions ol {
+  list-style: none;
+  counter-reset: step;
+  padding: 0;
+}
+
+.native-instructions li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 40px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+
+.native-instructions li:last-child { margin-bottom: 0; }
+
+.native-instructions li strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.native-instructions li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 26px;
+  height: 26px;
+  background: rgba(255, 87, 34, 0.14);
+  border: 1px solid rgba(255, 87, 34, 0.32);
+  color: var(--ember);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ===== FOOTER ===== */
+.end-card {
+  margin-top: 48px;
+  padding: 36px 40px;
+  border: 1px dashed var(--border-bright);
+  border-radius: 18px;
+  text-align: center;
+  background: rgba(255, 87, 34, 0.025);
+}
+
+.end-card .ember-mark {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--lava);
+  margin-bottom: 12px;
+}
+
+.end-card h3 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+
+.end-card p {
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+footer {
+  margin-top: 56px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 720px) {
+  main { padding: 56px 22px 96px; }
+  .station {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 32px 28px;
+  }
+  .station-num { font-size: 60px; }
+  h1 { font-size: 56px; }
+  .session-meta { gap: 24px; }
+  .instructions { padding: 24px 24px 24px 28px; }
+}
+</style>
+</head>
+<body>
+<main>
+
+  <header>
+    <p class="eyebrow">Earth Science · Grade 8 · VR Field Trip</p>
+    <h1>Inside the Earth</h1>
+    <p class="subtitle">A guided journey through Earth's tectonic plates and the volcanoes they create.</p>
+    <div class="session-meta">
+      <div><strong>5</strong> Stations</div>
+      <div><strong>~45</strong> Minutes</div>
+      <div><strong>Meta Quest 3</strong></div>
+    </div>
+  </header>
+
+  <div class="instructions">
+    <h3>Before you start</h3>
+    <p>Work through the stations in order. Each link opens in a new tab — when you finish a station, close that tab to come back here. For 360° videos, tap the headset icon in the YouTube player to enter VR view.</p>
+  </div>
+
+  <section class="stations">
+
+    <article class="station">
+      <div class="station-num">01</div>
+      <div class="station-body">
+        <span class="station-type">360° Video</span>
+        <h2>Kamchatka Volcano</h2>
+        <p class="duration">~5 min · YouTube 360°</p>
+        <p class="desc">Travel to Russia's Kamchatka Peninsula — home to more than 160 volcanoes and one of the most volcanically active regions on Earth. Stand inches from a live eruption.</p>
+        <a class="launch" href="https://youtu.be/o3a1fkLsNS4?si=X3CF5boxNpt8tOKf" target="_blank" rel="noopener">
+          Watch in 360°
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+        <p class="hint">Once the video loads, tap the headset/cardboard icon in the bottom-right of the YouTube player to enter VR view.</p>
+      </div>
+    </article>
+
+    <article class="station">
+      <div class="station-num">02</div>
+      <div class="station-body">
+        <span class="station-type">360° Video</span>
+        <h2>Heart of a Volcano</h2>
+        <p class="duration">~6 min · YouTube 360°</p>
+        <p class="desc">Descend deep inside Iceland's Þríhnúkagígur volcano — the only volcano on Earth you can step inside. See what a magma chamber actually looks like.</p>
+        <a class="launch" href="https://youtu.be/OBp2EWPjotk?si=SzHUrMU0X5HdmCx4" target="_blank" rel="noopener">
+          Watch in 360°
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+        <p class="hint">Look up, down, and all around — the chamber is the size of a cathedral.</p>
+      </div>
+    </article>
+
+    <article class="station">
+      <div class="station-num">03</div>
+      <div class="station-body">
+        <span class="station-type">360° Video</span>
+        <h2>Flying Over an Iceland Eruption</h2>
+        <p class="duration">~4 min · YouTube 360°</p>
+        <p class="desc">Soar above an active Icelandic eruption captured by drone. Watch lava fountains break through Earth's crust and flow across the landscape in real time.</p>
+        <a class="launch" href="https://youtu.be/y9J7RUzlkz4?si=YDBaG9ea0khq7m3B" target="_blank" rel="noopener">
+          Watch in 360°
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </article>
+
+    <article class="station">
+      <div class="station-num">04</div>
+      <div class="station-body">
+        <span class="station-type">WebXR Simulation</span>
+        <h2>Plate Tectonics Simulation</h2>
+        <p class="duration">~10 min · Interactive WebXR</p>
+        <p class="desc">Step into an interactive 3D simulation of Earth's tectonic plates. Watch how convergent, divergent, and transform boundaries shape continents — and why they create the volcanoes you just witnessed.</p>
+        <a class="launch" href="https://curbyalexander-lang.github.io/tracktimer/plate-tectonics-vr.html" target="_blank" rel="noopener">
+          Open Simulation
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+        <p class="hint">When the page loads, tap the "Enter VR" button to begin the immersive simulation.</p>
+      </div>
+    </article>
+
+    <article class="station station-native">
+      <div class="station-num">05</div>
+      <div class="station-body">
+        <span class="station-type">Native App</span>
+        <h2>Brothers Volcano</h2>
+        <p class="duration">~10 min · Quest App</p>
+        <p class="desc">Dive nearly 2 kilometers beneath the Pacific Ocean to explore Brothers Volcano — an active submarine volcano off the coast of New Zealand. This experience runs as a Quest app, not in the browser.</p>
+        <div class="native-instructions">
+          <p>To launch this experience:</p>
+          <ol>
+            <li>Press the <strong>Meta button</strong> on your right controller (the oval one)</li>
+            <li>Open your <strong>Library</strong> from the menu</li>
+            <li>Find <strong>Brothers Volcano: Virtual Experience</strong> and select it</li>
+            <li>When you finish, press the Meta button again and return to your browser</li>
+          </ol>
+        </div>
+      </div>
+    </article>
+
+  </section>
+
+  <div class="end-card">
+    <p class="ember-mark">◆ End of Field Trip ◆</p>
+    <h3>Nice work, geologist.</h3>
+    <p>You've stood on five active volcanoes today — three in 360°, one in simulation, and one beneath the ocean.</p>
+  </div>
+
+  <footer>
+    Volcanoes &amp; Plate Tectonics · Curated VR Learning Experience
+  </footer>
+
+</main>
+</body>
+</html>
