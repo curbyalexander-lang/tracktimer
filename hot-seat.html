@@ -506,6 +506,29 @@
     // ============================================================================
     // SETUP — paste your Firebase project config here (see setup screen or README)
     // ============================================================================
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "firebase/app";
+    import { getAnalytics } from "firebase/analytics";
+    // TODO: Add SDKs for Firebase products that you want to use
+    // https://firebase.google.com/docs/web/setup#available-libraries
+
+    // Your web app's Firebase configuration
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    const firebaseConfig = {
+      apiKey: "AIzaSyCSHabacnuRaoMBe-D_-UZ3wK1rB8mbnxw",
+      authDomain: "hot-seat-976fe.firebaseapp.com",
+      databaseURL: "https://hot-seat-976fe-default-rtdb.firebaseio.com",
+      projectId: "hot-seat-976fe",
+      storageBucket: "hot-seat-976fe.firebasestorage.app",
+      messagingSenderId: "462821411512",
+      appId: "1:462821411512:web:4e983aa05ea1e7ddc3424d",
+      measurementId: "G-Y8Q20BDN2N"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+
     const FIREBASE_CONFIG = {
       piKey: "AIzaSyCSHabacnuRaoMBe-D_-UZ3wK1rB8mbnxw",
       authDomain: "hot-seat-976fe.firebaseapp.com",
