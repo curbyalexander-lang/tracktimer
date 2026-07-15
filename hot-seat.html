@@ -498,7 +498,7 @@
 </head>
 
 <body>
-  <div id="FIREBASE_CONFIG"></div>
+  <div id="app"></div>
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -506,26 +506,15 @@
     // ============================================================================
     // SETUP — paste your Firebase project config here (see setup screen or README)
     // ============================================================================
-    // Import the functions you need from the SDKs you need
-    import { initializeApp } from "firebase/app";
-    import { getAnalytics } from "firebase/analytics";
-    // TODO: Add SDKs for Firebase products that you want to use
-    // https://firebase.google.com/docs/web/setup#available-libraries
-
-    const firebaseConfig = {
+    const FIREBASE_CONFIG = {
       apiKey: "AIzaSyCSHabacnuRaoMBe-D_-UZ3wK1rB8mbnxw",
       authDomain: "hot-seat-976fe.firebaseapp.com",
       databaseURL: "https://hot-seat-976fe-default-rtdb.firebaseio.com",
       projectId: "hot-seat-976fe",
       storageBucket: "hot-seat-976fe.firebasestorage.app",
       messagingSenderId: "462821411512",
-      appId: "1:462821411512:web:4e983aa05ea1e7ddc3424d",
-      measurementId: "G-Y8Q20BDN2N"
+      appId: "1:462821411512:web:4e983aa05ea1e7ddc3424d"
     };
-
-    / Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
     // ============================================================================
 
     const QUESTION_BANK = [
