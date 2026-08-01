@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#1b1d1c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Reflex — Reflected Light Meter</title>
+<style>
+  :root{
+    --body:#1b1d1c;
+    --panel:#262a28;
+    --panel-hi:#31352f;
+    --edge:#3c413b;
+    --ivory:#efe9dc;
+    --ivory-dim:#a8a79c;
+    --label:#7f857e;
+    --index:#c8352b;
+    --amber:#d8a13b;
+    --ok:#7fa66a;
+    --mono: ui-monospace, "SF Mono", "Menlo", "Roboto Mono", monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; background:var(--body); color:var(--ivory); font-family:var(--sans)}
+  body{
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) calc(env(safe-area-inset-bottom) + 24px) env(safe-area-inset-left);
+    max-width:520px; margin:0 auto;
+    font-variant-numeric: tabular-nums;
+    -webkit-user-select:none; user-select:none;
+  }
+
+  /* ---------- header ---------- */
+  .top{display:flex; align-items:baseline; justify-content:space-between; padding:14px 16px 10px}
+  .wordmark{font-size:13px; letter-spacing:.28em; text-transform:uppercase; color:var(--ivory)}
+  .wordmark span{color:var(--index)}
+  .status{font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--label)}
+  .status::before{content:"●"; margin-right:5px; color:var(--label)}
+  .status.live::before{color:var(--ok)}
+  .status.calib::before{color:var(--amber)}
+  .status.bad::before{color:var(--index)}
+
+  /* ---------- viewfinder ---------- */
+  .finder{position:relative; margin:0 16px; aspect-ratio:16/9; overflow:hidden;
+    background:#0d0f0e; border:1px solid var(--edge)}
+  .finder video{width:100%; height:100%; object-fit:cover; display:block; filter:saturate(.75)}
+  .reticle{position:absolute; inset:0; pointer-events:none}
+  .reticle .box{position:absolute; left:50%; top:50%; width:22%; height:28%; transform:translate(-50%,-50%);
+    border:1px solid rgba(239,233,220,.85); box-shadow:0 0 0 1px rgba(0,0,0,.45)}
+  .reticle .box::before,.reticle .box::after{content:""; position:absolute; background:rgba(239,233,220,.85)}
+  .reticle .box::before{left:50%; top:-8px; width:1px; height:6px}
+  .reticle .box::after{left:50%; bottom:-8px; width:1px; height:6px}
+  .reticle.avg .box{width:82%; height:78%; border-style:dashed; opacity:.55}
+  .finder .fhint{position:absolute; left:8px; bottom:6px; font-family:var(--mono); font-size:10px;
+    letter-spacing:.12em; color:rgba(239,233,220,.7); text-transform:uppercase}
+
+  /* ---------- readout ---------- */
+  .readout{display:flex; align-items:flex-end; gap:14px; padding:16px 16px 6px}
+  .ev{font-family:var(--mono); font-size:60px; line-height:.85; font-weight:600; letter-spacing:-.03em}
+  .ev.stale{color:var(--label)}
+  .evmeta{padding-bottom:5px}
+  .evmeta .k{font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--label)}
+  .evmeta .v{font-family:var(--mono); font-size:13px; color:var(--ivory-dim); margin-top:2px}
+
+  /* ---------- signature: sliding engraved EV scale ---------- */
+  .scale{position:relative; height:52px; margin:6px 0 4px; overflow:hidden;
+    border-top:1px solid var(--edge); border-bottom:1px solid var(--edge); background:#15171 6}
+  .scale{background:linear-gradient(180deg,#101211,#1e211f 55%,#101211)}
+  .strip{position:absolute; top:0; left:0; height:100%; will-change:transform;
+    transition:transform 200ms cubic-bezier(.22,.7,.3,1)}
+  .tick{position:absolute; top:0; height:100%; width:0}
+  .tick i{position:absolute; left:0; top:0; width:1px; background:var(--ivory-dim); opacity:.5}
+  .tick.major i{height:16px; opacity:.9}
+  .tick.minor i{height:8px; opacity:.35}
+  .tick b{position:absolute; top:20px; left:0; transform:translateX(-50%);
+    font-family:var(--mono); font-size:12px; font-weight:500; color:var(--ivory); opacity:.9}
+  .index{position:absolute; left:50%; top:0; bottom:0; width:1px; background:var(--index);
+    box-shadow:0 0 8px rgba(200,53,43,.55)}
+  .index::before{content:""; position:absolute; left:-5px; top:0; border-left:5px solid transparent;
+    border-right:5px solid transparent; border-top:7px solid var(--index)}
+  .scale .cap{position:absolute; right:8px; bottom:4px; font-size:9px; letter-spacing:.2em;
+    text-transform:uppercase; color:var(--label)}
+  .fade{position:absolute; top:0; bottom:0; width:44px; pointer-events:none}
+  .fade.l{left:0; background:linear-gradient(90deg,#15171677,transparent)}
+  .fade.r{right:0; background:linear-gradient(270deg,#15171677,transparent)}
+
+  /* ---------- exposure pair ---------- */
+  .pair{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px; padding:16px}
+  .cell{text-align:center; padding:10px 6px; border:1px solid var(--edge); background:var(--panel)}
+  .cell.sel{border-color:var(--index)}
+  .cell .k{font-size:9px; letter-spacing:.2em; text-transform:uppercase; color:var(--label)}
+  .cell .v{font-family:var(--mono); font-size:26px; margin-top:4px; letter-spacing:-.02em}
+  .cell .d{font-family:var(--mono); font-size:10px; color:var(--amber); margin-top:3px; min-height:12px}
+  .tie{font-family:var(--mono); font-size:13px; color:var(--label)}
+
+  .note{margin:0 16px 12px; padding:8px 10px; border-left:2px solid var(--amber);
+    font-size:12px; line-height:1.45; color:var(--ivory-dim); background:#2a2620}
+  .note.hide{display:none}
+  .note.err{border-color:var(--index); background:#2b1e1d}
+
+  /* ---------- controls ---------- */
+  h2{font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--label);
+    margin:18px 16px 8px; font-weight:600}
+  .row{display:flex; gap:6px; overflow-x:auto; padding:0 16px 2px; scrollbar-width:none}
+  .row::-webkit-scrollbar{display:none}
+  .chip{flex:0 0 auto; padding:9px 13px; border:1px solid var(--edge); background:var(--panel);
+    color:var(--ivory-dim); font-family:var(--mono); font-size:14px; cursor:pointer}
+  .chip.on{background:var(--ivory); color:#15171 6; color:#151716; border-color:var(--ivory)}
+  .seg{display:flex; margin:0 16px; border:1px solid var(--edge)}
+  .seg button{flex:1; padding:11px 6px; background:var(--panel); color:var(--ivory-dim); border:0;
+    border-right:1px solid var(--edge); font-family:var(--sans); font-size:12px; letter-spacing:.08em;
+    text-transform:uppercase; cursor:pointer}
+  .seg button:last-child{border-right:0}
+  .seg button.on{background:var(--panel-hi); color:var(--ivory); box-shadow:inset 0 -2px 0 var(--index)}
+
+  .hold{display:block; width:calc(100% - 32px); margin:14px 16px 4px; padding:15px;
+    background:transparent; border:1px solid var(--ivory-dim); color:var(--ivory);
+    font-size:13px; letter-spacing:.2em; text-transform:uppercase; cursor:pointer}
+  .hold.on{background:var(--index); border-color:var(--index)}
+
+  details{margin:20px 16px 0; border-top:1px solid var(--edge)}
+  summary{padding:14px 0; font-size:10px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--label); cursor:pointer; list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:" +"; color:var(--index)}
+  details[open] summary::after{content:" –"}
+  .field{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 0;
+    font-size:13px; color:var(--ivory-dim); border-bottom:1px solid #2e322d}
+  .field input{width:88px; padding:8px; background:#15171 6; background:#151716; border:1px solid var(--edge);
+    color:var(--ivory); font-family:var(--mono); font-size:14px; text-align:right}
+  .mini{padding:8px 12px; background:var(--panel); border:1px solid var(--edge); color:var(--ivory);
+    font-family:var(--mono); font-size:13px; cursor:pointer}
+  .trim{display:flex; gap:8px; align-items:center}
+  .trim .val{font-family:var(--mono); font-size:15px; min-width:62px; text-align:center; color:var(--ivory)}
+  .help{font-size:12.5px; line-height:1.6; color:var(--ivory-dim); padding:4px 0 14px}
+  .help b{color:var(--ivory); font-weight:600}
+  .help ol{margin:6px 0 0; padding-left:18px}
+  .help li{margin:5px 0}
+  .diag{font-family:var(--mono); font-size:11px; color:var(--label); line-height:1.7;
+    padding:6px 0 14px; word-break:break-all}
+  @media (prefers-reduced-motion:reduce){ .strip{transition-duration:0ms} }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="wordmark">Reflex<span>·</span>Meter</div>
+  <div class="status" id="status">starting</div>
+</div>
+
+<div class="finder">
+  <video id="vid" playsinline autoplay muted></video>
+  <div class="reticle" id="reticle"><div class="box"></div></div>
+  <div class="fhint" id="fhint">spot</div>
+</div>
+
+<div class="readout">
+  <div class="ev" id="evBig">––.–</div>
+  <div class="evmeta">
+    <div class="k">EV at ISO 100</div>
+    <div class="v" id="evFilm">— at ISO 400</div>
+  </div>
+</div>
+
+<div class="scale">
+  <div class="strip" id="strip"></div>
+  <div class="fade l"></div><div class="fade r"></div>
+  <div class="index"></div>
+  <div class="cap">exposure value</div>
+</div>
+
+<div class="pair">
+  <div class="cell" id="cellAp">
+    <div class="k">Aperture</div>
+    <div class="v" id="apVal">f/8</div>
+    <div class="d" id="apDelta"></div>
+  </div>
+  <div class="tie">at</div>
+  <div class="cell" id="cellSh">
+    <div class="k">Shutter</div>
+    <div class="v" id="shVal">—</div>
+    <div class="d" id="shDelta"></div>
+  </div>
+</div>
+
+<div class="note hide" id="note"></div>
+
+<h2>Film speed</h2>
+<div class="row" id="isoRow"></div>
+
+<h2>Set</h2>
+<div class="seg" id="modeSeg">
+  <button data-mode="Av" class="on">Pick aperture</button>
+  <button data-mode="Tv">Pick shutter</button>
+</div>
+<div class="row" id="valRow" style="margin-top:8px"></div>
+
+<h2>Metering pattern</h2>
+<div class="seg" id="meterSeg">
+  <button data-m="spot" class="on">Spot</button>
+  <button data-m="avg">Averaging</button>
+</div>
+
+<button class="hold" id="holdBtn">Hold reading</button>
+
+<details>
+  <summary>Calibration</summary>
+  <div class="help">
+    Match this meter to your camera once, then leave it alone. Point at an evenly lit surface,
+    read the same surface with a meter you trust, type that EV below, and press Set.
+  </div>
+  <div class="field">
+    <span>Known EV at ISO 100</span>
+    <span class="trim">
+      <input type="number" id="knownEv" step="0.1" placeholder="15">
+      <button class="mini" id="setCal">Set</button>
+    </span>
+  </div>
+  <div class="field">
+    <span>Trim</span>
+    <span class="trim">
+      <button class="mini" id="calDown">–⅓</button>
+      <span class="val" id="calVal">0.0 EV</span>
+      <button class="mini" id="calUp">+⅓</button>
+    </span>
+  </div>
+  <div class="field">
+    <span>Phone lens f-number</span>
+    <input type="number" id="devN" step="0.1" value="1.8">
+  </div>
+  <div class="help" style="padding-top:10px">
+    Sunny 16 gives you a free reference: a front-lit subject under an unclouded midday sun is
+    <b>EV 15</b>. Open shade on the same day is about EV 12.
+  </div>
+</details>
+
+<details>
+  <summary>Sensor report</summary>
+  <div class="diag" id="diag">reading device…</div>
+</details>
+
+<details>
+  <summary>How it reads light</summary>
+  <div class="help">
+    The phone's camera is already a light meter — it just keeps its answer to itself. This app reads
+    the exposure the camera chose (shutter time and sensor ISO), measures how bright the resulting
+    frame actually is, and works backwards to the luminance in front of the lens.
+    <ol>
+      <li>Frame pixels are converted out of sRGB back to linear light, then weighted to luma.</li>
+      <li>Distance from 18% grey becomes a stop correction.</li>
+      <li>N² ÷ t, adjusted to ISO 100, gives the camera's own exposure value.</li>
+      <li>The two combine into scene EV, then <b>N² / t = 2^EV</b> gives your pair.</li>
+    </ol>
+  </div>
+</details>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- scales ---------- */
+var APERTURES = [1.4,2,2.8,4,5.6,8,11,16,22];
+var SHUTTERS = [30,15,8,4,2,1,1/2,1/4,1/8,1/15,1/30,1/60,1/125,1/250,1/500,1/1000,1/2000];
+var ISOS = [25,50,64,100,125,200,400,800,1600,3200];
+var MID_GREY = 0.18;
+
+var S = {
+  iso:400, mode:'Av', apIdx:5, shIdx:12, metering:'spot',
+  cal:0, devN:1.8, hold:false, ev100:null, shown:null, ok:false, mode3:'none'
+};
+
+/* ---------- sRGB -> linear lookup ---------- */
+var LIN = new Float32Array(256);
+for (var i=0;i<256;i++){ var c=i/255; LIN[i] = c<=0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055,2.4); }
+
+/* ---------- elements ---------- */
+var $ = function(id){ return document.getElementById(id); };
+var vid=$('vid'), evBig=$('evBig'), evFilm=$('evFilm'), note=$('note'), statusEl=$('status');
+var apVal=$('apVal'), shVal=$('shVal'), apDelta=$('apDelta'), shDelta=$('shDelta');
+var cellAp=$('cellAp'), cellSh=$('cellSh'), strip=$('strip'), reticle=$('reticle'), fhint=$('fhint');
+
+var cv = document.createElement('canvas'); cv.width=96; cv.height=72;
+var ctx = cv.getContext('2d',{willReadFrequently:true});
+var track=null, caps={};
+
+/* ---------- formatting ---------- */
+function fmtShutter(t){
+  if (t>=60) return Math.round(t/60)+'m';
+  if (t>=1)  return (t>=10 ? Math.round(t) : Math.round(t*10)/10)+'"';
+  return '1/'+Math.round(1/t);
+}
+function fmtAperture(n){ return 'f/'+(n<10 ? (Math.round(n*10)/10) : Math.round(n)); }
+function nearest(list, v){
+  var bi=0, bd=Infinity;
+  for (var i=0;i<list.length;i++){ var d=Math.abs(Math.log2(list[i]/v)); if(d<bd){bd=d;bi=i;} }
+  return bi;
+}
+function stopsLabel(x){
+  if (Math.abs(x)<0.08) return '';
+  return (x>0?'+':'−') + (Math.round(Math.abs(x)*10)/10) + ' stop';
+}
+
+/* ---------- build the EV scale ---------- */
+var EV_MIN=-4, EV_MAX=21, PX=42;
+(function buildScale(){
+  var f='';
+  for (var e=EV_MIN; e<=EV_MAX; e+=0.5){
+    var major = (e%1===0), x=(e-EV_MIN)*PX;
+    f += '<span class="tick '+(major?'major':'minor')+'" style="left:'+x+'px"><i></i>'
+       + (major? '<b>'+e+'</b>' : '') + '</span>';
+  }
+  strip.innerHTML=f;
+  strip.style.width=((EV_MAX-EV_MIN)*PX+2)+'px';
+})();
+function moveScale(ev){
+  var w = strip.parentElement.clientWidth;
+  strip.style.transform='translateX('+ (w/2 - (ev-EV_MIN)*PX) +'px)';
+}
+
+/* ---------- chips ---------- */
+function buildChips(el, items, fmt, isOn, onPick){
+  el.innerHTML='';
+  items.forEach(function(item,idx){
+    var b=document.createElement('button');
+    b.className='chip'+(isOn(idx)?' on':''); b.textContent=fmt(item);
+    b.onclick=function(){ onPick(idx); };
+    el.appendChild(b);
+    if (isOn(idx)) setTimeout(function(){ b.scrollIntoView({inline:'center',block:'nearest'}); },0);
+  });
+}
+function renderIso(){
+  buildChips($('isoRow'), ISOS, function(v){return String(v);},
+    function(i){return ISOS[i]===S.iso;},
+    function(i){ S.iso=ISOS[i]; renderIso(); paint(); });
+}
+function renderVals(){
+  if (S.mode==='Av'){
+    buildChips($('valRow'), APERTURES, fmtAperture,
+      function(i){return i===S.apIdx;}, function(i){ S.apIdx=i; renderVals(); paint(); });
+  } else {
+    buildChips($('valRow'), SHUTTERS, fmtShutter,
+      function(i){return i===S.shIdx;}, function(i){ S.shIdx=i; renderVals(); paint(); });
+  }
+  cellAp.classList.toggle('sel', S.mode==='Av');
+  cellSh.classList.toggle('sel', S.mode==='Tv');
+}
+
+/* ---------- controls ---------- */
+$('modeSeg').onclick=function(e){
+  var b=e.target.closest('button'); if(!b) return;
+  S.mode=b.dataset.mode;
+  [].forEach.call(this.children,function(c){ c.classList.toggle('on', c===b); });
+  renderVals(); paint();
+};
+$('meterSeg').onclick=function(e){
+  var b=e.target.closest('button'); if(!b) return;
+  S.metering=b.dataset.m;
+  [].forEach.call(this.children,function(c){ c.classList.toggle('on', c===b); });
+  reticle.classList.toggle('avg', S.metering==='avg');
+  fhint.textContent = S.metering==='avg' ? 'averaging' : 'spot';
+};
+$('holdBtn').onclick=function(){
+  S.hold=!S.hold;
+  this.classList.toggle('on',S.hold);
+  this.textContent = S.hold ? 'Release' : 'Hold reading';
+};
+function setCal(v){ S.cal=v; $('calVal').textContent=(v>=0?'+':'−')+(Math.round(Math.abs(v)*10)/10)+' EV'; }
+$('calUp').onclick=function(){ setCal(S.cal+1/3); };
+$('calDown').onclick=function(){ setCal(S.cal-1/3); };
+$('setCal').onclick=function(){
+  var k=parseFloat($('knownEv').value);
+  if (isNaN(k) || S.ev100===null){ flag('Enter a known EV while the meter is reading.',true); return; }
+  setCal(S.cal + (k - S.ev100));
+  flag('Calibrated. Trim of '+(Math.round(S.cal*10)/10)+' EV applied.',false);
+};
+$('devN').oninput=function(){ var v=parseFloat(this.value); if(v>0) S.devN=v; };
+
+function flag(msg, err){
+  note.textContent=msg; note.className='note'+(err?' err':'');
+}
+function clearFlag(){ note.className='note hide'; }
+
+/* ---------- camera ---------- */
+function start(){
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    statusEl.textContent='no camera'; statusEl.className='status bad';
+    flag('This browser has no camera access. Open the page over https:// in Chrome or Safari.',true);
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({
+    video:{ facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720} }, audio:false
+  }).then(function(stream){
+    vid.srcObject=stream;
+    track=stream.getVideoTracks()[0];
+    caps = track.getCapabilities ? track.getCapabilities() : {};
+    tryLock();
+    report();
+    requestAnimationFrame(loop);
+  }).catch(function(err){
+    statusEl.textContent='blocked'; statusEl.className='status bad';
+    flag('Camera access was refused ('+err.name+'). Allow the camera for this site, then reload.',true);
+  });
+}
+function tryLock(){
+  // A frozen exposure makes calibrated readings stable; skip quietly if unsupported.
+  if (caps.exposureMode && caps.exposureMode.indexOf('manual')>=0){
+    track.applyConstraints({advanced:[{exposureMode:'manual'}]}).catch(function(){});
+  }
+}
+function report(){
+  var s = track.getSettings ? track.getSettings() : {};
+  var lines = [
+    'exposureTime: ' + (s.exposureTime!==undefined ? s.exposureTime+' (×100µs)' : 'not reported'),
+    'iso: ' + (s.iso!==undefined ? s.iso : 'not reported'),
+    'exposureMode: ' + (s.exposureMode || 'not reported'),
+    'resolution: ' + (s.width||'?') + '×' + (s.height||'?')
+  ];
+  $('diag').innerHTML = lines.join('<br>');
+}
+
+/* ---------- measurement ---------- */
+function sampleLuma(){
+  if (!vid.videoWidth) return null;
+  ctx.drawImage(vid,0,0,cv.width,cv.height);
+  var x,y,w,h;
+  if (S.metering==='spot'){ w=Math.round(cv.width*0.22); h=Math.round(cv.height*0.28); }
+  else { w=Math.round(cv.width*0.82); h=Math.round(cv.height*0.78); }
+  x=Math.round((cv.width-w)/2); y=Math.round((cv.height-h)/2);
+  var d;
+  try { d = ctx.getImageData(x,y,w,h).data; } catch(e){ return null; }
+  var sum=0, n=d.length/4;
+  for (var i=0;i<d.length;i+=4){
+    sum += 0.2126*LIN[d[i]] + 0.7152*LIN[d[i+1]] + 0.0722*LIN[d[i+2]];
+  }
+  return Math.max(sum/n, 1e-6);
+}
+
+var lastReport=0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  if (S.hold) return;
+  if (ts-lastReport < 90) return;
+  lastReport=ts;
+
+  var Y = sampleLuma();
+  if (Y===null) return;
+
+  var s = track.getSettings ? track.getSettings() : {};
+  var t = (typeof s.exposureTime==='number' && s.exposureTime>0) ? s.exposureTime/10000 : null;
+  var camIso = (typeof s.iso==='number' && s.iso>0) ? s.iso : null;
+
+  var base=0;
+  if (t && camIso){
+    base = Math.log2(S.devN*S.devN/t) + Math.log2(100/camIso);
+    if (!S.ok){ S.ok=true; S.mode3='full'; statusEl.textContent='metering'; statusEl.className='status live'; clearFlag(); }
+  } else if (S.mode3!=='calib'){
+    S.mode3='calib';
+    statusEl.textContent='needs calibration'; statusEl.className='status calib';
+    flag('This device does not publish its exposure settings, so readings are relative until you calibrate. Meter a scene of known EV once under Calibration below.',false);
+  }
+
+  var raw = base + Math.log2(Y/MID_GREY) + S.cal;
+  S.ev100 = (S.shown===null || Math.abs(raw-S.shown)>2) ? raw : S.shown*0.75 + raw*0.25;
+  S.shown = S.ev100;
+  paint();
+}
+
+/* ---------- render ---------- */
+function paint(){
+  if (S.ev100===null) return;
+  var ev100 = S.ev100;
+  var evFilmVal = ev100 + Math.log2(S.iso/100);
+
+  evBig.textContent = (ev100>=0?'':'−') + Math.abs(Math.round(ev100*10)/10).toFixed(1);
+  evBig.classList.toggle('stale', S.hold);
+  evFilm.textContent = 'EV ' + (Math.round(evFilmVal*10)/10).toFixed(1) + ' at ISO ' + S.iso;
+  moveScale(ev100);
+
+  var N, t, msg='';
+  if (S.mode==='Av'){
+    N = APERTURES[S.apIdx];
+    t = N*N / Math.pow(2, evFilmVal);
+    var si = nearest(SHUTTERS, t);
+    apVal.textContent = fmtAperture(N); apDelta.textContent='';
+    shVal.textContent = fmtShutter(SHUTTERS[si]);
+    shDelta.textContent = stopsLabel(Math.log2(t/SHUTTERS[si]));
+    if (t > 1.2) msg = 'Longer than a second — use a tripod, and add reciprocity compensation for your film stock.';
+    else if (t > 1/40) msg = 'Below 1/60 handheld. Brace, or open up a stop.';
+    if (t > 32) msg = 'Beyond the shutter dial. Open the aperture or load faster film.';
+    if (t < 1/2000) msg = 'Faster than the focal-plane shutter. Stop down or use a slower film.';
+  } else {
+    t = SHUTTERS[S.shIdx];
+    N = Math.sqrt(t * Math.pow(2, evFilmVal));
+    var ai = nearest(APERTURES, N);
+    shVal.textContent = fmtShutter(t); shDelta.textContent='';
+    apVal.textContent = fmtAperture(APERTURES[ai]);
+    apDelta.textContent = stopsLabel(2*Math.log2(N/APERTURES[ai]));
+    if (N > 22) msg = 'Past f/22. Choose a faster shutter speed or slower film.';
+    if (N < 1.4) msg = 'Wider than f/1.4. Choose a slower shutter speed or faster film.';
+  }
+  if (msg) flag(msg,false); else if (S.mode3==='full') clearFlag();
+}
+
+renderIso(); renderVals(); setCal(0);
+window.addEventListener('resize', function(){ if(S.ev100!==null) moveScale(S.ev100); });
+start();
+})();
+</script>
+</body>
+</html>
